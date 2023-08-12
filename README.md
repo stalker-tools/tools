@@ -48,12 +48,34 @@ Examples: ltx_tool.py -f 1.ltx 2.ltx
 
 Show power of bullets:
 ```sh
-python ltx_tool.py -l k_hit -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata/configs"
-configs/mp/anticheat_active_params.ltx [ap_mp_ammo_9x18_fmj] k_hit = 1.000000
-configs/mp/anticheat_active_params.ltx [ap_mp_ammo_9x18_pmm] k_hit = 0.720000
-configs/mp/anticheat_active_params.ltx [ap_mp_ammo_9x19_fmj] k_hit = 1.000000
-configs/mp/anticheat_active_params.ltx [ap_mp_ammo_9x19_pbp] k_hit = 0.720000
-...
+python ltx_tool.py -l k_hit -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata/configs/weapons"
+orig/configs/weapons/weapons.ltx [ammo_9x18_fmj] k_hit = 1.38
+orig/configs/weapons/weapons.ltx [ammo_9x18_pbp] k_hit = 1.86
+orig/configs/weapons/weapons.ltx [ammo_9x18_pmm] k_hit = 1.86
+orig/configs/weapons/weapons.ltx [ammo_9x19_fmj] k_hit = 1.64
+orig/configs/weapons/weapons.ltx [ammo_9x19_pbp] k_hit = 1.68
+orig/configs/weapons/weapons.ltx [ammo_11.43x23_fmj] k_hit = 1.68
+orig/configs/weapons/weapons.ltx [ammo_11.43x23_hydro] k_hit = 2.05
+orig/configs/weapons/weapons.ltx [ammo_5.45x39_fmj] k_hit = 4.85
+orig/configs/weapons/weapons.ltx [ammo_5.45x39_ap] k_hit = 4.67
+orig/configs/weapons/weapons.ltx [ammo_5.56x45_ss190] k_hit = 5.5
+orig/configs/weapons/weapons.ltx [ammo_5.56x45_ap] k_hit = 5.28
+orig/configs/weapons/weapons.ltx [ammo_pkm_100] k_hit = 1
+orig/configs/weapons/weapons.ltx [ammo_7.62x54_7h1] k_hit = 11.17
+orig/configs/weapons/weapons.ltx [ammo_7.62x54_ap] k_hit = 11.17
+orig/configs/weapons/weapons.ltx [ammo_7.62x54_7h14] k_hit = 11.17
+orig/configs/weapons/weapons.ltx [ammo_223_fmj] k_hit = 1
+orig/configs/weapons/weapons.ltx [ammo_gauss] k_hit = 1
+orig/configs/weapons/weapons.ltx [ammo_9x39_pab9] k_hit = 2.72
+orig/configs/weapons/weapons.ltx [ammo_9x39_ap] k_hit = 2.32
+orig/configs/weapons/weapons.ltx [ammo_9x39_sp5] k_hit = 2.32
+orig/configs/weapons/weapons.ltx [ammo_12x70_buck] k_hit = 0.3
+orig/configs/weapons/weapons.ltx [ammo_12x76_zhekan] k_hit = 1
+orig/configs/weapons/weapons.ltx [ammo_12x76_dart] k_hit = 1
+orig/configs/weapons/weapons.ltx [ammo_og-7b] k_hit = 1
+orig/configs/weapons/weapons.ltx [ammo_vog-25p] k_hit = 1
+orig/configs/weapons/weapons.ltx [ammo_vog-25] k_hit = 1
+orig/configs/weapons/weapons.ltx [ammo_m209] k_hit = 1
 ```
 
 More complex filter for pbp ammunition only:
