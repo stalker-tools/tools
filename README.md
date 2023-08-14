@@ -10,12 +10,9 @@ To pack/unpack use `converter.exe` (for example, from bardak converter_25aug2008
 ### Unpack Clear Sky
 
 ```sh
-GAME_PATH="$HOME/.wine/drive_c/Program Files (x86)/clear_sky/"
-CONVERTER_PATH="converter.exe"
-
-find "$GAME_PATH""resources" -type f -exec echo -e "\nEXTRACT: ""{}" \; -exec wine "$CONVERTER_PATH" -unpack -xdb "{}" -dir "$GAME_PATH""gamedata" \;
-
-find "$GAME_PATH""patches" -type f -exec echo -e "\nEXTRACT: ""{}" \; -exec wine "$CONVERTER_PATH" -unpack -xdb "{}" -dir "$GAME_PATH""gamedata" \;
+export GAME_PATH="$HOME/.wine/drive_c/Program Files (x86)/clear_sky/"
+export CONVERTER_PATH="$HOME/.wine/drive_c/Program Files (x86)/xray/converter_25aug2008/converter.exe"
+unpack_cs.sh
 ```
 
 ## .ltx files analysis tool
