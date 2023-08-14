@@ -2,21 +2,13 @@
 
 This python cross-platform command-line tools used for analysis and editing of gamedata `.ltx` files. Developed and tested on Linux/Wine.
 
-## Unpack gamedata
-
-All game resources packed to several files. So, this files need unpack in new `gamedata` folder.
-To pack/unpack use `converter.exe` (for example, from bardak converter_25aug2008).
-
-### Unpack Clear Sky
-
-```sh
-export GAME_PATH="$HOME/.wine/drive_c/Program Files (x86)/clear_sky/"
-export CONVERTER_PATH="$HOME/.wine/drive_c/Program Files (x86)/xray/converter_25aug2008/converter.exe"
-unpack_cs.sh
-```
-
 ## .ltx files analysis tool
 
+Command-line tools is 100% python, so it has wide usage as cross-platform.
+* `ltx_tool.py` for **text**-based view/edit and has .ltx-specific filters capabilities;
+* `graph_tool.py` for **graph**-based view and has .ltx-specific filters capabilities. Out format: matplotlib graphs embedded in html as images.
+
+**ltx_tool.py** help (for more see below _Analysis examples_):
 ```sh
 python ltx_tool.py -h
 usage: ltx_tool.py [-h] -f FILE_PATH [FILE_PATH ...] [-p [SECTION NAMES ...]] [-s [SECTION NAMES ...]] [-l [LET RLVALUES ...]] [-r] [-m VALUE]
@@ -37,6 +29,35 @@ options:
   -m VALUE              modify (set) value
 
 Examples: ltx_tool.py -f 1.ltx 2.ltx
+```
+
+**graph_tool.py** help:
+```sh
+python graph_tool.py -h
+usage: graph_tool.py [-h] -f PATH [--head TEXT]
+
+X-ray .ltx file parser. Out format: matplotlib graphs embedded in html as images
+
+options:
+  -h, --help            show this help message and exit
+  -f PATH, --gamedata PATH
+                        gamedata directory path
+  --head TEXT           head text
+
+Examples: graph_tool.py -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" --head "Clear Sky - NPC and weapons" > "NPC_and_weapons.htm"
+```
+
+## Unpack gamedata
+
+All game resources packed to several files. So, this files need unpack in new `gamedata` folder.
+To pack/unpack use `converter.exe` (for example, from bardak converter_25aug2008).
+
+### Unpack example for Clear Sky
+
+```sh
+export GAME_PATH="$HOME/.wine/drive_c/Program Files (x86)/clear_sky/"
+export CONVERTER_PATH="$HOME/.wine/drive_c/Program Files (x86)/xray/converter_25aug2008/converter.exe"
+unpack_cs.sh
 ```
 
 ## Analysis examples for Clear Sky
