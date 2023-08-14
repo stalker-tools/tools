@@ -17,8 +17,8 @@ if __name__ == '__main__':
 
 		def parse_args():
 			parser = argparse.ArgumentParser(
-				description='X-ray .ltx file parser',
-				epilog=f'Examples: {argv[0]} -f 1.ltx 2.ltx',
+				description='X-ray .ltx file parser. Out format: matplotlib graphs embedded in html as images',
+				epilog=f'Examples: {argv[0]} -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" --head "Clear Sky - NPC and weapons" > "NPC_and_weapons.htm"',
 			)
 			parser.add_argument('-f', '--gamedata', metavar='PATH', required=True, help='gamedata directory path')
 			parser.add_argument('--head', default='S.T.A.L.K.E.R.', metavar='TEXT', help='head text')
