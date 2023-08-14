@@ -52,11 +52,12 @@ Examples: graph_tool.py -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/ga
 All game resources packed to several files. So, this files need unpack in new `gamedata` folder.
 To pack/unpack use `converter.exe` (for example, from bardak converter_25aug2008).
 
-### Unpack example for Clear Sky
+* Unpack example for Clear Sky (unpack to _gamedata_ folder)
 
 ```sh
 export GAME_PATH="$HOME/.wine/drive_c/Program Files (x86)/clear_sky/"
 export CONVERTER_PATH="$HOME/.wine/drive_c/Program Files (x86)/xray/converter_25aug2008/converter.exe"
+cd "$HOME/.wine/drive_c/Program Files (x86)/clear_sky"
 unpack_cs.sh
 ```
 
