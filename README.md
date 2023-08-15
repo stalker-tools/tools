@@ -11,7 +11,7 @@ Command-line tools is 100% python, so it has wide usage as cross-platform.
 ## Tools examples
 
 ### Analysis examples for stalker games:
-* [Clear Sky Analysis](analysis_cs.md)
+* [Clear Sky Analysis](analysis_cs.md) and [Run Clear Sky](run_cs.md)
 
 ### Tools help
 
