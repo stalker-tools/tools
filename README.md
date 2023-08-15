@@ -8,7 +8,7 @@ Command-line tools is 100% python, so it has wide usage as cross-platform.
 * `ltx_tool.py` for **text**-based view/edit and has .ltx-specific filters capabilities;
 * `graph_tool.py` for **graph**-based view and has .ltx-specific filters capabilities. Out format: matplotlib graphs embedded in html as images.
 
-## Tools examples
+## Tools usage examples
 
 ### Analysis examples for stalker games:
 * [Clear Sky Analysis](analysis_cs.md) and [Run Clear Sky](run_cs.md)
