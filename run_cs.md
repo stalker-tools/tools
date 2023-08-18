@@ -79,6 +79,6 @@ d3dcompiler_43
 Game path: `"$HOME/.wine/drive_c/Program Files (x86)/clear_sky`
 
 ```sh
-env LANG=ru_RU.CP1251 env LC_ALL="ru_RU.CP1251" wine ./setup.exe
+env WINEPREFIX=$HOME/.local/share/wineprefixes/clear_sky env LANG=ru_RU.CP1251 env LC_ALL="ru_RU.CP1251" wine ./setup.exe
 env WINEPREFIX=$HOME/.local/share/wineprefixes/clear_sky wine ./bin/xrEngine.exe
 ```
