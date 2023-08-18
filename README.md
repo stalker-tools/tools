@@ -53,3 +53,28 @@ options:
 
 Examples: graph_tool.py -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" --head "Clear Sky - NPC and weapons" > "NPC_and_weapons.htm"
 ```
+
+* **tree_tool.py** help:
+```sh
+python tree_tool.py -h
+usage: tree_tool.py [-h] -f PATH [-e ENGINE] [-s STYLE] [--head TEXT]
+
+X-ray .ltx file parser. Out format: dot (default) and rendered dot embedded in html as image.
+Use different layout engines: https://www.graphviz.org/docs/layouts/
+
+options:
+  -h, --help            show this help message and exit
+  -f PATH, --gamedata PATH
+                        gamedata directory path
+  -e ENGINE, --engine ENGINE
+                        dot layout engine: circo, dot, neato (default)
+  -s STYLE, --style STYLE
+                        style: l - light, d - dark (default)
+  --head TEXT           head text for html output
+
+Examples:
+tree_tool.py -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" --head "Clear Sky .ltx files tree" > "ltx_tree_cs.htm"
+tree_tool.py -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" -ecirco --head "Clear Sky .ltx files tree" > "ltx_tree_cs.htm"
+tree_tool.py -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" > "ltx_tree_cs.dot"
+tree_tool.py -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" -sl > "ltx_tree_cs.dot"
+```
