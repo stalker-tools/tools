@@ -44,7 +44,7 @@ if __name__ == '__main__':
 
 		def parse_args():
 			parser = argparse.ArgumentParser(
-				description='X-ray .ltx file parser. Out format: matplotlib graphs embedded in html as images',
+				description='X-ray .ltx file parser. Out format: dot (default) and rendered dot embedded in html as image.\nUse different layout engines: https://www.graphviz.org/docs/layouts/',
 				epilog=f'''Examples:
 {basename(argv[0])} -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" --head "Clear Sky .ltx files tree" > "ltx_tree_cs.htm"
 {basename(argv[0])} -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" -ecirco --head "Clear Sky .ltx files tree" > "ltx_tree_cs.htm"
@@ -53,7 +53,7 @@ if __name__ == '__main__':
 				formatter_class=argparse.RawTextHelpFormatter
 			)
 			parser.add_argument('-f', '--gamedata', metavar='PATH', required=True, help='gamedata directory path')
-			parser.add_argument('-e', '--engine', metavar='ENGINE', default='neato', help='dot engine: circo, dot, neato (default)')
+			parser.add_argument('-e', '--engine', metavar='ENGINE', default='neato', help='dot layout engine: circo, dot, neato (default)')
 			parser.add_argument('-s', '--style', metavar='STYLE', default='dark', help='style: l - light, d - dark (default)')
 			parser.add_argument('--head', metavar='TEXT', help='head text for html output')
 			return parser.parse_args()
