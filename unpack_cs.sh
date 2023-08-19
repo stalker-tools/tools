@@ -13,3 +13,5 @@ fi
 find "$GAME_PATH""resources" -type f -exec echo -e "\nEXTRACT: ""{}" \; -exec wine "$CONVERTER_PATH" -unpack -xdb "{}" -dir "$GAME_PATH""gamedata" \;
 
 find "$GAME_PATH""patches" -type f -exec echo -e "\nEXTRACT: ""{}" \; -exec wine "$CONVERTER_PATH" -unpack -xdb "{}" -dir "$GAME_PATH""gamedata" \;
+
+find "$GAME_PATH""Localization" -type f -exec echo -e "\nEXTRACT: ""{}" \; -exec wine "$CONVERTER_PATH" -unpack -xdb "{}" -dir "$GAME_PATH""gamedata" \;
