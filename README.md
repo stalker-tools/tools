@@ -7,6 +7,7 @@ This python cross-platform command-line tools used for analysis and editing of g
 Command-line tools is 100% python, so it has wide usage as cross-platform.
 * `ltx_tool.py` for **text**-based view/edit and has .ltx-specific filters capabilities;
 * `graph_tool.py` for **graph**-based view and has .ltx-specific filters capabilities. Out format: matplotlib graphs embedded in html as images.
+* `dialog_tool.py` for **graph**-based view of game dialogs with localization and has dialog-specific filters capabilities. Out format: matplotlib digraphs embedded in html as images.
 * `tree_tool.py` for **graph**-based view and has .ltx-specific import tree representation capabilities. Out format: [graphviz dot](https://www.graphviz.org/) and dot embedded in html as image. See available dot [layouts](https://www.graphviz.org/docs/layouts/).
 
 ## Tools usage examples
@@ -113,6 +114,45 @@ Examples of `hit_fraction` and `k_hit` for Clear Sky:
 
 ![NPC hit_fraction](https://github.com/stalker-tools/real_weapons_mod_clear_sky/blob/main/media/npc_hit_fraction.png)
 ![Ammo k_hit](https://github.com/stalker-tools/real_weapons_mod_clear_sky/blob/main/media/ammo_k_hit.png)
+
+* **dialog_tool.py** help:
+```sh
+python dialog_tool.py -h
+usage: dialog_tool.py [-h] [-v] -f PATH [-l LANG] [-d DIALOG_FILE [DIALOG_FILE ...]] [-i IDS [IDS ...]] [-p TEXT [TEXT ...]] [-e ENGINE] [-s STYLE] [--head TEXT]
+
+X-ray dialog xml file parser. Dialogs xml file names reads from system.ltx file.
+Out format: html with dialog phrases digraphs embedded as images.
+Use different layout engines: https://www.graphviz.org/docs/layouts/
+
+options:
+  -h, --help            show this help message and exit
+  -v                    increase information verbosity: show phrase id
+  -f PATH, --gamedata PATH
+                        gamedata directory path
+  -l LANG, --localization LANG
+                        localization language (see gamedata/configs/text path): rus (default), cz, hg, pol
+  -d DIALOG_FILE [DIALOG_FILE ...], --dialog-files DIALOG_FILE [DIALOG_FILE ...]
+                        filter: dialog file names; see system.ltx [dialogs]
+  -i IDS [IDS ...], --dialog-ids IDS [IDS ...]
+                        filter: dialogs ids; regexp, escaped symbols: ^$()[]?!; see configs/gameplay/dialog*.xml
+  -p TEXT [TEXT ...], --phrases TEXT [TEXT ...]
+                        filter: phrase text; regexp, escaped symbols: ^$()[]?!; see configs/gameplay/dialog*.xml
+  -e ENGINE, --engine ENGINE
+                        dot layout engine: circo, dot (default), neato
+  -s STYLE, --style STYLE
+                        style: l - light, d - dark (default)
+  --head TEXT           head text for html output
+
+Examples:
+dialog_tool.py -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" --head "Clear Sky 1.5.10 dialogs" > "dialogs.html"
+dialog_tool.py -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" -sl > "dialogs light theme.html"
+dialog_tool.py -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" -i "*hello*" "*barman*" --head "Clear Sky 1.5.10 dialogs" > "dialogs id hello or barman.html"
+dialog_tool.py -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" -p "*сигнал*" "*шрам*" --head "Clear Sky 1.5.10 dialogs" > "dialogs text filtered.html"
+```
+
+Example of dialog digraphs for Clear Sky:
+* Join dialog to "Duty" ![Image](https://github.com/stalker-tools/real_weapons_mod_clear_sky/blob/main/media/agr_leader_join_duty.png)
+* Join dialog to "Freedom" ![Image](https://github.com/stalker-tools/real_weapons_mod_clear_sky/blob/main/media/val_freedom_leader_join_main.png)
 
 * **tree_tool.py** help:
 ```sh
