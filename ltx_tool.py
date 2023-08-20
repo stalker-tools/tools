@@ -4,10 +4,11 @@ from glob import glob
 from os.path import join, dirname, isdir
 import locale
 from enum import Enum, auto
-from re import compile
+from re import compile, IGNORECASE, Pattern
 
 
 class LtxKind(Enum):
+	INCLUDE = auto()
 	NEW_SECTION = auto()
 	LET = auto()
 	DATA = auto()
@@ -23,8 +24,30 @@ class bcolors:
     BOLD = '\033[1m'
     UNDERLINE = '\033[4m'
 
+class LtxFileNotFoundException(IOError):
+	pass
+
 
 SECTION_RE = compile('^\[([\S]+)\]:?(.*)$')
+
+def get_filters_re_compiled(search_patterns: list[str] | None) -> tuple[Pattern] | None:
+
+	def re_escape(search_pattern: str) -> str:
+		ret = search_pattern.replace('*', '.*')
+		ret = ret.replace('^', '\^').replace('$', '\$')
+		ret = ret.replace('(', '\(').replace(')', '\)')
+		ret = ret.replace('[', '\[').replace(']', '\]')
+		ret = ret.replace('?', '\?').replace('!', '\!')
+		return ret
+
+	return tuple(compile('^' + re_escape(x) + '$', IGNORECASE) for x in search_patterns) if search_patterns else None
+
+def is_filters_re_match(re_filters: tuple[Pattern] | None, value: str | None) -> bool:
+	if not re_filters:
+		return True
+	if not value:
+		return False
+	return any(map(lambda r: r.match(value), re_filters))
 
 def remove_comment(line: bytearray) -> str:
 	return line.partition(b';')[0].strip()
@@ -51,9 +74,13 @@ def parse_ltx_file(file_path: str, follow_includes=False):
 					pass  # ignore empty or comment line
 				elif line.startswith(b'#include'):
 					# include another ltx file
+					line = remove_comment(line)
+					include_file_path = line[len(b'#include'):].strip(b' \t"')
+					include_file_path = include_file_path.replace(b'\\', b'/')
+					include_file_path = try_decode(include_file_path)
+					yield LtxKind.INCLUDE, line_index, include_file_path
 					if follow_includes:
-						line = remove_comment(line)
-						parse_ltx_file(join(dirname(file_path), line[len('#include'):].strip(' \t"')), True)
+						parse_ltx_file(join(dirname(file_path), include_file_path), True)
 				else:
 					# process line
 					line = remove_comment(line)
@@ -71,8 +98,7 @@ def parse_ltx_file(file_path: str, follow_includes=False):
 						yield LtxKind.DATA, section_name, map(lambda x: x.strip(), line.split(','))
 
 	except IOError as e:
-		print(f'Error: {e}')
-		pass
+		raise LtxFileNotFoundException(e)
 
 if __name__ == '__main__':
 	import argparse
@@ -97,18 +123,6 @@ if __name__ == '__main__':
 
 		is_lvalue_filter = bool(args.l)
 
-		def get_re_compiled(search_patterns: list[str] | None):
-
-			def re_escape(search_pattern: str) -> str:
-				ret = search_pattern.replace('*', '.*')
-				ret = ret.replace('^', '\^').replace('$', '\$')
-				ret = ret.replace('(', '\(').replace(')', '\)')
-				ret = ret.replace('[', '\[').replace(']', '\]')
-				ret = ret.replace('?', '\?').replace('!', '\!')
-				return ret
-
-			return tuple(compile('^' + re_escape(x) + '$') for x in search_patterns) if search_patterns else None
-
 		def is_re_match(re_patterns, value: str | list[str]) -> bool:
 			if type(value) is str:
 				for re_pattern in re_patterns:
@@ -121,9 +135,9 @@ if __name__ == '__main__':
 							return True
 			return False
 
-		parent_section_name_patterns = get_re_compiled(args.p)
-		section_name_patterns = get_re_compiled(args.s)
-		lvalue_patterns = get_re_compiled(args.l)
+		parent_section_name_patterns = get_filters_re_compiled(args.p)
+		section_name_patterns = get_filters_re_compiled(args.s)
+		lvalue_patterns = get_filters_re_compiled(args.l)
 		is_edit = bool(args.m)
 
 		def line_find(line: str | bytes, what: list[bytes | str], start_index=0):
