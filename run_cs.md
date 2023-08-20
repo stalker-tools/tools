@@ -23,6 +23,16 @@ Codename:       kinetic
 
 ### 3.1. Install OpenGL and videocard driver AMD for i386 architecture.
 ```sh
+sudo apt install libglx-mesa0:i386 libgl1:i386
+sudo apt install libvulkan1:i386
+
+# Packages list from apt history:
+libglx-mesa0:i386 (22.2.5-0ubuntu0.1, automatic), libglx0:i386 (1.5.0-1, automatic), libgl1-mesa-dri:i386 (22.2.5-0ubuntu0.1, automatic), libxcb-glx0:i386 (1.15-1, automatic), libgl1:i386 (1.5.0-1)
+libvulkan1:i386 (1.3.224.0-1), mesa-vulkan-drivers:i386 (22.2.5-0ubuntu0.1, automatic), libxcb-randr0:i386 (1.15-1, automatic)
+```
+
+Check OpenGL:
+```sh
 glxinfo|grep vers
 server glx version string: 1.4
 client glx version string: 1.4
@@ -39,16 +49,6 @@ OpenGL ES profile version string: OpenGL ES 3.2 Mesa 22.2.5
 OpenGL ES profile shading language version string: OpenGL ES GLSL ES 3.20
     GL_ANDROID_extension_pack_es31a, GL_ANGLE_pack_reverse_row_order,
     GL_EXT_shader_group_vote, GL_EXT_shader_implicit_conversions,
-```
-Packages for OpenGL and AMD videocard:
-
-```sh
-sudo apt install libglx-mesa0:i386 libgl1:i386
-sudo apt install libvulkan1:i386
-
-# Packages list from apt history:
-libglx-mesa0:i386 (22.2.5-0ubuntu0.1, automatic), libglx0:i386 (1.5.0-1, automatic), libgl1-mesa-dri:i386 (22.2.5-0ubuntu0.1, automatic), libxcb-glx0:i386 (1.15-1, automatic), libgl1:i386 (1.5.0-1)
-libvulkan1:i386 (1.3.224.0-1), mesa-vulkan-drivers:i386 (22.2.5-0ubuntu0.1, automatic), libxcb-randr0:i386 (1.15-1, automatic)
 ```
 
 ### 3.2. Install [Wine](https://wiki.winehq.org/Ubuntu) for i386 architecture. Check wine:
