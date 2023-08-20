@@ -94,6 +94,8 @@ configs/mp/weapons_mp/outfit_mp.ltx [mp_military_outfit_bones] hit_fraction = 0.
 configs/mp/weapons_mp/outfit_mp.ltx [mp_exo_outfit_bones] hit_fraction = 0.2
 ```
 
+---
+---
 * **graph_tool.py** help:
 ```sh
 python graph_tool.py -h
@@ -115,6 +117,8 @@ Examples of `hit_fraction` and `k_hit` for Clear Sky:
 ![NPC hit_fraction](https://github.com/stalker-tools/real_weapons_mod_clear_sky/blob/main/media/npc_hit_fraction.png)
 ![Ammo k_hit](https://github.com/stalker-tools/real_weapons_mod_clear_sky/blob/main/media/ammo_k_hit.png)
 
+---
+---
 * **dialog_tool.py** help:
 ```sh
 python dialog_tool.py -h
@@ -154,6 +158,8 @@ Example of dialog digraphs for Clear Sky:
 * Join dialog to "Duty" ![Image](https://github.com/stalker-tools/real_weapons_mod_clear_sky/blob/main/media/agr_leader_join_duty.png)
 * Join dialog to "Freedom" ![Image](https://github.com/stalker-tools/real_weapons_mod_clear_sky/blob/main/media/val_freedom_leader_join_main.png)
 
+---
+---
 * **tree_tool.py** help:
 ```sh
 python tree_tool.py -h
