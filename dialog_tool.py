@@ -82,7 +82,8 @@ if __name__ == '__main__':
 {basename(argv[0])} -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" --head "Clear Sky 1.5.10 dialogs" > "dialogs.html"
 {basename(argv[0])} -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" -sl > "dialogs light theme.html"
 {basename(argv[0])} -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" -i "*hello*" "*barman*" --head "Clear Sky 1.5.10 dialogs" > "dialogs id hello or barman.html"
-{basename(argv[0])} -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" -p "*сигнал*" "*шрам*" --head "Clear Sky 1.5.10 dialogs" > "dialogs text filtered.html"''',
+{basename(argv[0])} -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" -p "*сигнал*" "*шрам*" --head "Clear Sky 1.5.10 dialogs" > "dialogs text filtered.html"
+{basename(argv[0])} -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" -a "*not_in_dolg" "agru_open_story_door" --head "Clear Sky 1.5.10 dialogs" > "dialogs variable and function names filtered.html"''',
 				formatter_class=argparse.RawTextHelpFormatter
 			)
 			parser.add_argument('-v', action='store_true', help='increase information verbosity: show phrase id')
@@ -91,6 +92,7 @@ if __name__ == '__main__':
 			parser.add_argument('-d', '--dialog-files', metavar='DIALOG_FILE', nargs='+', help='filter: dialog file names; see system.ltx [dialogs]')
 			parser.add_argument('-i', '--dialog-ids', metavar='IDS', nargs='+', help='filter: dialogs ids; regexp, escaped symbols: ^$()[]?!; see configs/gameplay/dialog*.xml')
 			parser.add_argument('-p', '--phrases', metavar='TEXT', nargs='+', help='filter: phrase text; regexp, escaped symbols: ^$()[]?!; see configs/gameplay/dialog*.xml')
+			parser.add_argument('-a', '--automation', metavar='NAMES', nargs='+', help='filter of names: variables, script functions; regexp, escaped symbols: ^$()[]?!')
 			parser.add_argument('-e', '--engine', metavar='ENGINE', default='dot', help='dot layout engine: circo, dot (default), neato')
 			parser.add_argument('-s', '--style', metavar='STYLE', default='dark', help='style: l - light, d - dark (default)')
 			parser.add_argument('--head', metavar='TEXT', default='S.T.A.L.K.E.R.', help='head text for html output')
@@ -169,7 +171,7 @@ if __name__ == '__main__':
 						return smart_lines_split(ret)
 
 					def add_graph_node(phrase: Element) -> bool:
-						is_matched = not bool(phrases_patterns)
+						is_matched = not bool(phrases_patterns) and not bool(automation_patterns)
 						if (phrase_id := phrase.getAttribute('id')):
 							label, shape = f'id={phrase_id}\n' if args.v else '', style.node.shape
 							# add to label all phrase xml elements except text and graph edges
@@ -180,16 +182,22 @@ if __name__ == '__main__':
 											pass
 										case 'action':
 											shape = style.node.shape_with_action
-											label += f'{element.nodeName}={element.firstChild.nodeValue}\n'
+											nodeValue = element.firstChild.nodeValue
+											label += f'{element.nodeName}={nodeValue}\n'
+											if automation_patterns and not is_matched:
+												is_matched = is_filters_re_match(automation_patterns, nodeValue)
 										case _:
 											if shape != style.node.shape_with_action:
 												shape = style.node.shape_scenario
-											label += f'{element.nodeName}={element.firstChild.nodeValue}\n'
+											nodeValue = element.firstChild.nodeValue
+											label += f'{element.nodeName}={nodeValue}\n'
+											if automation_patterns and not is_matched:
+												is_matched = is_filters_re_match(automation_patterns, nodeValue)
 								except:
 									pass
 							# add text to label and update text filter
 							if (text := get_localized_text(get_child_element_values(phrase, 'text'))):
-								if not is_matched:
+								if phrases_patterns and not is_matched:
 									is_matched = is_filters_re_match(phrases_patterns, text)
 								label += ('\n' if label else '') + text
 							if not label:
@@ -275,11 +283,11 @@ if __name__ == '__main__':
 														break
 										except:
 											pass
-								if not phrases_patterns:
+								if not (phrases_patterns or automation_patterns):
 									print_dialog_header()
 								if (graph := create_dialog_graph(dialog, string_table_list)) and graph.get_nodes():
 									# phrases graph is not empty
-									if phrases_patterns:
+									if phrases_patterns or automation_patterns:
 										print_dialog_header()
 									print(get_graph_as_html_img(graph))
 									# print(graph.create_dot().decode())
@@ -291,6 +299,7 @@ if __name__ == '__main__':
 
 			dialog_ids_patterns = get_filters_re_compiled(args.dialog_ids)
 			phrases_patterns = get_filters_re_compiled(args.phrases)
+			automation_patterns = get_filters_re_compiled(args.automation)
 
 			if not dialogs:
 				print(f'no dialogs in system.ltx: {system_ltx_file_path}', file=stderr)
@@ -312,6 +321,8 @@ if __name__ == '__main__':
 				print(f'<p>Filtered dialog ids: {args.dialog_ids}</p>')
 			if phrases_patterns:
 				print(f'<p>Filtered phrases: {args.phrases}</p>')
+			if automation_patterns:
+				print(f'<p>Filtered automation names: {args.automation}</p>')
 			for dialog in dialogs:
 				build_dialog_tree(join(configs_path, 'gameplay', f'{dialog}.xml'), join(text_path, f'st_{dialog}.xml'))
 			print('</body>\n</html>')
