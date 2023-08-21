@@ -5,8 +5,15 @@ This python cross-platform command-line tools used for analysis and editing of g
 ## .ltx files analysis tool
 
 Command-line tools is 100% python, so it has wide usage as cross-platform.
-* `ltx_tool.py` for **text**-based view/edit and has .ltx-specific filters capabilities;
+* `ltx_tool.py` for **text**-based view/edit and has .ltx-specific filters capabilities.
+  
+  You can search _.ltx_ files for entire _gamedata/config_ path and see found data inline: `file.ltx [section] lvalue=rvalue`. And then set filtered _rvalue_ at once.
+  
+  This utility can be handle to _gamempay designers_.
+
 * `graph_tool.py` for **graph**-based view and has .ltx-specific filters capabilities. Out format: matplotlib graphs embedded in html as images.
+
+  You can open _.html_ file in _any browser_ and see collected info from _.ltx_ files as bar graphs for ammo/weapens and NPC to discover gameplay balance.
 
   This utility can be handle to _gamempay designers_.
 
