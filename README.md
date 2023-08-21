@@ -122,7 +122,7 @@ Examples of `hit_fraction` and `k_hit` for Clear Sky:
 * **dialog_tool.py** help:
 ```sh
 python dialog_tool.py -h
-usage: dialog_tool.py [-h] [-v] -f PATH [-l LANG] [-d DIALOG_FILE [DIALOG_FILE ...]] [-i IDS [IDS ...]] [-p TEXT [TEXT ...]] [-a NAMES [NAMES ...]] [-e ENGINE] [-s STYLE] [--head TEXT]
+usage: dialog_tool.py [-h] [-v] -f PATH [-l LANG] [-d DIALOG_FILE [DIALOG_FILE ...]] [-i IDS [IDS ...]] [-p TEXT [TEXT ...]] [-a NAMES [NAMES ...]] [-e ENGINE] [-s STYLE] [-g IMG_FORMAT] [--head TEXT]
 
 X-ray dialog xml file parser. Dialogs xml file names reads from system.ltx file.
 Out format: html with dialog phrases digraphs embedded as images.
@@ -147,6 +147,8 @@ options:
                         dot layout engine: circo, dot (default), neato
   -s STYLE, --style STYLE
                         style: l - light, d - dark (default)
+  -g IMG_FORMAT, --graph-format IMG_FORMAT
+                        digraph image format: s - svg (default), p - png
   --head TEXT           head text for html output
 
 Examples:
