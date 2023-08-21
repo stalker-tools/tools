@@ -7,8 +7,18 @@ This python cross-platform command-line tools used for analysis and editing of g
 Command-line tools is 100% python, so it has wide usage as cross-platform.
 * `ltx_tool.py` for **text**-based view/edit and has .ltx-specific filters capabilities;
 * `graph_tool.py` for **graph**-based view and has .ltx-specific filters capabilities. Out format: matplotlib graphs embedded in html as images.
-* `dialog_tool.py` for **graph**-based view of game dialogs with localization and has dialog-specific filters capabilities. Out format: matplotlib digraphs embedded in html as images.
+
+  This utility can be handle to _gamempay designers_.
+
+* `dialog_tool.py` for **graph**-based view of game dialogs with localization and has dialog-specific filters capabilities. Out format: dot digraphs embedded in html as svg (or images - see help).
+
+  So you can open _.html_ file in _any browser_ and search text for phrases, `give_info/has_info` variables and `precondition/action` script functions names. And you can filter by xml dialog files, phrases and variables/script names (see help).
+
+  This utility can be handle to _game dialog designers_ and _game testers_.
+  
 * `tree_tool.py` for **graph**-based view and has .ltx-specific import tree representation capabilities. Out format: [graphviz dot](https://www.graphviz.org/) and dot embedded in html as image. See available dot [layouts](https://www.graphviz.org/docs/layouts/).
+
+  This utility can be handle to _system game designers_.
 
 ## Tools usage examples
 
