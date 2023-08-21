@@ -1,6 +1,6 @@
 # Stalker xray tools
 
-This python cross-platform command-line tools used for analysis and editing of gamedata `.ltx` files. Developed and tested on Linux/Wine.
+This python cross-platform command-line tools used for analysis and editing of gamedata `.ltx` and `.xml` files. Developed and tested on Linux/Wine.
 
 ## .ltx files analysis tool
 
