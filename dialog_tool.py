@@ -15,13 +15,14 @@ class NodeStyle(NamedTuple):
 	shape: str = 'box'
 	shape_scenario: str = 'folder'
 	shape_with_action: str = 'box3d'
+	fontname: str=''  #'serif'
 	penwidth: int = 1
 	color: str = 'black'
 	color_missing: str = 'red'
-	level_fontsize: tuple[str] = ('10pt', '7pt')
+	level_fontsize: tuple[str] = ('10', '7')
 	def get_fontsize(self, level: int):
 		return self.level_fontsize[level] if level < len(self.level_fontsize) else self.level_fontsize[-1]
-	level_height: tuple[float] = (1, .5)
+	level_height: tuple[float] = (.7, .5)
 	def get_height(self, level: int):
 		return self.level_height[level] if level < len(self.level_height) else self.level_height[-1]
 
@@ -32,13 +33,13 @@ class EdgeStyle(NamedTuple):
 
 
 class LightStyle(NamedTuple):
-	bgcolor: str = 'white'
+	bgcolor: str = '#ffffff10'
 	node: NodeStyle = NodeStyle()
 	edge: EdgeStyle = EdgeStyle()
 
 
 class DarkStyle(NamedTuple):
-	bgcolor: str = 'grey10'
+	bgcolor: str = '#1a1a1a10'
 	node: NodeStyle = NodeStyle(color='cornsilk2', color_missing='indianred2')
 	edge: EdgeStyle = EdgeStyle(color='cornsilk2')
 
@@ -50,6 +51,9 @@ class GraphEngineNotSupported(Exception):
 	def __str__(self) -> str:
 		return self.engine
 
+
+class SvgException(Exception):
+	pass
 
 def iter_child_elements(element: Element):
 	for e in (x for x in element.childNodes if type(x) == Element):
@@ -110,7 +114,10 @@ if __name__ == '__main__':
 					raise GraphEngineNotSupported(args.engine)
 
 			if args.graph_format.lower() == 's':
-				return graph.create_svg().decode()
+				try:
+					return graph.create_svg().decode()
+				except:
+					raise SvgException
 			return '<img src="data:;base64,{}"/>'.format(b64encode(get_dot_as_image(graph)).decode())
 
 		def analyse(gamedata_path: str):
@@ -208,7 +215,7 @@ if __name__ == '__main__':
 								label = f'id={phrase_id}' + ('\n' if label else '') + label
 							# create graph node and edges
 							node = pydot.Node(phrase_id, label=label,
-								fontsize=style.node.get_fontsize(0), height=style.node.get_height(0),
+								fontsize=style.node.get_fontsize(0), height=style.node.get_height(0), fontname=style.node.fontname,
 								penwidth=style.node.penwidth, shape=shape if phrase_id != '0' else 'oval', color=style.node.color, fontcolor=style.node.color)
 							graph.add_node(node)
 							if (next_ids := get_child_element_values(phrase, 'next')):
@@ -222,7 +229,7 @@ if __name__ == '__main__':
 							print('<p>No id for phrase</p>')
 						return is_matched
 
-					graph = pydot.Dot('dialog tree', graph_type='digraph', bgcolor=style.bgcolor)
+					graph = pydot.Dot(dialog_id, graph_type='digraph', bgcolor=style.bgcolor)
 					graph.prog = args.engine
 					graph.overlap_scaling = 0
 					# graph.set_dpi(64)
@@ -252,13 +259,14 @@ if __name__ == '__main__':
 					nonlocal print_xml_file_header
 					if print_xml_file_header:
 						print_xml_file_header = False
-						print(f'<h2>{dialog_xml_file_pah[len(gamedata_path) + 1:]}<h2><hr/>')
-					print(f'<h3>{dialogs_index + 1}	{dialog_id}<h3>')
+						xml_file_name = dialog_xml_file_pah[len(gamedata_path) + 1:]
+						print(f'<h2 id="{xml_file_name}">{xml_file_name}<h2><hr/>')
+					print(f'<h3 id="{dialog_id}">{dialogs_index + 1}	{dialog_id}<h3>')
 					# print dialog xml elements
 					for element in sorted(iter_child_elements(dialog), key=lambda element: element.nodeName):
 						try:
 							if element.nodeName != 'phrase_list':
-								print(f'<small>{element.nodeName}={element.firstChild.nodeValue}</small><br/>')
+								print(f'<code>{element.nodeName}={element.firstChild.nodeValue}</code><br/>')
 						except:
 							pass
 
@@ -327,6 +335,8 @@ if __name__ == '__main__':
 			if automation_patterns:
 				print(f'<p>Filtered automation names: {args.automation}</p>')
 			for dialog in dialogs:
+				print(f'<a href="#{join("configs", "gameplay", dialog)}.xml">{dialog}</a>')
+			for dialog in dialogs:
 				build_dialog_tree(join(configs_path, 'gameplay', f'{dialog}.xml'), join(text_path, f'st_{dialog}.xml'))
 			print('</body>\n</html>')
 
@@ -338,3 +348,5 @@ if __name__ == '__main__':
 		exit(0)
 	except GraphEngineNotSupported as e:
 		print(f'Graph engine not suppoted: {e}', file=stderr)
+	except SvgException:
+		print(f'Svg error', file=stderr)
