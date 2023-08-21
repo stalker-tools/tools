@@ -95,6 +95,7 @@ if __name__ == '__main__':
 			parser.add_argument('-a', '--automation', metavar='NAMES', nargs='+', help='filter of names: variables, script functions; regexp, escaped symbols: ^$()[]?!')
 			parser.add_argument('-e', '--engine', metavar='ENGINE', default='dot', help='dot layout engine: circo, dot (default), neato')
 			parser.add_argument('-s', '--style', metavar='STYLE', default='dark', help='style: l - light, d - dark (default)')
+			parser.add_argument('-g', '--graph-format', metavar='IMG_FORMAT', default='s', help='digraph image format: s - svg (default), p - png')
 			parser.add_argument('--head', metavar='TEXT', default='S.T.A.L.K.E.R.', help='head text for html output')
 			return parser.parse_args()
 
@@ -108,6 +109,8 @@ if __name__ == '__main__':
 				except FileNotFoundError:
 					raise GraphEngineNotSupported(args.engine)
 
+			if args.graph_format.lower() == 's':
+				return graph.create_svg().decode()
 			return '<img src="data:;base64,{}"/>'.format(b64encode(get_dot_as_image(graph)).decode())
 
 		def analyse(gamedata_path: str):
