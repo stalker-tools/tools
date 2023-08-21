@@ -122,7 +122,7 @@ Examples of `hit_fraction` and `k_hit` for Clear Sky:
 * **dialog_tool.py** help:
 ```sh
 python dialog_tool.py -h
-usage: dialog_tool.py [-h] [-v] -f PATH [-l LANG] [-d DIALOG_FILE [DIALOG_FILE ...]] [-i IDS [IDS ...]] [-p TEXT [TEXT ...]] [-e ENGINE] [-s STYLE] [--head TEXT]
+usage: dialog_tool.py [-h] [-v] -f PATH [-l LANG] [-d DIALOG_FILE [DIALOG_FILE ...]] [-i IDS [IDS ...]] [-p TEXT [TEXT ...]] [-a NAMES [NAMES ...]] [-e ENGINE] [-s STYLE] [--head TEXT]
 
 X-ray dialog xml file parser. Dialogs xml file names reads from system.ltx file.
 Out format: html with dialog phrases digraphs embedded as images.
@@ -141,6 +141,8 @@ options:
                         filter: dialogs ids; regexp, escaped symbols: ^$()[]?!; see configs/gameplay/dialog*.xml
   -p TEXT [TEXT ...], --phrases TEXT [TEXT ...]
                         filter: phrase text; regexp, escaped symbols: ^$()[]?!; see configs/gameplay/dialog*.xml
+  -a NAMES [NAMES ...], --automation NAMES [NAMES ...]
+                        filter of names: variables, script functions; regexp, escaped symbols: ^$()[]?!
   -e ENGINE, --engine ENGINE
                         dot layout engine: circo, dot (default), neato
   -s STYLE, --style STYLE
@@ -152,6 +154,7 @@ dialog_tool.py -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" -
 dialog_tool.py -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" -sl > "dialogs light theme.html"
 dialog_tool.py -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" -i "*hello*" "*barman*" --head "Clear Sky 1.5.10 dialogs" > "dialogs id hello or barman.html"
 dialog_tool.py -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" -p "*сигнал*" "*шрам*" --head "Clear Sky 1.5.10 dialogs" > "dialogs text filtered.html"
+dialog_tool.py -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" -a "*not_in_dolg" "agru_open_story_door" --head "Clear Sky 1.5.10 dialogs" > "dialogs variable and function names filtered.html"
 ```
 
 Example of dialog digraphs for Clear Sky:
