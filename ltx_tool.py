@@ -80,7 +80,7 @@ def parse_ltx_file(file_path: str, follow_includes=False):
 					include_file_path = try_decode(include_file_path)
 					yield LtxKind.INCLUDE, line_index, include_file_path
 					if follow_includes:
-						parse_ltx_file(join(dirname(file_path), include_file_path), True)
+						yield from parse_ltx_file(join(dirname(file_path), include_file_path), True)
 				else:
 					# process line
 					line = remove_comment(line)
@@ -98,7 +98,8 @@ def parse_ltx_file(file_path: str, follow_includes=False):
 						yield LtxKind.DATA, section_name, map(lambda x: x.strip(), line.split(','))
 
 	except IOError as e:
-		raise LtxFileNotFoundException(e)
+		if not follow_includes:
+			raise LtxFileNotFoundException(e)
 
 if __name__ == '__main__':
 	import argparse
