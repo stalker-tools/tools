@@ -36,15 +36,17 @@ class EdgeStyle(NamedTuple):
 
 
 class LightStyle(NamedTuple):
-	bgcolor: str = '#ffffff10'
+	page_bgcolor: str = '#e8f1ec'
+	bgcolor: str = '#e8f1ec40'
 	node: NodeStyle = NodeStyle()
 	edge: EdgeStyle = EdgeStyle()
 
 
 class DarkStyle(NamedTuple):
-	bgcolor: str = '#1a1a1a10'
-	node: NodeStyle = NodeStyle(color='cornsilk2', color_missing='indianred2')
-	edge: EdgeStyle = EdgeStyle(color='cornsilk2')
+	page_bgcolor: str = '#25252a'
+	bgcolor: str = '#20202030'
+	node: NodeStyle = NodeStyle(color='#c2c7c6', color_missing='indianred2')
+	edge: EdgeStyle = EdgeStyle(color='#c2c7c6')
 
 
 class GraphEngineNotSupported(Exception):
@@ -125,12 +127,6 @@ if __name__ == '__main__':
 			return '<img src="data:;base64,{}"/>'.format(b64encode(get_dot_as_image(graph)).decode())
 
 		def analyse(gamedata_path: str):
-
-			match args.style.lower():
-				case 'l':
-					style = LightStyle()
-				case _:
-					style = DarkStyle()
 
 			def get_dialogs(system_ltx_file_path: str) -> tuple[list[str], list[str]] | tuple[None, None]:
 				'returns dialogs and additional localization .xml from system.ltx includes: [string_table] files'
@@ -355,8 +351,15 @@ if __name__ == '__main__':
 			if not dialogs:
 				print(f'no dialogs in system.ltx: {system_ltx_file_path}', file=stderr)
 				exit(-1)
+
+			match args.style.lower():
+				case 'l':
+					style = LightStyle()
+				case _:
+					style = DarkStyle()
+
 			print(f'<html>\n<head><title>{args.head}</title></head>')
-			print('<body>')
+			print(f'<body style="background-color:{style.page_bgcolor};color:{style.node.color};">')
 			print(f'<h1>{args.head}</h1>')
 			dialogs = sorted(set(dialogs))
 			if args.v:
