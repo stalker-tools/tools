@@ -11,7 +11,7 @@ import pydot
 from ltx_tool import parse_ltx_file, LtxKind, LtxFileNotFoundException, get_filters_re_compiled, is_filters_re_match
 from xml.dom.minidom import parse as xml_parse, parseString, Element
 from xml.parsers.expat import ExpatError
-from xml_tool import xml_preprocessor
+from xml_tool import xml_preprocessor, iter_child_elements, get_child_by_id, get_child_element_values
 
 
 class NodeStyle(NamedTuple):
@@ -59,24 +59,6 @@ class GraphEngineNotSupported(Exception):
 
 class SvgException(Exception):
 	pass
-
-
-def iter_child_elements(element: Element):
-	for e in (x for x in element.childNodes if type(x) == Element):
-		yield e
-
-def get_child_element_values(element: Element, child_name: str, join_str: str | None = None) -> list[str]:
-	ret = []
-	for e in element.getElementsByTagName(child_name):
-		if (e := e.firstChild):
-			ret.append(e.nodeValue)
-	return join_str.join(ret) if join_str is not None else ret
-
-def get_child_by_id(element: Element, child_name: str, id: str) -> Element | None:
-	for e in element.getElementsByTagName(child_name):
-		if (e_id := e.getAttribute('id')) and e_id == id:
-			return e
-	return None
 
 
 if __name__ == '__main__':

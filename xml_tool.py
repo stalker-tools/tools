@@ -2,6 +2,7 @@
 from io import BytesIO
 from os import sep as path_separator
 from os.path import join, basename, split
+from xml.dom.minidom import Element
 
 
 def xml_preprocessor(xml_file_path: str, include_base_path: str | None = None, included = False) -> bytes:
@@ -26,6 +27,24 @@ def xml_preprocessor(xml_file_path: str, include_base_path: str | None = None, i
 			else:
 				buff.write(line)
 	return buff.getvalue()
+
+
+def iter_child_elements(element: Element):
+	for e in (x for x in element.childNodes if type(x) == Element):
+		yield e
+
+def get_child_by_id(element: Element, child_name: str, id: str) -> Element | None:
+	for e in element.getElementsByTagName(child_name):
+		if (e_id := e.getAttribute('id')) and e_id == id:
+			return e
+	return None
+
+def get_child_element_values(element: Element, child_name: str, join_str: str | None = None) -> list[str]:
+	ret = []
+	for e in element.getElementsByTagName(child_name):
+		if (e := e.firstChild):
+			ret.append(e.nodeValue)
+	return join_str.join(ret) if join_str is not None else ret
 
 
 if __name__ == '__main__':
