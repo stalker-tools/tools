@@ -153,8 +153,9 @@ if __name__ == '__main__':
 				else:
 					print(f'{",".join((x for x in FILELD_NAMES))}')
 
-			if args.output_format == 'h':
-				print_table_header()
+			match args.output_format:
+				case 'h' | 'c':
+					print_table_header()
 			for index, specific_character in enumerate(sorted(specific_characters_dict.values(), key=lambda x:
 					_get_element_values_sort(x, args.sort_field, args.sort_field == 'name'))):
 				match args.output_format:
