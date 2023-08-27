@@ -17,6 +17,11 @@ Command-line tools is 100% python, so it has wide usage as cross-platform.
 
   This utility can be handle to _gamempay designers_.
 
+* `profiles_tool.py` for **table**-based view of game profiles (Actor and NPC) with dialogs with localization and has profile-specific filters capabilities. Out formats: html, html with dot digraphs embedded in html as svg, csv table.
+
+  You can open _.html_ file in _any browser_ and search text for NPC names, bio or dialog phrases, `give_info/has_info` variables and `precondition/action` script functions names.
+
+  This utility can be handle to _game dialog designers_ and _game testers_.
 * `dialog_tool.py` for **graph**-based view of game dialogs with localization and has dialog-specific filters capabilities. Out format: dot digraphs embedded in html as svg (or images - see help).
 
   So you can open _.html_ file in _any browser_ and search text for phrases, `give_info/has_info` variables and `precondition/action` script functions names. And you can filter by xml dialog files, phrases and variables/script names (see help).
@@ -133,6 +138,42 @@ Examples of `hit_fraction` and `k_hit` for Clear Sky:
 
 ![NPC hit_fraction](https://github.com/stalker-tools/real_weapons_mod_clear_sky/blob/main/media/npc_hit_fraction.png)
 ![Ammo k_hit](https://github.com/stalker-tools/real_weapons_mod_clear_sky/blob/main/media/ammo_k_hit.png)
+
+---
+---
+* **profiles_tool.py** help:
+```sh
+python profiles_tool.py -h
+usage: profiles_tool.py [-h] [-v] -f PATH [-l LANG] [-e ENGINE] [-s STYLE] [-o OUT_FORMAT] [--sort-field NAME] [--head TEXT]
+
+X-ray dialog xml file parser. Dialogs xml file names reads from system.ltx file.
+Out format: html with dialog phrases digraphs embedded as images.
+Use different layout engines: https://www.graphviz.org/docs/layouts/
+
+options:
+  -h, --help            show this help message and exit
+  -v                    increase information verbosity: show phrase id
+  -f PATH, --gamedata PATH
+                        gamedata directory path
+  -l LANG, --localization LANG
+                        localization language (see gamedata/configs/text path): rus (default), cz, hg, pol
+  -e ENGINE, --engine ENGINE
+                        dot layout engine: circo, dot (default), neato
+  -s STYLE, --style STYLE
+                        style: l - light, d - dark (default)
+  -o OUT_FORMAT, --output-format OUT_FORMAT
+                        output format: h - html table (default), d - html table + svg dialogs, c - csv table
+  --sort-field NAME     sort field name: id (default), name, class, community, reputation, bio
+  --head TEXT           head text for html output
+
+Examples:
+profiles_tool.py -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" --head "Clear Sky 1.5.10 profiles" > "profiles.html"
+profiles_tool.py -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" -od -sl > "profiles with dialogs light theme.html"
+profiles_tool.py -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" --sort-field name --head "Clear Sky 1.5.10 profiles" > "profiles.html"
+profiles_tool.py -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" --sort-field name -oc" > "profiles.csv"
+```
+
+Example of profiles table for Clear Sky Sigerous Mod [profiles.csv](https://github.com/stalker-tools/real_weapons_mod_clear_sky/blob/main/media/profiles%20-%20Sigerous%20Mod.csv)
 
 ---
 ---
