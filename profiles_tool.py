@@ -122,7 +122,7 @@ if __name__ == '__main__':
 			def _get_element_values_sort(element: Element, element_name: str, use_localization = False):
 				ret = _get_element_values(element, element_name, use_localization)
 				match element_name:
-					case 'name': return ret + element.getAttribute('id')
+					case 'name': return (ret if ord(ret[0]) < 128 else ' '+ret) + element.getAttribute('id')
 					case 'reputation' | 'community' | 'bio': return ret + _get_element_values(element, 'name', True)
 				return ret
 
