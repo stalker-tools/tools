@@ -26,16 +26,16 @@ def get_profiles(system_ltx_file_path: str) -> tuple[list[str], list[str]] | tup
 	except: pass
 	return files, specific_characters_files
 
-def get_profiles_and_add_localization(localization_dict: dict[str, str], configs_path: str, localization_text_path: str, system_ltx_file_path: str, verbse = False) -> dict[str, Element] | None:
+def get_profiles_and_add_localization(localization_dict: dict[str, str], configs_path: str, localization_text_path: str, system_ltx_file_path: str, verbose = False) -> dict[str, Element] | None:
 	files, specific_characters_files = get_profiles(system_ltx_file_path)
 	if not files:
 		return None
-	if verbse:
+	if verbose:
 		print(f'<p><code>system.ltx profiles: {sorted(files)}</code></p>')
 		if specific_characters_files:
 			print(f'<p><code>system.ltx specific_characters_files: {sorted(specific_characters_files)}</code></p>')
 
-	add_localization_dict_from_localization_xml_file(localization_dict, configs_path, join(localization_text_path, 'st_characters.xml'), verbse)
+	add_localization_dict_from_localization_xml_file(localization_dict, configs_path, join(localization_text_path, 'st_characters.xml'), verbose)
 
 	specific_characters_dict = {}
 	failed_include_file_paths = []
