@@ -156,31 +156,32 @@ if __name__ == '__main__':
 			match args.output_format:
 				case 'h' | 'c':
 					print_table_header()
-			for index, specific_character in enumerate(sorted(specific_characters_dict.values(), key=lambda x:
-					_get_element_values_sort(x, args.sort_field, args.sort_field == 'name'))):
-				match args.output_format:
-					case 'h' | 'd':
-						if args.output_format == 'd':
-							print_table_header()
-						print('<tr>')
-						print(f'<th>{index + 1}</th>')
-					case 'c':
-						print(f'{index + 1}', end=',')
-				add_element_values('id')
-				add_element_values('name', True)
-				add_element_values('class')
-				add_element_values('community')
-				add_element_values('reputation')
-				add_element_values('bio')
-				print('</tr>' if args.output_format != 'c' else '')
-				if args.output_format == 'd':
-					print('</tbody></table>')
-					if (dialog_ids := get_child_element_values(specific_character, 'start_dialog')):
-						for dialog_id in dialog_ids:
-							_create_dialog_graph(dialog_id)
-					if (dialog_ids := get_child_element_values(specific_character, 'actor_dialog')):
-						for dialog_id in dialog_ids:
-							_create_dialog_graph(dialog_id)
+			if specific_characters_dict:
+				for index, specific_character in enumerate(sorted(specific_characters_dict.values(), key=lambda x:
+						_get_element_values_sort(x, args.sort_field, args.sort_field == 'name'))):
+					match args.output_format:
+						case 'h' | 'd':
+							if args.output_format == 'd':
+								print_table_header()
+							print('<tr>')
+							print(f'<th>{index + 1}</th>')
+						case 'c':
+							print(f'{index + 1}', end=',')
+					add_element_values('id')
+					add_element_values('name', True)
+					add_element_values('class')
+					add_element_values('community')
+					add_element_values('reputation')
+					add_element_values('bio')
+					print('</tr>' if args.output_format != 'c' else '')
+					if args.output_format == 'd':
+						print('</tbody></table>')
+						if (dialog_ids := get_child_element_values(specific_character, 'start_dialog')):
+							for dialog_id in dialog_ids:
+								_create_dialog_graph(dialog_id)
+						if (dialog_ids := get_child_element_values(specific_character, 'actor_dialog')):
+							for dialog_id in dialog_ids:
+								_create_dialog_graph(dialog_id)
 			if args.output_format == 'h':
 				print('</tbody></table>')
 				print('</body>\n</html>')
