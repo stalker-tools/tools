@@ -3,15 +3,15 @@
 
 from sys import stderr
 from typing import NamedTuple
-from os import sep as path_separator
 from os.path import join, basename, split
 from glob import glob
 from base64 import b64encode
 import pydot
-from ltx_tool import parse_ltx_file, LtxKind, LtxFileNotFoundException, get_filters_re_compiled, is_filters_re_match
+from ltx_tool import parse_ltx_file, LtxKind, get_filters_re_compiled, is_filters_re_match
 from xml.dom.minidom import parse as xml_parse, parseString, Element
 from xml.parsers.expat import ExpatError
-from xml_tool import xml_preprocessor, iter_child_elements, get_child_by_id, get_child_element_values
+from xml_tool import xml_preprocessor, iter_child_elements, get_child_by_id, get_child_element_values, \
+	add_localization_dict_from_localization_xml_file, add_localization_dict_from_xml
 
 
 class NodeStyle(NamedTuple):
@@ -59,6 +59,238 @@ class GraphEngineNotSupported(Exception):
 
 class SvgException(Exception):
 	pass
+
+
+def get_dialogs(system_ltx_file_path: str) -> tuple[list[str], list[str]] | tuple[None, None]:
+	'returns dialogs and additional localization .xml from system.ltx includes: [string_table] files'
+	dialogs = string_table = None
+	try:
+		for x in parse_ltx_file(system_ltx_file_path, follow_includes=True):
+			match x:
+				case (LtxKind.LET, _, 'dialogs', 'files', dialogs):
+					if dialogs and string_table:
+						return dialogs, string_table
+				case (LtxKind.LET, _, 'string_table', 'files', string_table):
+					if dialogs and string_table:
+						return dialogs, string_table
+				
+	except:
+		pass
+	return dialogs, string_table
+
+def get_dialogs_and_add_localization(localization_dict: dict[str, str], configs_path: str, localization_text_path: str, system_ltx_file_path: str, verbose = False) -> dict[str, Element]:
+	'returns tuple: dialog id and dialog xml element'
+
+	def add_localization_for_dialog_file(dialog_xml_file_path: str, localization_xml_file_path: str):
+		'adds localization ids and localization text for dialog xml file'
+
+		def get_localization_xml(dialog_xml_file_path: str) -> Element | None:
+			try:
+				return xml_parse(dialog_xml_file_path).getElementsByTagName('string_table')[0]
+			except ExpatError as e:
+				print(f'XML file parse error: {dialog_xml_file_path} {e}', file=stderr)
+				return None
+			except:
+				return None
+
+		def find_in_file(file_path: str, text: bytes) -> bool:
+			with open(file_path, 'rb') as f:
+				for line in f.readlines():
+					if text in line:
+						return True
+			return False
+
+		# add dialog to dialogs dict from dialogs .xml file
+		try:
+			test_dialog_id = None  # first dialog id from dialog .xml file
+			for dialog in xml_parse(dialog_xml_file_path).getElementsByTagName('game_dialogs')[0].getElementsByTagName('dialog'):
+				if (dialog_id := dialog.getAttribute('id')):
+					dialogs_dict[dialog_id] = dialog
+					if not test_dialog_id:
+						test_dialog_id = dialog_id
+		except ExpatError as e:
+			print(f'Dialog .xml file error: {dialog_xml_file_path} {e}', file=stderr)
+			return
+
+		# try add localization for dialogs .xml file
+		if test_dialog_id not in localization_dict:
+			# localization id not found # try add localization id
+			if (_xml := get_localization_xml(localization_xml_file_path)):
+				# localization .xml file found # add localization ids with localization text
+				add_localization_dict_from_xml(localization_dict, _xml)
+			else:
+				# localization .xml file not found # try find xml file by text (any dialog id)
+				# try find in well-known .xml files
+				try:
+					test_dialog_id = test_dialog_id.encode()
+					for file_path in glob(join(localization_text_path, 'st_dialog*.xml')):
+						if find_in_file(file_path, test_dialog_id):
+							# localization xml file found
+							if (_xml := get_localization_xml(file_path)):
+								add_localization_dict_from_xml(localization_dict, _xml)
+								if verbose:
+									print(f'<p><code>Localization: {file_path[len(split(configs_path)[0]) + 1:]}</code></p>')
+								break
+				except:
+					pass
+
+	def add_localization_dict_for_additional_string_tables():
+		'returns dict of localization string id and localization string text'
+		if additional_string_tables:
+			if verbose:
+				print(f'<p><code>additional localization string_tables: {additional_string_tables}</code></p>')
+			for additional_string_table in additional_string_tables:
+				xml_file_name = join(localization_text_path, additional_string_table + '.xml')
+				buff = xml_preprocessor(xml_file_name, configs_path)
+				try:
+					if (_xml := parseString(buff)):
+						add_localization_dict_from_xml(localization_dict, _xml)
+				except Exception as e:
+					print(f'additional localization parse error: {xml_file_name} {e}', file=stderr)
+
+	dialogs, additional_string_tables = get_dialogs(system_ltx_file_path)
+	dialogs_dict = {}
+	add_localization_dict_for_additional_string_tables()
+	for dialog in dialogs:
+		add_localization_for_dialog_file(join(configs_path, 'gameplay', f'{dialog}.xml'), join(localization_text_path, f'st_{dialog}.xml'))
+	return dialogs_dict
+
+def get_additional_string_tables_xml_list(additional_string_tables: list[str] | None, configs_path: str, localization_text_path: str) -> list[Element] | None:
+	'returns list of xml Elements of localization strings'
+	ret = None
+	if additional_string_tables:
+		print(f'<p><code>additional localization string_tables: {additional_string_tables}</code></p>')
+		ret = []
+		for additional_string_table in additional_string_tables:
+			xml_file_name = join(localization_text_path, additional_string_table + '.xml')
+			buff = xml_preprocessor(xml_file_name, configs_path)
+			try:
+				if (_xml := parseString(buff)):
+					ret.append(_xml)
+			except Exception as e:
+				print(f'additional localization parse error: {xml_file_name} {e}', file=stderr)
+	return ret
+
+def get_localization_text(additional_string_tables_xml_list: list[Element], ids: str | list[str]) -> str | None:
+	'try find in additional localization .xml files'
+	ret = ''
+	if additional_string_tables_xml_list and ids:
+		if type(ids) is str:
+			ids = (ids,)
+		for additional_string_table_xml in additional_string_tables_xml_list:
+			for id in ids:
+				if id and (e := get_child_by_id(additional_string_table_xml, 'string', id)):
+					ret += get_child_element_values(e, 'text', '\n')
+			if ret:
+				break
+	return ret
+
+def get_dialog_file_list(dialog_xml_file_path: str) -> list[Element] | None:
+	try:
+		return xml_parse(dialog_xml_file_path).getElementsByTagName('game_dialogs')
+	except ExpatError as e:
+		print(f'XML file parse error: {dialog_xml_file_path} {e}', file=stderr)
+		return None
+
+def create_dialog_graph(dialog: Element, engine: str, style: DarkStyle, localization_dict: dict[str, str], verbose = False, phrases_patterns = None, automation_patterns = None) -> 'graph':
+
+	def get_localized_text(ids: list[str]) -> str:
+
+		def smart_lines_split(text: str) -> str:
+			LINE_LEN, LINE_DIFF = 90, 30
+			SPLITTERS = ('...', '..', '?!', '!', '?', ' -', '.', ',', ' ')
+
+			if text:
+				ret = ''
+				while len(text) > LINE_LEN + LINE_DIFF:
+					for i, splitter in enumerate(SPLITTERS):
+						if (split_index := text.find(splitter, LINE_LEN - LINE_DIFF)) > 0 and split_index < LINE_LEN + LINE_DIFF:
+							ret += text[:split_index + len(splitter)] + '\n'
+							text = text[split_index + len(splitter):].lstrip()
+							break
+						elif i == len(SPLITTERS) - 1:
+							# last splitter not found # split anyway
+							ret += text[:LINE_LEN + LINE_DIFF] + '\n'
+							text = text[LINE_LEN + LINE_DIFF:]
+							break
+				if ret:
+					return ret + text + '\n'
+			return text
+
+		ret = ''
+		for id in ids:
+			if (text := localization_dict.get(id)):
+				ret += text
+		return smart_lines_split(ret)
+
+	def add_graph_node(phrase: Element) -> bool:
+		is_matched = not bool(phrases_patterns) and not bool(automation_patterns)
+		if (phrase_id := phrase.getAttribute('id')):
+			label, shape = f'id={phrase_id}\n' if verbose else '', style.node.shape
+			# add to label all phrase xml elements except text and graph edges
+			for element in sorted(iter_child_elements(phrase), key=lambda element: element.nodeName):
+				try:
+					match element.nodeName:
+						case 'text' | 'next':
+							pass
+						case 'action':
+							shape = style.node.shape_with_action
+							nodeValue = element.firstChild.nodeValue
+							label += f'{element.nodeName}={nodeValue}\n'
+							if automation_patterns and not is_matched:
+								is_matched = is_filters_re_match(automation_patterns, nodeValue)
+						case _:
+							if shape != style.node.shape_with_action:
+								shape = style.node.shape_scenario
+							nodeValue = element.firstChild.nodeValue
+							label += f'{element.nodeName}={nodeValue}\n'
+							if automation_patterns and not is_matched:
+								is_matched = is_filters_re_match(automation_patterns, nodeValue)
+				except:
+					pass
+			# add text to label and update text filter
+			if (text := get_localized_text(get_child_element_values(phrase, 'text'))):
+				if phrases_patterns and not is_matched:
+					is_matched = is_filters_re_match(phrases_patterns, text)
+				label += ('\n' if label else '') + text
+			if not label:
+				# show phrase id for empty phrases
+				label = f'id={phrase_id}' + ('\n' if label else '') + label
+			# create graph node and edges
+			node = pydot.Node(phrase_id, label=label,
+				fontsize=style.node.get_fontsize(0), height=style.node.get_height(0), fontname=style.node.fontname,
+				penwidth=style.node.penwidth, shape=shape if phrase_id != '0' else 'oval', color=style.node.color, fontcolor=style.node.color)
+			graph.add_node(node)
+			if (next_ids := get_child_element_values(phrase, 'next')):
+				for next_id in next_ids:
+					edge = pydot.Edge(src=phrase_id, dst=next_id, penwidth=style.edge.penwidth, color=style.edge.color
+						, minlen=1  # dot
+						, len=5  # neato, fdp
+						)
+					graph.add_edge(edge)
+		else:
+			print('<p>No id for phrase</p>')
+		return is_matched
+
+	if (dialog_id := dialog.getAttribute('id')):
+		graph = pydot.Dot(dialog_id, graph_type='digraph', bgcolor=style.bgcolor)
+		graph.prog = engine
+		graph.overlap_scaling = 0
+		# graph.set_dpi(64)
+
+		is_matched = False
+		for phrase_list in dialog.getElementsByTagName('phrase_list'):
+			for phrase in phrase_list.getElementsByTagName('phrase'):
+				if add_graph_node(phrase):
+					is_matched = True
+
+		return graph if is_matched else None
+
+def get_svg(graph) -> str:
+	try:
+		return graph.create_svg().decode()
+	except:
+		raise SvgException
 
 
 if __name__ == '__main__':
@@ -110,23 +342,6 @@ if __name__ == '__main__':
 
 		def analyse(gamedata_path: str):
 
-			def get_dialogs(system_ltx_file_path: str) -> tuple[list[str], list[str]] | tuple[None, None]:
-				'returns dialogs and additional localization .xml from system.ltx includes: [string_table] files'
-				dialogs = string_table = None
-				try:
-					for x in parse_ltx_file(system_ltx_file_path, follow_includes=True):
-						match x:
-							case (LtxKind.LET, _, 'dialogs', 'files', dialogs):
-								if dialogs and string_table:
-									return dialogs, string_table
-							case (LtxKind.LET, _, 'string_table', 'files', string_table):
-								if dialogs and string_table:
-									return dialogs, string_table
-							
-				except:
-					pass
-				return dialogs, string_table
-
 			def build_dialog_tree(dialog_xml_file_pah: str, text_xml_file_path: str):
 				'''
 				dialog_xml_file_pah - dialog xml: configs/gameplay/dialog*.xml
@@ -171,12 +386,7 @@ if __name__ == '__main__':
 									ret += get_child_element_values(e, 'text', '\n')
 						elif additional_string_tables_xml:
 							# try find in additional localization .xml files
-							for additional_string_table_xml in additional_string_tables_xml:
-								for id in ids:
-									if id and (e := get_child_by_id(additional_string_table_xml, 'string', id)):
-										ret += get_child_element_values(e, 'text', '\n')
-								if ret:
-									break
+							ret = get_localization_text(additional_string_tables_xml, ids)
 						return smart_lines_split(ret)
 
 					def add_graph_node(phrase: Element) -> bool:
@@ -346,18 +556,7 @@ if __name__ == '__main__':
 			dialogs = sorted(set(dialogs))
 			if args.v:
 				print(f'<p><code>system.ltx dialogs: {dialogs}</code></p>')
-			additional_string_tables_xml = None
-			if additional_string_tables:
-				print(f'<p><code>additional localization string_tables: {additional_string_tables}</code></p>')
-				additional_string_tables_xml = []
-				for additional_string_table in additional_string_tables:
-					xml_file_name = join(localization_text_path, additional_string_table + '.xml')
-					buff = xml_preprocessor(xml_file_name, configs_path)
-					try:
-						if (_xml := parseString(buff)):
-							additional_string_tables_xml.append(_xml)
-					except Exception as e:
-						print(f'additional localization parse error: {xml_file_name} {e}', file=stderr)
+			additional_string_tables_xml = get_additional_string_tables_xml_list(additional_string_tables, configs_path, localization_text_path)
 			if args.dialog_files:
 				# filter dialogs files
 				dialogs = set(dialogs).intersection(set(args.dialog_files))

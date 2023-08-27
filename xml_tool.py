@@ -1,11 +1,11 @@
 
+from sys import stderr
 from io import BytesIO
 from os import sep as path_separator
 from os.path import join, basename, split
-from xml.dom.minidom import Element
+from xml.dom.minidom import parseString, Element
 
-
-def xml_preprocessor(xml_file_path: str, include_base_path: str | None = None, included = False) -> bytes:
+def xml_preprocessor(xml_file_path: str, include_base_path: str | None = None, included = False, failed_include_file_paths: list[str] = None) -> bytes:
 	'''features:
 		- process #include to include text from another .xml files
 		- removes comments <!-----> since they break W3C XML rules
@@ -15,12 +15,21 @@ def xml_preprocessor(xml_file_path: str, include_base_path: str | None = None, i
 	buff = BytesIO()
 	with open(xml_file_path, 'rb') as f:
 		for line in f.readlines():
-			if line.startswith(b'#include'):
+			line_stripped = line.lstrip()
+			if line_stripped.startswith(b'#include'):
 				# include .xml file
-				line = line[len(b'#include') + 1:].strip(b' \t\r\n').strip(b'"')
-				line = line.replace(b'\\', path_separator.encode())  # convert path splitter to ext filesystem
-				buff.write(xml_preprocessor(join(include_base_path if include_base_path else split(xml_file_path)[0], line.decode()), include_base_path, True))
-			elif line.lstrip().startswith(b'<!--'):
+				line_stripped = line_stripped[len(b'#include') + 1:].strip(b' \t\r\n').strip(b'"')
+				line_stripped = line_stripped.replace(b'\\', path_separator.encode())  # convert path splitter to ext filesystem
+				include_file_path = join(include_base_path if include_base_path else split(xml_file_path)[0], line_stripped.decode())
+				try:
+					buff.write(xml_preprocessor(include_file_path, include_base_path, True))
+				except FileNotFoundError:
+					if failed_include_file_paths is not None:
+						if include_file_path in failed_include_file_paths:
+							continue
+						failed_include_file_paths.append(include_file_path)
+					print(f'include file not found: {include_file_path}', file=stderr)
+			elif line_stripped.startswith(b'<!--'):
 				continue
 			elif included and line.startswith(b'<?xml'):
 				continue
@@ -39,12 +48,29 @@ def get_child_by_id(element: Element, child_name: str, id: str) -> Element | Non
 			return e
 	return None
 
-def get_child_element_values(element: Element, child_name: str, join_str: str | None = None) -> list[str]:
+def get_child_element_values(element: Element, child_name: str, join_str: str | None = None) -> list[str] | str:
 	ret = []
 	for e in element.getElementsByTagName(child_name):
 		if (e := e.firstChild):
 			ret.append(e.nodeValue)
 	return join_str.join(ret) if join_str is not None else ret
+
+def add_localization_dict_from_xml(localization_dict: dict[str, str], _xml: Element):
+	'_xml - string_table element'
+	for _string in _xml.getElementsByTagName('string'):
+		if (string_id := _string.getAttribute('id')):
+			localization_dict[string_id] = get_child_element_values(_string, 'text', '\n')
+
+def add_localization_dict_from_localization_xml_file(localization_dict: dict[str, str], configs_path: str, localization_xml_file_path: str, verbose = False):
+	'returns dict of localization string id and localization string text'
+	if verbose:
+		print(f'<p><code>additional localization string_tables: {localization_xml_file_path[len(configs_path) + 1:]}</code></p>')
+	buff = xml_preprocessor(localization_xml_file_path, configs_path)
+	try:
+		if (_xml := parseString(buff)):
+			add_localization_dict_from_xml(localization_dict, _xml)
+	except Exception as e:
+		print(f'additional localization parse error: {localization_xml_file_path} {e}', file=stderr)
 
 
 if __name__ == '__main__':
