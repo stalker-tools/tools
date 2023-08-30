@@ -51,7 +51,7 @@ if __name__ == '__main__':
 
 		def parse_args():
 			parser = argparse.ArgumentParser(
-				description='X-ray dialog xml file parser. Dialogs xml file names reads from system.ltx file.\nOut format: html with dialog phrases digraphs embedded as images.\nUse different layout engines: https://www.graphviz.org/docs/layouts/',
+				description='X-ray task_manager.ltx file parser.\nOut format: table.',
 				epilog=f'''Examples:
 {basename(argv[0])} -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" --head "Clear Sky 1.5.10 tasks" > "tasks.html"
 {basename(argv[0])} -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" --sort-field name --head "Clear Sky 1.5.10 tasks" > "tasks.html"
@@ -118,7 +118,7 @@ if __name__ == '__main__':
 					return _get_section_value_sort(task_id, task, 'name')
 				return ''
 
-			def add_section_value(task_id: str, task: dict[str, object], value_name: str):
+			def add_section_value(task_id: str, task: dict[str, object], value_name: str, is_last = False):
 				buff = _get_section_value(task_id, task, value_name)
 				if args.output_format != 'c':
 					if type(buff) is tuple:
@@ -133,8 +133,10 @@ if __name__ == '__main__':
 					if type(buff) is tuple:
 						buff = ','.join(buff)
 					if type(buff) is str:
+						if '"' in buff:
+							buff = buff.replace('"', '\'')
 						buff = '"' + buff + '"'
-					print(buff, end=',')
+					print(buff, end='' if is_last else ',')
 
 			FILELD_NAMES = ('No', 'Id', 'Name', 'Text', 'Task type', 'Faction', 'Reward money', 'Reward item')
 
@@ -159,7 +161,7 @@ if __name__ == '__main__':
 					add_section_value(*task_id_and_values, 'task_type')
 					add_section_value(*task_id_and_values, 'faction')
 					add_section_value(*task_id_and_values, 'reward_money')
-					add_section_value(*task_id_and_values, 'reward_item')
+					add_section_value(*task_id_and_values, 'reward_item', True)
 					print('</tr>' if args.output_format != 'c' else '')
 			if args.output_format == 'h':
 				print('</tbody></table>')
