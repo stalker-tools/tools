@@ -181,6 +181,36 @@ Example of profiles table for Clear Sky Sigerous Mod [profiles.csv](https://gith
 
 ---
 ---
+* **tool_tool.py** help:
+```sh
+python tool_tool.py -h
+usage: task_tool.py [-h] [-v] -f PATH [-l LANG] [-o OUT_FORMAT] [--sort-field NAME] [--head TEXT]
+
+X-ray task_manager.ltx file parser.
+Out format: table.
+
+options:
+  -h, --help            show this help message and exit
+  -v                    increase information verbosity: show phrase id
+  -f PATH, --gamedata PATH
+                        gamedata directory path
+  -l LANG, --localization LANG
+                        localization language (see gamedata/configs/text path): rus (default), cz, hg, pol
+  -o OUT_FORMAT, --output-format OUT_FORMAT
+                        output format: h - html table (default), c - csv table
+  --sort-field NAME     sort field name: name (default)
+  --head TEXT           head text for html output
+
+Examples:
+task_tool.py -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" --head "Clear Sky 1.5.10 tasks" > "tasks.html"
+task_tool.py -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" --sort-field name --head "Clear Sky 1.5.10 tasks" > "tasks.html"
+task_tool.py -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" --sort-field name -oc" > "tasks.csv"
+```
+
+Example of profiles table for Clear Sky Sigerous Mod [profiles.csv](https://github.com/stalker-tools/real_weapons_mod_clear_sky/blob/main/media/profiles%20-%20Sigerous%20Mod.csv)
+
+---
+---
 * **dialog_tool.py** help:
 ```sh
 python dialog_tool.py -h
