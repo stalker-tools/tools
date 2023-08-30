@@ -10,7 +10,6 @@ Command-line tools is 100% python, so it has wide usage as cross-platform.
   You can search _.ltx_ files for entire _gamedata/config_ path and see found data inline: `file.ltx [section] lvalue=rvalue`. And then set filtered _rvalue_ at once.
   
   This utility can be handle to _gamempay designers_.
-
 * `graph_tool.py` for **graph**-based view and has .ltx-specific filters capabilities. Out format: matplotlib graphs embedded in html as images.
 
   You can open _.html_ file in _any browser_ and see collected info from _.ltx_ files as bar graphs for ammo/weapens and NPC to discover gameplay balance.
@@ -22,6 +21,11 @@ Command-line tools is 100% python, so it has wide usage as cross-platform.
   You can open _.html_ file in _any browser_ and search text for NPC names, bio or dialog phrases, `give_info/has_info` variables and `precondition/action` script functions names.
 
   This utility can be handle to _game dialog designers_ and _game testers_.
+* `task_tool.py` for **table**-based view of game tasks with localization. Out formats: html table, csv table.
+
+  You can open _.cvs_ file in LibreOffice Calc or _.html_ file in _any browser_ and search text for Actor tasks and rewards.
+
+  This utility can be handle to _gameplay designers_ and _game testers_.
 * `dialog_tool.py` for **graph**-based view of game dialogs with localization and has dialog-specific filters capabilities. Out format: dot digraphs embedded in html as svg (or images - see help).
 
   So you can open _.html_ file in _any browser_ and search text for phrases, `give_info/has_info` variables and `precondition/action` script functions names. And you can filter by xml dialog files, phrases and variables/script names (see help).
