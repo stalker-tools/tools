@@ -177,7 +177,7 @@ profiles_tool.py -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata"
 profiles_tool.py -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" --sort-field name -oc" > "profiles.csv"
 ```
 
-Example of profiles table for Clear Sky Sigerous Mod [profiles.csv](https://github.com/stalker-tools/real_weapons_mod_clear_sky/blob/main/media/profiles%20-%20Sigerous%20Mod.csv)
+Example of profiles table for Clear Sky Sigerous Mod [profiles - Sigerous Mod.csv](https://github.com/stalker-tools/real_weapons_mod_clear_sky/blob/main/media/profiles%20-%20Sigerous%20Mod.csv)
 
 ---
 ---
@@ -207,7 +207,7 @@ task_tool.py -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" --s
 task_tool.py -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" --sort-field name -oc" > "tasks.csv"
 ```
 
-Example of profiles table for Clear Sky Sigerous Mod [profiles.csv](https://github.com/stalker-tools/real_weapons_mod_clear_sky/blob/main/media/profiles%20-%20Sigerous%20Mod.csv)
+Example of profiles table for Clear Sky Sigerous Mod [tasks - Sigerous Mod.csv](https://github.com/stalker-tools/real_weapons_mod_clear_sky/blob/main/media/tasks%20-%20Sigerous%20Mod.csv)
 
 ---
 ---
