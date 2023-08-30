@@ -147,7 +147,7 @@ if __name__ == '__main__':
 
 			def print_table_header():
 				if args.output_format != 'c':
-					print('<table border=1>')
+					print('<table border=1 style="border-collapse: collapse;">')
 					print(f'<thead><tr>{"".join(("<th>"+x+"</th>" for x in FILELD_NAMES))}</tr></thead>')
 					print('<tbody>')
 				else:
