@@ -126,14 +126,16 @@ if __name__ == '__main__':
 					case 'reputation' | 'community' | 'bio': return ret + _get_element_values(element, 'name', True)
 				return ret
 
-			def add_element_values(element_name: str, use_localization = False):
+			def add_element_values(element_name: str, use_localization = False, is_last = False):
 				buff = _get_element_values(specific_character, element_name, use_localization)
 				if args.output_format != 'c':
 					print(f'<th {STYLE}>{buff}</th>')
 				else:
 					if type(buff) is str:
+						if '"' in buff:
+							buff = buff.replace('"', '\'')
 						buff = '"' + buff + '"'
-					print(buff, end=',')
+					print(buff, end='' if is_last else ',')
 
 			def _create_dialog_graph(dialog_id: str):
 				if (dialog := dialogs_dict.get(dialog_id)):
@@ -172,7 +174,7 @@ if __name__ == '__main__':
 					add_element_values('class')
 					add_element_values('community')
 					add_element_values('reputation')
-					add_element_values('bio')
+					add_element_values('bio', is_last=True)
 					print('</tr>' if args.output_format != 'c' else '')
 					if args.output_format == 'd':
 						print('</tbody></table>')
