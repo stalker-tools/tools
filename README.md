@@ -181,9 +181,9 @@ Example of profiles table for Clear Sky Sigerous Mod [profiles.csv](https://gith
 
 ---
 ---
-* **tool_tool.py** help:
+* **task_tool.py** help:
 ```sh
-python tool_tool.py -h
+python task_tool.py -h
 usage: task_tool.py [-h] [-v] -f PATH [-l LANG] [-o OUT_FORMAT] [--sort-field NAME] [--head TEXT]
 
 X-ray task_manager.ltx file parser.
