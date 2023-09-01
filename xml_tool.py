@@ -5,6 +5,7 @@ from os import sep as path_separator
 from os.path import join, basename, split
 from xml.dom.minidom import parseString, Element
 
+
 def xml_preprocessor(xml_file_path: str, include_base_path: str | None = None, included = False, failed_include_file_paths: list[str] = None) -> bytes:
 	'''features:
 		- process #include to include text from another .xml files
@@ -36,7 +37,6 @@ def xml_preprocessor(xml_file_path: str, include_base_path: str | None = None, i
 			else:
 				buff.write(line)
 	return buff.getvalue()
-
 
 def iter_child_elements(element: Element):
 	for e in (x for x in element.childNodes if type(x) == Element):

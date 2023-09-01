@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+from collections.abc import Iterator
+from sys import stderr
 from glob import glob
 from os.path import join, dirname, isdir
 import locale
@@ -26,6 +28,60 @@ class bcolors:
 
 class LtxFileNotFoundException(IOError):
 	pass
+
+class Ltx:
+
+
+	class Section:
+		
+		def __init__(self, ltx: 'Ltx', name: str, section: dict) -> None:
+			self.name, self.ltx, self.section = name, ltx, section
+
+		def get(self, value_name: str, default_value: object | None = None) -> object | None:
+			'gets value of section or parent sections'
+			return self._get_value(self.ltx.sections, self.section, value_name, default_value)
+		
+		@classmethod
+		def _get_value(cls, sections, section, value_name: str, default_value: object | None = None) -> object | None:
+			if value_name in section:
+				return section.get(value_name, default_value)
+			# try find value in parent sections
+			if (parents := section.get('')):
+				for parent in parents:
+					if (parent_section := sections.get(parent)):
+						if (value := cls._get_value(sections, parent_section, value_name, default_value)) is not None:
+							return value
+			return None
+
+
+	def __init__(self, ltx_file_path: str, follow_includes=True) -> None:
+		self.ltx_file_path = ltx_file_path
+		self.sections: dict = self._get_ltx_dict(ltx_file_path, follow_includes)
+
+	def _get_ltx_dict(self, ltx_file_path: str, follow_includes=True) -> dict[str, dict[str, object]] | None:
+		sections, section = {}, {}
+		prev_section_name = None
+		for x in parse_ltx_file(ltx_file_path, follow_includes=follow_includes):
+			match x:
+				case (LtxKind.NEW_SECTION, section_name, section_parents):
+					if section_name in sections:
+						print(f'duplicated section name: {section_name}', file=stderr)
+					if len(section) > 1:
+						sections[prev_section_name] = section
+					section = { '': section_parents }  # set parent sections names
+					prev_section_name = section_name
+				case (LtxKind.LET, _, _, lval, rvals):
+					section[lval] = rvals if len(rvals) > 1 else rvals[0]
+		if len(section) > 1:
+			sections[prev_section_name] = section
+		if sections:
+			return sections
+		return None
+
+	def iter_sections(self) -> Iterator[Section]:
+		if self.sections:
+			for section_name, section_dict in self.sections.items():
+				yield self.Section(self, section_name, section_dict)
 
 
 SECTION_RE = compile('^\[([\S]+)\]:?(.*)$')
@@ -80,6 +136,9 @@ def parse_ltx_file(file_path: str, follow_includes=False):
 					include_file_path = try_decode(include_file_path)
 					yield LtxKind.INCLUDE, line_index, include_file_path
 					if follow_includes:
+						# pass multiplayer files
+						if file_path.startswith('mp/'):
+							continue
 						yield from parse_ltx_file(join(dirname(file_path), include_file_path), True)
 				else:
 					# process line
@@ -100,6 +159,7 @@ def parse_ltx_file(file_path: str, follow_includes=False):
 	except IOError as e:
 		if not follow_includes:
 			raise LtxFileNotFoundException(e)
+
 
 if __name__ == '__main__':
 	import argparse
