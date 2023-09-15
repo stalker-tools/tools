@@ -1,12 +1,15 @@
 #!/usr/bin/env python3
 
 from collections.abc import Iterator
-from os.path import join
+from typing import NamedTuple
 from io import BytesIO
 from base64 import b64encode
-import matplotlib.pyplot as plt
-from ltx_tool import parse_ltx_file, LtxKind, Ltx, LtxFileNotFoundException
+from ltx_tool import Ltx
 from game import Game
+
+from plotly.subplots import make_subplots
+import plotly.graph_objects as go
+import plotly.io as pio
 
 
 if __name__ == '__main__':
@@ -14,6 +17,13 @@ if __name__ == '__main__':
 	from sys import argv, exit
 
 	def main():
+
+
+		class GraphParams(NamedTuple):
+			value_name: str
+			value_label: str
+			log_axies: bool = False
+
 
 		def parse_args():
 			parser = argparse.ArgumentParser(
@@ -27,16 +37,14 @@ if __name__ == '__main__':
 
 		args = parse_args()
 
-		def get_plot_as_image(fig) -> BytesIO:
-			buff = BytesIO()
-			fig.savefig(buff, format='png')
-			buff.seek(0)
-			return buff
-
-		def get_plot_as_html_img(fig) -> str:
-			return '<img src="data:;base64,{}"/>'.format(b64encode(get_plot_as_image(fig).read()).decode())
-
 		def analyse(gamedata_path: str):
+
+			def get_float_value(value: str | tuple[str]) -> float:
+				if value:
+					value = value[0] if type(value) is tuple else value
+					value = value.replace(' ', '')
+					return float(value)
+				return 0
 
 			def get_value(text: str, type_=float) -> 'type_ | None':
 				try:
@@ -46,40 +54,6 @@ if __name__ == '__main__':
 
 			def remove_prefix(name: str, prefix: str) -> str:
 				return name[len(prefix):] if name.startswith(prefix) else name
-
-			def get_without_index(name: str) -> str:
-				if name and (last_delim_index := name.rfind('_')) > 0:
-					return name[:last_delim_index]
-				return name
-
-			def get_colors(names: tuple[str]) -> tuple[int]:
-				
-				def get_next_color():
-					nonlocal colors_count
-					ret = cycle_colors[colors_count % len(cycle_colors)]
-					colors_count += 1
-					return ret
-
-				cycle_colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
-				ret, colors_count = [cycle_colors[0],], 1
-				for i, name in enumerate(names[1:]):
-					if get_without_index(name) != get_without_index(names[i]):
-						ret.append(get_next_color())
-					else:
-						ret.append(ret[-1])
-				return ret
-
-			def damages(value_name: str) -> Iterator[tuple[str, float]]:
-				ltx_path = join(gamedata_path, 'configs/creatures/damages.ltx')
-				try:
-					for x in parse_ltx_file(ltx_path):
-						match x[0]:
-							case LtxKind.LET:
-								if x[3] == value_name:
-									if (value := get_value(x[4][0])) is not None:
-										yield remove_prefix(x[2], 'stalker_'), value
-				except LtxFileNotFoundException:
-					pass
 
 			def print_table(table: list[tuple[str]]):
 				FILELD_NAMES = ('No', 'Section name', 'Name', 'Description')
@@ -95,116 +69,187 @@ if __name__ == '__main__':
 					print('</tr>')
 				print(f'</tbody></table><p/>')
 
-			def print_plot(data, title, value_name, xlabel, log_scale=False):
-				if data:
-					fig, ax = plt.subplots()
-					names = tuple((f'{x[0]} {i+1}' for i, x in enumerate(data)))
-					y_pos = range(len(data))
-					plt.barh(y_pos, tuple(map(lambda x: x[1], data)), height=.5, linewidth=0.1, color=get_colors(names))
-					ax.invert_yaxis()
-					plt.yticks(y_pos, labels=names)
-					ax.grid(axis='x', linestyle='dashed')
-					ax.set_title(title)
-					ax.set_xlabel(f'{value_name} {xlabel}')
-					if log_scale:
-						ax.set_xscale('log')
-					fig.set_size_inches((4.5, len(names) / 3))
-					fig.tight_layout()
-					print(get_plot_as_html_img(fig))
-					plt.close()
+			def print_graphs(sections: list[Ltx.Section], graphs_params: list[GraphParams], group_name_index=0, width_k=None):
+				# graphs_params = sorted(graphs_params, key=lambda x: x.value_name)
+				sections = sections[::-1]
+				sections_names = tuple(section.name for section in sections)
+				fig = make_subplots(rows=1, cols=len(graphs_params), subplot_titles=tuple(x.value_name for x in graphs_params), horizontal_spacing=.08/len(graphs_params))
+				bar_width, bgcolor = .6, 'rgba(50,50,50,28)'
 
-			def damages_html(value_name='hit_fraction', title='NPC stalkers vulnerability', xlabel='(less is stronger)'):
-				a = sorted(tuple((name, damage) for name, damage in damages(value_name)), key=lambda x: x[0])
-				print_plot(a, title, value_name, xlabel)
+				def get_colors(names: tuple[str]) -> tuple[str]:
+					cycle_colors = pio.templates[pio.templates.default].layout.colorway
+					cycle_colors_index = 0
+					ret = []
+					for i, name in enumerate(names):
+						buff = name.split('_', group_name_index + 1)[group_name_index]
+						if i > 0:
+							if prev != buff:
+								cycle_colors_index = (cycle_colors_index + 1) % len(cycle_colors)
+						ret.append(cycle_colors[cycle_colors_index])
+						prev = buff
+					return ret
 
-			def get_table(iter_finction):
+				colors = get_colors(sections_names)
+				sections_names = tuple(f'{x} {len(sections_names)-i}' for i, x in enumerate(sections_names))
+				for index, graphs_param in enumerate(graphs_params):
+					values = tuple(get_float_value(section.get(graphs_param.value_name)) for section in sections)
+					fig.append_trace(
+						go.Bar(x=values, y=sections_names, orientation='h', width=bar_width, marker={'color': colors}),
+						row=1, col=index + 1)
+					fig.update_xaxes(title=graphs_param.value_label, col=index + 1)
+					if graphs_param.log_axies:
+						fig.update_xaxes(type='log')
+				
+				fig.update_layout(autosize=False, height=50 + len(sections) * 25, width=(175 + 160 * len(graphs_params)) * (width_k if width_k else 1),
+					bargap=.01, bargroupgap=.01,
+					margin={'l': 5, 'r': 5, 't': 30, 'b': 5}, showlegend=False, barmode='group', paper_bgcolor=bgcolor, plot_bgcolor=bgcolor)
+				fig.update_xaxes(showgrid=True, showline=True, linewidth=2, griddash='dash', gridcolor='black')
+				for trace_index in range(2, len(fig.data) + 1):
+					fig.update_yaxes(visible=False, col=trace_index)
+
+				print(fig.to_image('svg').decode())
+
+			def get_table(iter_sections: Iterator[Ltx.Section], exclude_prefixes: list[str] = None):
 				sections = []
 				table: list[tuple[str]] = []
 				# get ltx sections
-				for section in sorted((x for x in iter_finction()), key=lambda section: section.name):
+				for section in sorted((x for x in iter_sections()), key=lambda section: section.name):
+					if exclude_prefixes and any(section.name.startswith(x) for x in exclude_prefixes):
+						continue
 					if (inv_name_short := game.localize(section.get('inv_name_short'))):
 						sections.append(section)
 						table.append((section.name, inv_name_short, game.localize(section.get("description"))))
 				print_table(table)
 				return sections
 
-			def get_float_value(value: str | tuple[str]) -> float:
-				if value:
-					return float(value[0] if type(value) is tuple else value)
-				return 0
+			def print_actor_outfit_html():
+				sections = get_table(game.outfits_iter)  # collect all outfits and its .ltx sections
+				graphs = (
+					GraphParams('hit_fraction_actor', '(less is stronger)'),
+					GraphParams('strike_protection', '(more is stronger)'),
+					GraphParams('radiation_protection', '(more is stronger)'),
+					GraphParams('explosion_protection', '(more is stronger)'),
+					GraphParams('fire_wound_protection', '(more is stronger)'),
+					GraphParams('wound_protection', '(more is stronger)'),
+					GraphParams('shock_protection', '(more is stronger)'),
+					GraphParams('burn_protection', '(more is stronger)'),
+					GraphParams('chemical_burn_protection', '(more is stronger)'),
+					GraphParams('telepatic_protection', '(more is stronger)'),
+					)
+				print_graphs(sections, graphs)
 
-			def actor_outfit_table() -> list[Ltx.Section]:
-				return get_table(game.outfits_iter)
+			def print_damages_html(value_name='hit_fraction', title='NPC stalkers vulnerability', xlabel='(less is stronger)'):
+				# collect all damages and its .ltx sections
+				sections = sorted((section for section in game.damages_iter()), key=lambda section: section.name)
+				graphs = (
+					GraphParams('hit_fraction', '(less is stronger)'),
+					)
+				print_graphs(sections, graphs, 1)
 
-			def actor_outfit_html(value_name='hit_fraction_actor', title='Actor outfit vulnerability', xlabel='(less is stronger)'):
-				a = tuple((section.name, get_float_value(section.get(value_name))) for section in sections)
-				print_plot(a, title, value_name, xlabel)
+			def print_amunition_html():
+				sections = get_table(game.ammo_iter)  # collect all ammo and its .ltx sections
+				graphs = (
+					GraphParams('k_hit', '(more is stronger)'),
+					GraphParams('k_impulse', '(more is stronger)'),
+					GraphParams('k_pierce', '(more is stronger)', True),
+					GraphParams('k_ap', '(more is stronger)', True),
+					GraphParams('k_dist', '(more is longer range)'),
+					GraphParams('k_disp', '(more is less accurately)'),
+					GraphParams('k_air_resistance', '(more is more resistance)'),
+					)
+				print_graphs(sections, graphs, 1)
 
-			def amunition_table() -> list[Ltx.Section]:
-				return get_table(game.ammo_iter)
+			def print_weapons_html(ef_weapon_type: str):
 
-			def amunition_html(value_name='k_hit', title='Amunition power', xlabel='($1 = 300 J$) (more is stronger)', log_scale=False):
-				a = tuple((section.name, get_float_value(section.get(value_name))) for section in sections)
-				print_plot(a, title, value_name, xlabel, log_scale)
-
-			def weapons_table(ef_weapon_type: str) -> list[Ltx.Section]:
 				def pistol_iter():
 					for section in game.weapons_iter():
 						if section.name == 'wpn_pb':
 							pass
 						if ef_weapon_type == section.get('ef_weapon_type'):
 							yield section
-				return get_table(pistol_iter)
 
-			def weapons_html(value_name='hit_power', title='Weapon power', xlabel='(more is stronger)', log_scale=False):
-				a = tuple((section.name, get_float_value(section.get(value_name))) for section in sections)
-				print_plot(a, title, value_name, xlabel, log_scale)
+				sections = get_table(pistol_iter)
+				graphs = (
+					GraphParams('hit_power', '(more is stronger)'),
+					GraphParams('hit_impulse', '(more is stronger)', True),
+					GraphParams('bullet_speed', 'm/s', True),
+					GraphParams('fire_distance', 'max, m', True),
+					GraphParams('hit_probability_gd_novice', '(more is more accurate)'),
+					GraphParams('fire_dispersion_base', '(less is more accurate)'),
+					GraphParams('fire_dispersion_condition_factor', '(less is more accurate)'),
+					GraphParams('condition_shot_dec', '(less is more reliable)', True),
+					GraphParams('misfire_condition_k', '(less is more reliable)'),
+					GraphParams('misfire_probability', '(less is more reliable)', True),
+					)
+				print_graphs(sections, graphs, 1, 1.1)
+
+			def print_food_html():
+				sections = get_table(game.food_iter)  # collect all food and its .ltx sections
+				graphs = (
+					GraphParams('eat_health', ''),
+					GraphParams('eat_satiety', ''),
+					GraphParams('eat_power', ''),
+					GraphParams('eat_radiation', ''),
+					GraphParams('eat_alcohol', ''),
+					GraphParams('satiety_slake_factor', ''),
+					)
+				print_graphs(sections, graphs)
+
+			def print_medkit_html():
+				SGM_EXCLUDE_PREFIXES = ('medal_', 'dv_', 'outfit_upgrade_', 'repair_', 'skill_', 'personal_rukzak', 'sleeping_bag')
+				sections = get_table(game.medkit_iter, SGM_EXCLUDE_PREFIXES)  # collect all medkit and its .ltx sections
+				graphs = (
+					GraphParams('eat_health', ''),
+					GraphParams('eat_satiety', ''),
+					GraphParams('eat_power', ''),
+					GraphParams('eat_radiation', ''),
+					GraphParams('eat_alcohol', ''),
+					GraphParams('satiety_slake_factor', ''),
+					)
+				print_graphs(sections, graphs)
+
+			def print_artefact_html():
+				sections = get_table(game.artefact_iter)  # collect all artefact and its .ltx sections
+				graphs = (
+					GraphParams('af_rank', ''),
+					GraphParams('health_restore_speed', ''),
+					GraphParams('radiation_restore_speed', ''),
+					GraphParams('satiety_restore_speed', ''),
+					GraphParams('power_restore_speed', ''),
+					GraphParams('bleeding_restore_speed', ''),
+					GraphParams('additional_inventory_weight', ''),
+					GraphParams('additional_inventory_weight2', ''),
+					)
+				print_graphs(sections, graphs, 1, 1.15)
 
 			print(f'<h1>{args.head}<h1><hr/>')
 
 			game = Game(gamedata_path, args.localization)
+			pio.templates.default = 'plotly_dark'
 
 			print('<h2>1 Actor tactical parameters</h2>')
-			sections = actor_outfit_table()
-			actor_outfit_html()
-			actor_outfit_html('strike_protection')
-			actor_outfit_html('explosion_protection')
-			actor_outfit_html('fire_wound_protection')
-			actor_outfit_html('wound_protection')
-			actor_outfit_html('radiation_protection')
-			actor_outfit_html('telepatic_protection')
-			actor_outfit_html('burn_protection')
-			actor_outfit_html('shock_protection')
-			actor_outfit_html('chemical_burn_protection')
+
+			print_actor_outfit_html()
 
 			print('<h2>2 NPC tactical parameters</h2>')
-			damages_html()
+			print_damages_html()
 
 			print('<h2>3 Ammunition tactical parameters</h2>')
-			sections = amunition_table()
-			amunition_html()
-			amunition_html('k_impulse', xlabel='(more is stronger)')
-			amunition_html('k_pierce', xlabel='(more is stronger)', log_scale=True)
-			amunition_html('k_ap', xlabel='(more is stronger)', log_scale=True)
-			amunition_html('k_dist', 'Amunition accuracy', '(more is longer range)')
-			amunition_html('k_disp', 'Amunition accuracy', '(more is less accurately)')
-			amunition_html('k_air_resistance', 'Amunition range', '')
+			print_amunition_html()
 
 			print('<h2>4 Weapon tactical parameters</h2>')
-			for index, (ef_weapon_type, text) in enumerate((('5', 'pistols'), ('6', 'assault rifles'), ('7', 'rifles'), ('8', 'guns'))):
+			for index, (ef_weapon_type, text) in enumerate((('5', 'Pistols'), ('6', 'Assault rifles'), ('7', 'Rifles'), ('8', 'Guns'))):
 				print(f'<h3>4.{index + 1} {text}</h3>')
-				sections = weapons_table(ef_weapon_type)
-				weapons_html()
-				weapons_html('hit_impulse', 'Weapon hit impulse', '(more is stronger)', True)
-				weapons_html('bullet_speed', 'Weapon bullet speed', ', m/s', True)
-				weapons_html('fire_distance', 'Weapon fire distance', 'max, m', True)
-				print(f'<h4>4.{index + 1}.1 Weapon accuracy: {text}</h2>')
-				weapons_html('hit_probability_gd_novice', 'Weapon accuracy', '(more is more accurate)')
-				weapons_html('fire_dispersion_condition_factor', 'Weapon accuracy', '(less is more accurate)')
-				print(f'<h4>4.{index + 1}.2 Weapon reliability: {text}</h2>')
-				weapons_html('condition_shot_dec', 'Weapon reliability', '(less is more reliable)', True)
-				weapons_html('misfire_condition_k', 'Weapon misfire', '(less is more reliable)')
-				weapons_html('misfire_probability', 'Weapon misfire', '(less is more reliable)', True)
+				print_weapons_html(ef_weapon_type)
+
+			print('<h2>5 Food parameters</h2>')
+			print_food_html()
+
+			print('<h2>6 Medkit parameters</h2>')
+			print_medkit_html()
+
+			print('<h2>7 Artefact parameters</h2>')
+			print_artefact_html()
 
 		analyse(args.gamedata)
 

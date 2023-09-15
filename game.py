@@ -66,6 +66,51 @@ class Outfits(SectionsBase):
 		return False
 
 
+class Damages(SectionsBase):
+
+	def load_section(self, section: Ltx.Section) -> bool:
+		if section.get('hit_fraction') is not None:
+			self.sections.append(section)
+			return True
+		return False
+
+
+class Food(SectionsBase):
+
+	def load_localization(self):
+		add_localization_dict_from_localization_xml_file(self.localization_dict, self.configs_path, join(self.localization_text_path, 'st_items_equipment.xml'))
+
+	def load_section(self, section: Ltx.Section) -> bool:
+		if section.get('class') in ('II_FOOD', 'II_BOTTL'):
+			self.sections.append(section)
+			return True
+		return False
+
+
+class Medkit(SectionsBase):
+
+	def load_localization(self):
+		add_localization_dict_from_localization_xml_file(self.localization_dict, self.configs_path, join(self.localization_text_path, 'st_items_equipment.xml'))
+
+	def load_section(self, section: Ltx.Section) -> bool:
+		if section.get('class') in ('II_ANTIR', 'II_MEDKI', 'II_BANDG'):
+			self.sections.append(section)
+			return True
+		return False
+
+
+class Artefact(SectionsBase):
+
+	def load_localization(self):
+		add_localization_dict_from_localization_xml_file(self.localization_dict, self.configs_path, join(self.localization_text_path, 'st_items_artefacts.xml'))
+
+	def load_section(self, section: Ltx.Section) -> bool:
+		if section.get('class') == 'ARTEFACT':
+			self.sections.append(section)
+			return True
+		return False
+
+
 class Game:
 
 	def __init__(self, gamedata_path: str, localization: str) -> None:
@@ -79,7 +124,15 @@ class Game:
 		self.weapons.load_localization()
 		self.outfits = Outfits(self.gamedata_path, self.configs_path, self.localization_text_path, self.localization_dict)
 		self.outfits.load_localization()
-		self.load_ltx_sections((self.ammo, self.weapons, self.outfits))
+		self.damages = Damages(self.gamedata_path, self.configs_path, self.localization_text_path, self.localization_dict)
+		self.damages.load_localization()
+		self.food = Food(self.gamedata_path, self.configs_path, self.localization_text_path, self.localization_dict)
+		self.food.load_localization()
+		self.medkit = Medkit(self.gamedata_path, self.configs_path, self.localization_text_path, self.localization_dict)
+		self.medkit.load_localization()
+		self.artefact = Artefact(self.gamedata_path, self.configs_path, self.localization_text_path, self.localization_dict)
+		self.artefact.load_localization()
+		self.load_ltx_sections((self.ammo, self.weapons, self.outfits, self.damages, self.food, self.medkit, self.artefact))
 
 	def load_ltx_sections(self, section_bases: list[SectionsBase]):
 
@@ -117,6 +170,18 @@ class Game:
 
 	def outfits_iter(self) -> Iterator[Ltx.Section]:
 		yield from self._iter(self.outfits)
+
+	def damages_iter(self) -> Iterator[Ltx.Section]:
+		yield from self._iter(self.damages)
+
+	def food_iter(self) -> Iterator[Ltx.Section]:
+		yield from self._iter(self.food)
+
+	def medkit_iter(self) -> Iterator[Ltx.Section]:
+		yield from self._iter(self.medkit)
+
+	def artefact_iter(self) -> Iterator[Ltx.Section]:
+		yield from self._iter(self.artefact)
 
 	def localize(self, id: str) -> str | None:
 		if self.localization_dict:
