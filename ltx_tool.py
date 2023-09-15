@@ -120,6 +120,9 @@ def try_decode(buff: bytearray, encoding=locale.getpreferredencoding()) -> str:
 			return buff.decode(encoding, 'backslashreplace')
 
 def parse_ltx_file(file_path: str, follow_includes=False):
+	# exclude multiplayer files
+	if '/mp/' in file_path:
+		return
 	section_name = None
 	try:
 		with open(file_path, 'rb') as f:
@@ -136,9 +139,6 @@ def parse_ltx_file(file_path: str, follow_includes=False):
 					include_file_path = try_decode(include_file_path)
 					yield LtxKind.INCLUDE, line_index, include_file_path
 					if follow_includes:
-						# pass multiplayer files
-						if file_path.startswith('mp/'):
-							continue
 						yield from parse_ltx_file(join(dirname(file_path), include_file_path), True)
 				else:
 					# process line
@@ -269,40 +269,43 @@ if __name__ == '__main__':
 						print(f'{bcolors.HEADER}{print_path}{bcolors.ENDC} {bcolors.OKBLUE}[{x[1]}]{bcolors.ENDC} {",".join(x[2])}')
 			return lines_indexes
 
-		def edit_ask() -> bool:
+		def edit_ask() -> bool | None:
 			while True:
-				anwer = input('edit file (y, N, e[xit]) ? : ')
+				anwer = input(f'edit file (y, N, s[kip file], e[xit]) to "{args.m}" ? : ')
 				match anwer.strip():
 					case 'y' | 'Y':
 						return True
 					case '' | 'n' | 'N':
 						return False
+					case 's' | 'S':
+						return None
 					case f as str if f.lower() in 'exit':
 						from sys import exit; exit(0)
 
 		for path_ in args.ltx:
 			if isdir(path_):
-				for path_ in glob(join(path_, '**/*.ltx'), recursive=True):
-					lines_indexes = print_ltx_file(path_)
-					if lines_indexes:
-						# edit file
-						# print(f'{lines_indexes=}')
-						if not edit_ask():
+				path_ = join(path_, '**/*.ltx')
+			for path_ in glob(path_, recursive=True):
+				lines_indexes = print_ltx_file(path_)
+				if lines_indexes:
+					# edit file
+					# print(f'{lines_indexes=}')
+					match edit_ask():
+						case False:
+							continue
+						case None:
 							break
-						with open(path_, 'rb') as f:
-							lines = f.readlines()
-						with open(path_, 'wb') as f:
-							for line_index, line in enumerate(lines):
-								if (section_name := lines_indexes.get(line_index)):
-									eq_index = line.find(b'=')
-									end_index = line_find(line, (b';', b'\r', b'\n'), eq_index)
-									line = bytearray(line)
-									line[eq_index + 1:end_index] = args.m.encode()
-									print(f'{bcolors.HEADER}{line_index + 1:03}{bcolors.ENDC} {bcolors.OKBLUE}[{section_name}]{bcolors.ENDC} {line.decode().strip()}')
-								f.write(line)
-			else:
-				for path_2 in glob(path_, recursive=True):
-					print_ltx_file(path_2)
+					with open(path_, 'rb') as f:
+						lines = f.readlines()
+					with open(path_, 'wb') as f:
+						for line_index, line in enumerate(lines):
+							if (section_name := lines_indexes.get(line_index)):
+								eq_index = line.find(b'=')
+								end_index = line_find(line, (b';', b'\r', b'\n'), eq_index)
+								line = bytearray(line)
+								line[eq_index + 1:end_index] = args.m.encode()
+								print(f'{bcolors.HEADER}{line_index + 1:03}{bcolors.ENDC} {bcolors.OKBLUE}[{section_name}]{bcolors.ENDC} {line.decode().strip()}')
+							f.write(line)
 
 	try:
 		main()
