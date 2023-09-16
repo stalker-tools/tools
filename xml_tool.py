@@ -64,7 +64,7 @@ def add_localization_dict_from_xml(localization_dict: dict[str, str], _xml: Elem
 def add_localization_dict_from_localization_xml_file(localization_dict: dict[str, str], configs_path: str, localization_xml_file_path: str, verbose = False):
 	'returns dict of localization string id and localization string text'
 	if verbose:
-		print(f'<p><code>additional localization string_tables: {localization_xml_file_path[len(configs_path) + 1:]}</code></p>')
+		print(f'<p><small><code>additional localization string_tables: {localization_xml_file_path[len(configs_path) + 1:]}</code></small></p>')
 	try:
 		buff = xml_preprocessor(localization_xml_file_path, configs_path)
 	except FileNotFoundError:
