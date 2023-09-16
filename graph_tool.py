@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 
 from collections.abc import Iterator
 from typing import NamedTuple
@@ -110,15 +111,19 @@ if __name__ == '__main__':
 				print(fig.to_image('svg').decode())
 
 			def get_table(iter_sections: Iterator[Ltx.Section], exclude_prefixes: list[str] = None):
+				'exclude_prefixes - filter by section name (name prefix or entire name)'
 				sections = []
 				table: list[tuple[str]] = []
+				prev_description = None
 				# get ltx sections
 				for section in sorted((x for x in iter_sections()), key=lambda section: section.name):
 					if exclude_prefixes and any(section.name.startswith(x) for x in exclude_prefixes):
 						continue
 					if (inv_name_short := game.localize(section.get('inv_name_short'))):
 						sections.append(section)
-						table.append((section.name, inv_name_short, game.localize(section.get("description"))))
+						description = section.get("description")
+						table.append((section.name, inv_name_short, game.localize(description) if prev_description != description else '↑'))
+						prev_description = description
 				print_table(table)
 				return sections
 
@@ -227,11 +232,11 @@ if __name__ == '__main__':
 			game = Game(gamedata_path, args.localization)
 			pio.templates.default = 'plotly_dark'
 
-			print('<h2>1 Actor tactical parameters</h2>')
+			print('<h2>1 Actor outfits</h2>')
 
 			print_actor_outfit_html()
 
-			print('<h2>2 NPC tactical parameters</h2>')
+			print('<h2>2 NPC armor</h2>')
 			print_damages_html()
 
 			print('<h2>3 Ammunition tactical parameters</h2>')
@@ -242,13 +247,13 @@ if __name__ == '__main__':
 				print(f'<h3>4.{index + 1} {text}</h3>')
 				print_weapons_html(ef_weapon_type)
 
-			print('<h2>5 Food parameters</h2>')
+			print('<h2>5 Food tactical parameters</h2>')
 			print_food_html()
 
-			print('<h2>6 Medkit parameters</h2>')
+			print('<h2>6 Medkit tactical parameters</h2>')
 			print_medkit_html()
 
-			print('<h2>7 Artefact parameters</h2>')
+			print('<h2>7 Artefact tactical parameters</h2>')
 			print_artefact_html()
 
 		analyse(args.gamedata)
