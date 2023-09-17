@@ -3,14 +3,13 @@
 
 from collections.abc import Iterator
 from typing import NamedTuple
-from io import BytesIO
-from base64 import b64encode
-from ltx_tool import Ltx
-from game import Game
-
 from plotly.subplots import make_subplots
 import plotly.graph_objects as go
 import plotly.io as pio
+# stalker-tools import
+from ltx_tool import Ltx
+from game import Game
+from icon_tools import IconsEquipment, get_image_as_html_img
 
 
 if __name__ == '__main__':
@@ -34,6 +33,7 @@ if __name__ == '__main__':
 			parser.add_argument('-f', '--gamedata', metavar='PATH', required=True, help='gamedata directory path')
 			parser.add_argument('-l', '--localization', metavar='LANG', default='rus', help='localization language (see gamedata/configs/text path): rus (default), cz, hg, pol')
 			parser.add_argument('--head', default='S.T.A.L.K.E.R.', metavar='TEXT', help='head text')
+			parser.add_argument('-s', '--style', metavar='STYLE', default='dark', help='style: l - light, d - dark (default)')
 			return parser.parse_args()
 
 		args = parse_args()
@@ -56,18 +56,26 @@ if __name__ == '__main__':
 			def remove_prefix(name: str, prefix: str) -> str:
 				return name[len(prefix):] if name.startswith(prefix) else name
 
-			def print_table(table: list[tuple[str]]):
-				FILELD_NAMES = ('No', 'Section name', 'Name', 'Description')
+			def print_table(sections: list[Ltx.Section]):
+				FILELD_NAMES = ('No', 'Section name', 'Name', 'Icon', 'Description')
 				STYLE = 'style="text-align: left;"'
-				print(f'<table border=1 style="border-collapse: collapse;">')
+				print(f'<table border=1 style="border-collapse:collapse">')
 				print(f'<thead><tr>{"".join(("<th>"+x+"</th>" for x in FILELD_NAMES))}</tr></thead><tbody>')
-				for index, field in enumerate(table):
-					print('<tr>')
+				prev_description = None
+				for index, section in enumerate(sections):
+					inv_name_short, description = game.localize(section.get('inv_name_short')), section.get("description")
+					if index == 0:
+						print('<tr style="border-left-style:hidden;border-right-style:hidden">')
+					else:
+						print('<tr style="border-style:hidden">')
 					print(f'<th>{index + 1}</th>')
-					print(f'<th {STYLE}>{field[0]}</th>')
-					print(f'<th>{field[1]}</th>')
-					print(f'<th {STYLE}>{field[2]}</th>')
+					print(f'<th {STYLE}>{section.name}</th>')
+					print(f'<th>{inv_name_short}</th>')
+					inv_grid = (int(section.get('inv_grid_x')), int(section.get('inv_grid_y')), int(section.get('inv_grid_width', 1)), int(section.get('inv_grid_height', 1)))
+					print(f'<th>{get_image_as_html_img(icons.get_image(*inv_grid))}</th>')
+					print(f'<th {STYLE}>{game.localize(description) if prev_description != description else "↑"}</th>')
 					print('</tr>')
+					prev_description = description
 				print(f'</tbody></table><p/>')
 
 			def print_graphs(sections: list[Ltx.Section], graphs_params: list[GraphParams], group_name_index=0, width_k=None):
@@ -75,7 +83,7 @@ if __name__ == '__main__':
 				sections = sections[::-1]
 				sections_names = tuple(section.name for section in sections)
 				fig = make_subplots(rows=1, cols=len(graphs_params), subplot_titles=tuple(x.value_name for x in graphs_params), horizontal_spacing=.08/len(graphs_params))
-				bar_width, bgcolor = .6, 'rgba(50,50,50,28)'
+				bar_width, bgcolor = .45, 'rgba(50,50,50,28)'
 
 				def get_colors(names: tuple[str]) -> tuple[str]:
 					cycle_colors = pio.templates[pio.templates.default].layout.colorway
@@ -103,7 +111,10 @@ if __name__ == '__main__':
 				
 				fig.update_layout(autosize=False, height=50 + len(sections) * 25, width=(175 + 160 * len(graphs_params)) * (width_k if width_k else 1),
 					bargap=.01, bargroupgap=.01,
-					margin={'l': 5, 'r': 5, 't': 30, 'b': 5}, showlegend=False, barmode='group', paper_bgcolor=bgcolor, plot_bgcolor=bgcolor)
+					margin={'l': 5, 'r': 5, 't': 30, 'b': 5}, showlegend=False, barmode='group')
+				match args.style:
+					case 'd' | 'dark':
+						fig.update_layout(paper_bgcolor=bgcolor, plot_bgcolor=bgcolor)
 				fig.update_xaxes(showgrid=True, showline=True, linewidth=2, griddash='dash', gridcolor='black')
 				for trace_index in range(2, len(fig.data) + 1):
 					fig.update_yaxes(visible=False, col=trace_index)
@@ -113,18 +124,13 @@ if __name__ == '__main__':
 			def get_table(iter_sections: Iterator[Ltx.Section], exclude_prefixes: list[str] = None):
 				'exclude_prefixes - filter by section name (name prefix or entire name)'
 				sections = []
-				table: list[tuple[str]] = []
-				prev_description = None
 				# get ltx sections
 				for section in sorted((x for x in iter_sections()), key=lambda section: section.name):
 					if exclude_prefixes and any(section.name.startswith(x) for x in exclude_prefixes):
 						continue
-					if (inv_name_short := game.localize(section.get('inv_name_short'))):
+					if game.localize(section.get('inv_name_short')):
 						sections.append(section)
-						description = section.get("description")
-						table.append((section.name, inv_name_short, game.localize(description) if prev_description != description else '↑'))
-						prev_description = description
-				print_table(table)
+				print_table(sections)
 				return sections
 
 			def print_actor_outfit_html():
@@ -141,7 +147,7 @@ if __name__ == '__main__':
 					GraphParams('chemical_burn_protection', '(more is stronger)'),
 					GraphParams('telepatic_protection', '(more is stronger)'),
 					)
-				print_graphs(sections, graphs)
+				print_graphs(sections, graphs, width_k=1.05)
 
 			def print_damages_html(value_name='hit_fraction', title='NPC stalkers vulnerability', xlabel='(less is stronger)'):
 				# collect all damages and its .ltx sections
@@ -230,7 +236,10 @@ if __name__ == '__main__':
 			print(f'<h1>{args.head}<h1><hr/>')
 
 			game = Game(gamedata_path, args.localization)
-			pio.templates.default = 'plotly_dark'
+			icons = IconsEquipment(gamedata_path)
+			match args.style:
+				case 'd' | 'dark':
+					pio.templates.default = 'plotly_dark'
 
 			print('<h2>1 Actor outfits</h2>')
 
