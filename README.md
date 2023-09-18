@@ -125,7 +125,7 @@ configs/mp/weapons_mp/outfit_mp.ltx [mp_exo_outfit_bones] hit_fraction = 0.2
 * **graph_tool.py** help:
 ```sh
 python graph_tool.py -h
-usage: graph_tool.py [-h] -f PATH [--head TEXT]
+usage: graph_tool.py [-h] -f PATH [-l LANG] [--head TEXT] [-s STYLE]
 
 X-ray .ltx file parser. Out format: matplotlib graphs embedded in html as images
 
@@ -133,7 +133,11 @@ options:
   -h, --help            show this help message and exit
   -f PATH, --gamedata PATH
                         gamedata directory path
+  -l LANG, --localization LANG
+                        localization language (see gamedata/configs/text path): rus (default), cz, hg, pol
   --head TEXT           head text
+  -s STYLE, --style STYLE
+                        style: l - light, d - dark (default)
 
 Examples: graph_tool.py -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" --head "Clear Sky - NPC and weapons" > "NPC_and_weapons.htm"
 ```
