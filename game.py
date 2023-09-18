@@ -183,7 +183,26 @@ class Game:
 	def artefact_iter(self) -> Iterator[Ltx.Section]:
 		yield from self._iter(self.artefact)
 
-	def localize(self, id: str) -> str | None:
+	def localize(self, id: str, html_format = False) -> str | None:
+
+		def process_tags(text: str) -> str:
+			COLOR_TAG = '%c['
+			COLOR_TAG_DEFAULT = '%c[default]'
+			ret = text.replace('\\n', '<br/>')
+			ret = ret.replace(COLOR_TAG_DEFAULT, '</span>')
+			while (start_index := ret.find(COLOR_TAG)) >= 0:
+				if (end_index := ret.find(']', start_index)):
+					colors = tuple(map(int, ret[start_index + len(COLOR_TAG):end_index].split(',', 4)))
+					if len(colors) != 4:
+						break
+					ret = ret[:start_index] + f'</span><span style="color:#{colors[0]:02x}{colors[1]:02x}{colors[3]:02x};">' + ret[end_index + 1:]
+				else:
+					break
+			return ret
+
 		if self.localization_dict:
-			return self.localization_dict.get(id, id)
+			if (buff := self.localization_dict.get(id, id)):
+				if html_format and '%c[' in buff:
+					return process_tags(buff)
+				return buff
 		return id

@@ -73,7 +73,7 @@ if __name__ == '__main__':
 					print(f'<th>{inv_name_short}</th>')
 					inv_grid = (int(section.get('inv_grid_x')), int(section.get('inv_grid_y')), int(section.get('inv_grid_width', 1)), int(section.get('inv_grid_height', 1)))
 					print(f'<th>{get_image_as_html_img(icons.get_image(*inv_grid))}</th>')
-					print(f'<th {STYLE}>{game.localize(description) if prev_description != description else "↑"}</th>')
+					print(f'<th {STYLE}>{game.localize(description, True) if prev_description != description else "↑"}</th>')
 					print('</tr>')
 					prev_description = description
 				print(f'</tbody></table><p/>')
