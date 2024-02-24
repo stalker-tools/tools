@@ -64,6 +64,7 @@ if __name__ == '__main__':
 			parser.add_argument('-l', '--localization', metavar='LANG', default='rus', help='localization language (see gamedata/configs/text path): rus (default), cz, hg, pol')
 			parser.add_argument('--head', default='S.T.A.L.K.E.R.', metavar='TEXT', help='head text')
 			parser.add_argument('-s', '--style', metavar='STYLE', default='dark', help='style: l - light, d - dark (default)')
+			parser.add_argument('-t', '--type', metavar='TYPE', default='a', help='type: a - analyse (default), b - brochure')
 			return parser.parse_args()
 
 		args = parse_args()
@@ -285,28 +286,39 @@ if __name__ == '__main__':
 				case 'd' | 'dark':
 					pio.templates.default = 'plotly_dark'
 
-			print('<h2>1 Actor outfits</h2>')
+			print('<h2>Content</h2>')
+			print('<p><a href="#1">1 Actor outfits</a></p>')
+			print('<p><a href="#2">2 NPC armor</a></p>')
+			print('<p><a href="#3">3 Ammunition tactical parameters</a></p>')
+			print('<p><a href="#4.1">4.1 Weapon tactical parameters: Pistols</a></p>')
+			print('<p><a href="#4.2">4.2 Weapon tactical parameters: Assault rifles</a></p>')
+			print('<p><a href="#4.3">4.3 Weapon tactical parameters: Rifles</a></p>')
+			print('<p><a href="#4.4">4.4 Weapon tactical parameters: Guns</a></p>')
+			print('<p><a href="#5">5 Food tactical parameters</a></p>')
+			print('<p><a href="#6">6 Medkit tactical parameters</a></p>')
+			print('<p><a href="#7">7 Artefact tactical parameters</a></p>')
 
+			print('<h2 id="1">1 Actor outfits</h2>')
 			print_actor_outfit_html()
 
-			print('<h2>2 NPC armor</h2>')
+			print('<h2 id="2">2 NPC armor</h2>')
 			print_damages_html()
 
-			print('<h2>3 Ammunition tactical parameters</h2>')
+			print('<h2 id="3">3 Ammunition tactical parameters</h2>')
 			print_amunition_html()
 
-			print('<h2>4 Weapon tactical parameters</h2>')
+			print('<h2 id="4">4 Weapon tactical parameters</h2>')
 			for index, (ef_weapon_type, text) in enumerate((('5', 'Pistols'), ('6', 'Assault rifles'), ('7', 'Rifles'), ('8', 'Guns'))):
-				print(f'<h3>4.{index + 1} {text}</h3>')
+				print(f'<h3 id="4.{index + 1}">4.{index + 1} {text}</h3>')
 				print_weapons_html(ef_weapon_type)
 
-			print('<h2>5 Food tactical parameters</h2>')
+			print('<h2 id="5">5 Food tactical parameters</h2>')
 			print_food_html()
 
-			print('<h2>6 Medkit tactical parameters</h2>')
+			print('<h2 id="6">6 Medkit tactical parameters</h2>')
 			print_medkit_html()
 
-			print('<h2>7 Artefact tactical parameters</h2>')
+			print('<h2 id="7">7 Artefact tactical parameters</h2>')
 			print_artefact_html()
 
 			print(f'</body></html>')
@@ -472,32 +484,51 @@ background: url("data:image/svg+xml,%3Csvg viewBox='0 0 20 300' xmlns='http://ww
 				case 'd' | 'dark':
 					pio.templates.default = 'plotly_dark'
 
-			print('<h2>1 Защитные костюмы</h2>')
+			print('<h2>Содержание</h2>')
+			print('<p><a href="#1">1 Защитные костюмы</a></p>')
+			print('<p><a href="#2">2 Патроны</a></p>')
+			print('<p><a href="#3.1">3.1 Оружие: Пистолеты</a></p>')
+			print('<p><a href="#3.2">3.2 Оружие: Автоматы</a></p>')
+			print('<p><a href="#3.3">3.3 Оружие: Ружья</a></p>')
+			print('<p><a href="#3.4">3.4 Оружие: Винтовки/пулемёты</a></p>')
+			print('<p><a href="#4">4 Продовольствие</a></p>')
+			print('<p><a href="#5">5 Медицинские препараты</a></p>')
+			print('<p><a href="#6">6 Артефакты</a></p>')
 
+			print(f'<hr/>')
+			print('<h2 id="1">1 Защитные костюмы</h2>')
 			print_actor_outfit_html('Защитные костюмы')
 
-			print('<h2>2 Патроны</h2>')
+			print(f'<hr/>')
+			print('<h2 id="2">2 Патроны</h2>')
 			print_amunition_html('Патроны')
 
-			print('<h2>3 Оружие</h2>')
+			print(f'<hr/>')
+			print('<h2 id="3">3 Оружие</h2>')
 			for index, (ef_weapon_type, text) in enumerate((('5', 'Пистолеты'), ('6', 'Автоматы'), ('7', 'Ружья'), ('8', 'Винтовки/пулемёты'))):
-				print(f'<h3>3.{index + 1} {text}</h3>')
+				print(f'<h3 id="3.{index + 1}">3.{index + 1} {text}</h3>')
 				print_weapons_html(ef_weapon_type, text, 1 if index == 0 else 1.4)
 
-			print('<h2>4 Продовольствие</h2>')
+			print(f'<hr/>')
+			print('<h2 id="4">4 Продовольствие</h2>')
 			print_food_html('Продовольствие')
 
-			print('<h2>5 Медицинские препараты</h2>')
+			print(f'<hr/>')
+			print('<h2 id="5">5 Медицинские препараты</h2>')
 			print_medkit_html('Медицинские препараты')
 
-			print('<h2>6 Артефакты</h2>')
+			print(f'<hr/>')
+			print('<h2 id="6">6 Артефакты</h2>')
 			print_artefact_html('Артефакты')
 
 			print(f'</body></html>')
 
-		# analyse(args.gamedata)
+		match args.type:
+			case 'b':
+				brochure(args.gamedata)
+			case _:
+				analyse(args.gamedata)
 
-		brochure(args.gamedata)
 
 	try:
 		main()
