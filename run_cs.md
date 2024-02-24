@@ -1,12 +1,14 @@
 # Run Clear Sky on Linux/Wine for Ubuntu 22.10
 
-## 1. Hardware info
+## 1. Tested hardware and OS info
+
+## 1.1. Hardware info
 ```sh
 cat /proc/cpuinfo|grep name|uniq
 model name      : AMD Ryzen 5 PRO 5650G with Radeon Graphics
 ```
 
-## 2. Software info
+## 1.2. OS info
 ```sh
 uname -a
 Linux ubuntu-workstation 5.19.0-46-generic #47-Ubuntu SMP PREEMPT_DYNAMIC Fri Jun 16 13:30:11 UTC 2023 x86_64 x86_64 x86_64 GNU/Linux
@@ -19,9 +21,9 @@ Release:        22.10
 Codename:       kinetic
 ```
 
-## 3. Installation
+## 2. OS software installation
 
-### 3.1. Install OpenGL and videocard driver AMD for i386 architecture.
+### 2.1. Install OpenGL and videocard driver AMD for i386 architecture.
 ```sh
 sudo apt install libglx-mesa0:i386 libgl1:i386
 sudo apt install libvulkan1:i386
@@ -51,16 +53,16 @@ OpenGL ES profile shading language version string: OpenGL ES GLSL ES 3.20
     GL_EXT_shader_group_vote, GL_EXT_shader_implicit_conversions,
 ```
 
-### 3.2. Install [Wine](https://wiki.winehq.org/Ubuntu) for i386 architecture. Check wine:
+### 2.2. Install [Wine](https://wiki.winehq.org/Ubuntu) for i386 architecture. Check wine:
 ```sh
 wine --version
 wine-8.0.1
 ```
-### 3.3 Create wine prefix
+### 2.3 Create wine prefix
 
 For example, `clear_sky`. Prefix path `$HOME/.local/share/wineprefixes/clear_sky`
 
-### 3.4. Install [Winetricks](https://wiki.winehq.org/Winetricks)
+### 2.4. Install [Winetricks](https://wiki.winehq.org/Winetricks)
 
 Check installed dlls:
 ```sh
@@ -74,7 +76,7 @@ d3dcompiler_47
 d3dcompiler_43
 ```
 
-## 4. Install and run Clear Sky
+## 3. Clear Sky installation and running
 
 Game path: `"$HOME/.wine/drive_c/Program Files (x86)/clear_sky`
 
