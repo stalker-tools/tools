@@ -8,7 +8,7 @@ Just see generated `.html` brochure example: [Clear Sky + SGM 3.10 + Real Weapon
 
 This brochure genarated by this line:
 ```sh
-python graph_tool.py -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky_real_weapons_mod/gamedata/" --head "Clear Sky + SGM 3.10 + Real Weapons" > "Clear Sky + SGM 3.10 + Real Weapons.html"
+python graph_tool.py -tb -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky_real_weapons_mod/gamedata/" --head "Clear Sky + SGM 3.10 + Real Weapons" > "Clear Sky + SGM 3.10 + Real Weapons.html"
 ```
 
 ## .ltx files analysis tool
