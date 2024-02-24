@@ -6,7 +6,7 @@ Most useful utility for mod autor/publisher is `graph_tool.py`.
 
 Just see generated `.html` brochure example: [Clear Sky + SGM 3.10 + Real Weapons.html](https://html-preview.github.io/?url=https://github.com/stalker-tools/real_weapons_mod_clear_sky/blob/main/media/Clear%20Sky%20%2B%20SGM%203.10%20%2B%20Real%20Weapons.html)
 
-This broshure genarated by this line:
+This brochure genarated by this line:
 ```sh
 python graph_tool.py -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky_real_weapons_mod/gamedata/" --head "Clear Sky + SGM 3.10 + Real Weapons" > "Clear Sky + SGM 3.10 + Real Weapons.html"
 ```
