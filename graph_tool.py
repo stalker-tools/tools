@@ -58,7 +58,7 @@ if __name__ == '__main__':
 		def parse_args():
 			parser = argparse.ArgumentParser(
 				description='X-ray .ltx file parser. Out format: matplotlib graphs embedded in html as images',
-				epilog=f'Examples: {argv[0]} -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" --head "Clear Sky - NPC and weapons" > "NPC_and_weapons.htm"',
+				epilog=f'Examples: {argv[0]} -tb -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" --head "Clear Sky" > "ClearSky_brochure.htm"',
 			)
 			parser.add_argument('-f', '--gamedata', metavar='PATH', required=True, help='gamedata directory path')
 			parser.add_argument('-l', '--localization', metavar='LANG', default='rus', help='localization language (see gamedata/configs/text path): rus (default), cz, hg, pol')
