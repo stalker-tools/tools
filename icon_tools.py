@@ -1,26 +1,32 @@
 
+from collections.abc import Iterator
 from os.path import join, sep as path_sep
 from xml.dom.minidom import parse, Element
 from io import BytesIO
 from base64 import b64encode
-from PIL.Image import open
+from PIL.Image import open as image_open, Image
+
+# Usage example:
+# icons = IconsEquipment(gamedata_path)
+# icons.get_image(inv_grid_x, inv_grid_y, inv_grid_width, inv_grid_height)  # values inv_grid_* from .ltx section
 
 
-def get_image_as_html_img(image) -> str:
+def get_image_as_html_img(image: Image, format='webp') -> str:
 	buff = BytesIO()
-	image.save(buff, format='png')
+	image.save(buff, format=format)
 	buff.seek(0)
 	return '<img src="data:;base64,{}"/>'.format(b64encode(buff.read()).decode())
 
 
 class IconsTotal:
+	'Images from <gamedata path>/configs/ui/textures_descr/ui_iconstotal.xml'
 
 	def __init__(self, gamedata_path: str) -> None:
 		self.gamedata_path = gamedata_path
 		self._read_dds()
 
-	def _read_dds(self) -> 'Image':
-		'export ui_iconstotal.xml to .png picture'
+	def _read_dds(self) -> Image:
+		'export ui_iconstotal.xml to image'
 		self.image, self.textures = None, None
 		ui_iconstotal_filepath = join(self.gamedata_path, 'configs', 'ui', 'textures_descr', 'ui_iconstotal.xml')
 		textures_path = join(self.gamedata_path, 'textures')
@@ -29,10 +35,10 @@ class IconsTotal:
 					(file_name := files[0].getAttribute('name')) and \
 					(textures := _xml.getElementsByTagName('texture')):
 				img_file_path = join(textures_path, file_name.replace('\\', path_sep) + '.dds')
-				self.image, self.textures = open(img_file_path), textures
+				self.image, self.textures = image_open(img_file_path), textures
 		except: pass
 
-	def _get_image(self, texture: Element) -> 'tuple[str, Image] | None':
+	def _get_image(self, texture: Element) -> tuple[str, Image] | None:
 		if (id := texture.getAttribute('id')):
 			x = int(texture.getAttribute('x'))
 			y = int(texture.getAttribute('y'))
@@ -41,7 +47,8 @@ class IconsTotal:
 			return (id, self.image.crop((x, y, x + width, y + height)))
 		return None
 
-	def get_image(self, id: str) -> 'Image | None':
+	def get_image(self, id: str) -> Image | None:
+		'get image by id from configs/ui/textures_descr/ui_iconstotal.xml'
 		if self.textures and self.image:
 			for texture in self.textures:
 				try:
@@ -51,13 +58,14 @@ class IconsTotal:
 					print(f'Error: {e}')
 		return None
 
-	def iter_images(self):
+	def iter_images(self) -> Iterator[tuple[str, Image] | None]:
 		if self.textures:
 			for texture in self.textures:
 				yield self._get_image(texture)
 
 
 class IconsEquipment:
+	'Images from <gamedata path>/textures/ui/ui_icon_equipment.dds'
 
 	GRID_SIZE = 50
 
@@ -65,13 +73,13 @@ class IconsEquipment:
 		self.gamedata_path = gamedata_path
 		self._read_dds()
 
-	def _read_dds(self) -> 'Image':
+	def _read_dds(self) -> Image:
 		'get ui_icon_equipment.dds'
 		ui_icon_equipment_filepath = join(self.gamedata_path, 'textures', 'ui', 'ui_icon_equipment.dds')
-		self.image = open(ui_icon_equipment_filepath)
+		self.image = image_open(ui_icon_equipment_filepath)
 
-	def get_image(self, inv_grid_x: int, inv_grid_y: int, inv_grid_width: int, inv_grid_height: int) -> 'Image':
-		'export ui_icon_equipment.dds to .png picture by grid coordinates'
+	def get_image(self, inv_grid_x: int, inv_grid_y: int, inv_grid_width: int, inv_grid_height: int) -> Image:
+		'export ui_icon_equipment.dds to image by grid coordinates'
 		x, y = inv_grid_x * self.GRID_SIZE, inv_grid_y * self.GRID_SIZE
 		return self.image.crop((x, y, x + inv_grid_width * self.GRID_SIZE, y + inv_grid_height * self.GRID_SIZE))
 

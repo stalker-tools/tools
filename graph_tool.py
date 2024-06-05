@@ -57,7 +57,7 @@ if __name__ == '__main__':
 
 		def parse_args():
 			parser = argparse.ArgumentParser(
-				description='X-ray .ltx file parser. Out format: matplotlib graphs embedded in html as images',
+				description='X-ray .ltx file parser. Out format: plotly graphs embedded in html as images',
 				epilog=f'Examples: {argv[0]} -tb -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" --head "Clear Sky" > "ClearSky_brochure.htm"',
 			)
 			parser.add_argument('-f', '--gamedata', metavar='PATH', required=True, help='gamedata directory path')
