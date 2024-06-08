@@ -21,54 +21,6 @@ def get_image_as_html_img(image: Image, format='webp') -> str:
 	return '<img src="data:;base64,{}"/>'.format(b64encode(buff.read()).decode())
 
 
-class IconsTotal:
-	'Images from <gamedata path>/configs/ui/textures_descr/ui_iconstotal.xml'
-
-	def __init__(self, gamedata_path: str) -> None:
-		self.gamedata_path = gamedata_path
-		self._read_dds()
-
-	def _read_dds(self):
-		'load ui_iconstotal.xml to image in self'
-		self.image: Image | None = None
-		self.textures: Iterable[Element] | None = None
-		ui_iconstotal_filepath = join(self.gamedata_path, 'configs', 'ui', 'textures_descr', 'ui_iconstotal.xml')
-		textures_path = join(self.gamedata_path, 'textures')
-		try:
-			if (_xml := parse(ui_iconstotal_filepath)) and (files := _xml.getElementsByTagName('file')) and \
-					(file_name := files[0].getAttribute('name')) and \
-					(textures := _xml.getElementsByTagName('texture')):
-				img_file_path = join(textures_path, file_name.replace('\\', path_sep) + '.dds')
-				self.image, self.textures = image_open(img_file_path), textures
-		except: pass
-
-	def _get_image(self, texture: Element) -> tuple[str, Image] | None:
-		'get image from XML element'
-		if (id := texture.getAttribute('id')):
-			x = int(texture.getAttribute('x'))
-			y = int(texture.getAttribute('y'))
-			width = int(texture.getAttribute('width'))
-			height = int(texture.getAttribute('height'))
-			return (id, self.image.crop((x, y, x + width, y + height)))
-		return None
-
-	def get_image(self, id: str) -> Image | None:
-		'get image by id from configs/ui/textures_descr/ui_iconstotal.xml'
-		if self.textures and self.image:
-			for texture in self.textures:
-				try:
-					if (_id := texture.getAttribute('id')) and _id == id:
-						return self._get_image(texture)[1]
-				except Exception as e:
-					print(f'Error: {e}')
-		return None
-
-	def iter_images(self) -> Iterator[tuple[str, Image] | None]:
-		if self.textures:
-			for texture in self.textures:
-				yield self._get_image(texture)
-
-
 class IconsEquipment:
 	'Images from <gamedata path>/textures/ui/ui_icon_equipment.dds'
 
@@ -106,18 +58,28 @@ class IconsXmlDds:
 		'load .dds to image in self'
 		self.image = image_open(self.dds_file_path)
 
+	def iter_textures(self) -> Iterator[tuple[str, Element]]:
+		'iter textures: (id, Element)'
+		if (xml := self.xml):
+			for t in xml.getElementsByTagName('texture'):
+				yield t.getAttribute('id'), t
+
 	def get_rect(self, texture: Element) -> tuple[int, int, int, int] | None:
 		try:
 			return int(texture.getAttribute('x')), int(texture.getAttribute('y')), int(texture.getAttribute('width')), int(texture.getAttribute('height'))
 		except:
 			return None
 
+	def _get_image(self, t: Element) -> Image | None:
+		if (rect := self.get_rect(t)):
+			x, y, w, h = rect
+			return self.image.crop((x, y, x + w, y + h))
+
 	def get_image(self, id: str) -> Image | None:
 		'get image by id from .dds file'
-		for t in self.xml.getElementsByTagName('texture'):
-			if t.getAttribute('id') == id and (rect := self.get_rect(t)):
-				x, y, w, h = rect
-				return self.image.crop((x, y, x + w, y + h))
+		for _id, t in self.iter_textures():
+			if _id == id:
+				return self._get_image(t)
 		return None
 
 
@@ -145,44 +107,55 @@ if __name__ == '__main__':
 				description='X-ray icons tool. Out format: images',
 				epilog=f'''Examples
 
-  Save ui_iconstotal.xml icon to ui_iconsTotal_artefact.png:
-{argv[0]} -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" t -i ui_iconsTotal_artefact
-
-  Save all ui_iconstotal.xml icons to .png files:
-{argv[0]} -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" t
-
   Save ui_icon_equipment.dds icon to svd.png:
-{argv[0]} -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" e -c 23 30 6 2 -p svd''',
+{argv[0]} -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" e -c 23 30 6 2 -p svd
+
+  Save all icons from ui_iconstotal.xml:
+{argv[0]} -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" ui_iconstotal
+
+  Save ui_iconstotal.xml icon to ui_iconsTotal_artefact.png:
+{argv[0]} -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" ui_iconstotal -i ui_iconsTotal_artefact
+''',
 			)
 			parser.add_argument('-f', '--gamedata', metavar='PATH', required=True, help='gamedata directory path')
 			parser.add_argument('-l', '--localization', metavar='LANG', default='rus', help='localization language (see gamedata/configs/text path): rus (default), cz, hg, pol')
 			subparsers = parser.add_subparsers(dest='mode', help='sub-commands:')
-			parser_ = subparsers.add_parser('total', aliases=('t',), help='icons by ui_iconstotal.xml')
-			parser_.add_argument('-i', '--id', metavar='TEXT', help='id of icon (all icons if omited)')
 			parser_ = subparsers.add_parser('equipment', aliases=('e',), help='icons by ui_icon_equipment.dds')
 			parser_.add_argument('-p', metavar='FILENAME', required=True, help='.png filename to save icon to')
 			parser_.add_argument('-c', metavar='INT', required=True, type=int, nargs=4, help='grid coordinate from .ltx section: X Y WIDTH HEIGHT')
+			parser_ = subparsers.add_parser('ui_npc_unique', help='icons by ui_npc_unique.xml')
+			parser_.add_argument('-i', '--id', metavar='TEXT', help='id of icon (all icons if omited)')
+			parser_ = subparsers.add_parser('ui_iconstotal', help='icons by ui_iconstotal.xml')
+			parser_.add_argument('-i', '--id', metavar='TEXT', help='id of icon (all icons if omited)')
 			return parser.parse_args()
+
+		def save_image(id: str, image: Image | None):
+			if image:
+				file_name = f'{id}.png'
+				print(file_name)
+				image.save(file_name)
+
+		def save_images(icons: IconsXmlDds, id: str | None):
+			if id:
+				save_image(id, icons.get_image(id))
+			else:
+				for id, t in icons.iter_textures():
+					save_image(id, icons._get_image(t))
 
 		args = parse_args()
 		match args.mode:
-			case 'total' | 't':
-				icons = IconsTotal(args.gamedata)
-				if args.id:
-					if (image := icons.get_image(args.id)):
-						image.save(args.id + '.png')
-					else:
-						print(f'Error: ID not exists "{args.id}"')
-				else:
-					# save all icons
-					for id, image in icons.iter_images():
-						image.save(id + '.png')
 			case 'equipment' | 'e':
 				icons = IconsEquipment(args.gamedata)
 				if (image := icons.get_image(*args.c)):
 					image.save(args.p + '.png')
 				else:
 					print('Error save to .png')
+			case 'ui_npc_unique':
+				icons = UiNpcUnique(args.gamedata)
+				save_images(icons, args.id)
+			case 'ui_iconstotal':
+				icons = UiIconstotal(args.gamedata)
+				save_images(icons, args.id)
 
 	try:
 		main()
