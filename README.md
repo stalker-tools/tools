@@ -13,9 +13,32 @@ python graph_tool.py -tb -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky_r
 
 ## Installation
 
+Python:
+```sh
+pip3 install -r requirements.txt
+```
+
+### Windows
+
+Download and install Python latest version. For example:
+[Python 3.12.4](https://www.python.org/downloads/release/python-3124/)
+
+Download and install [Graphviz 11.0.0](https://graphviz.org/download/)
+
+### Linux
+
+Installation instruction: [Graphviz](https://graphviz.org/download/)
+
 Ubuntu:
 ```sh
+sudo apt-get update
 sudo apt-get install graphviz
+```
+
+OpenSUSE:
+```sh
+sudo zypper refresh
+sudo zypper install graphviz
 ```
 
 ## .ltx files analysis tool
