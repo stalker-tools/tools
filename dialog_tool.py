@@ -8,10 +8,11 @@ from glob import glob
 from base64 import b64encode
 import pydot
 from ltx_tool import parse_ltx_file, LtxKind, get_filters_re_compiled, is_filters_re_match
-from xml.dom.minidom import parse as xml_parse, parseString, Element
+from xml.dom.minidom import parseString, Element
 from xml.parsers.expat import ExpatError
 from xml_tool import xml_preprocessor, iter_child_elements, get_child_by_id, get_child_element_values, \
-	add_localization_dict_from_localization_xml_file, add_localization_dict_from_xml
+	add_localization_dict_from_localization_xml_file, add_localization_dict_from_xml, xml_parse
+from paths import Paths
 
 
 class NodeStyle(NamedTuple):
@@ -289,8 +290,8 @@ def create_dialog_graph(dialog: Element, engine: str, style: DarkStyle, localiza
 def get_svg(graph) -> str:
 	try:
 		return graph.create_svg().decode()
-	except:
-		raise SvgException
+	except Exception as e:
+		raise SvgException(e)
 
 
 if __name__ == '__main__':
@@ -531,8 +532,8 @@ if __name__ == '__main__':
 									print(get_graph_as_html_img(graph))
 									# print(graph.create_dot().decode())
 
-			configs_path = join(gamedata_path, 'configs')
-			system_ltx_file_path = join(configs_path, 'system.ltx')
+			paths = Paths(gamedata_path)
+			configs_path, system_ltx_file_path = paths.configs, paths.system_ltx
 			localization_text_path = join(configs_path, 'text', args.localization)
 			dialogs, additional_string_tables = get_dialogs(system_ltx_file_path)
 

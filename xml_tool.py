@@ -3,7 +3,7 @@ from sys import stderr
 from io import BytesIO
 from os import sep as path_separator
 from os.path import join, basename, split
-from xml.dom.minidom import parseString, Element
+from xml.dom.minidom import parseString, Element, Document
 
 
 def xml_preprocessor(xml_file_path: str, include_base_path: str | None = None, included = False, failed_include_file_paths: list[str] = None) -> bytes:
@@ -37,6 +37,15 @@ def xml_preprocessor(xml_file_path: str, include_base_path: str | None = None, i
 			else:
 				buff.write(line)
 	return buff.getvalue()
+
+def xml_parse(xml_file_path: str, include_base_path: str | None = None, included = False, failed_include_file_paths: list[str] = None) -> Document:
+	'''features:
+		- process #include to include text from another .xml files
+		- removes comments <!-----> since they break W3C XML rules
+		- removes <?xml tags in included documents since they break W3C XML rules
+	'''
+	buff = xml_preprocessor(xml_file_path, include_base_path, included, failed_include_file_paths)
+	return parseString(buff)
 
 def iter_child_elements(element: Element):
 	for e in (x for x in element.childNodes if type(x) == Element):

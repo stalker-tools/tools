@@ -9,6 +9,8 @@ from xml_tool import xml_preprocessor, get_child_element_values
 from xml.dom.minidom import Element
 from dialog_tool import get_dialogs_and_add_localization, create_dialog_graph, get_svg, GraphEngineNotSupported, SvgException
 from xml_tool import add_localization_dict_from_localization_xml_file
+from icon_tools import UiNpcUnique, UiIconstotal, get_image_as_html_img
+from paths import Paths
 
 
 def get_profiles(system_ltx_file_path: str) -> tuple[list[str], list[str]] | tuple[None, None]:
@@ -27,6 +29,7 @@ def get_profiles(system_ltx_file_path: str) -> tuple[list[str], list[str]] | tup
 	return files, specific_characters_files
 
 def get_profiles_and_add_localization(localization_dict: dict[str, str], configs_path: str, localization_text_path: str, system_ltx_file_path: str, verbose = False) -> dict[str, Element] | None:
+	'return list[id, XML element]'
 	files, specific_characters_files = get_profiles(system_ltx_file_path)
 	if not files:
 		return None
@@ -36,6 +39,8 @@ def get_profiles_and_add_localization(localization_dict: dict[str, str], configs
 			print(f'<p><code>system.ltx specific_characters_files: {sorted(specific_characters_files)}</code></p>')
 
 	add_localization_dict_from_localization_xml_file(localization_dict, configs_path, join(localization_text_path, 'st_characters.xml'), verbose)
+
+	# ToDo: Add processing of .ltx [string_table] section
 
 	specific_characters_dict = {}
 	failed_include_file_paths = []
@@ -84,8 +89,8 @@ if __name__ == '__main__':
 
 		def analyse(gamedata_path: str):
 
-			configs_path = join(gamedata_path, 'configs')
-			system_ltx_file_path = join(configs_path, 'system.ltx')
+			paths = Paths(gamedata_path)
+			configs_path, system_ltx_file_path = paths.configs, paths.system_ltx
 			localization_text_path = join(configs_path, 'text', args.localization)
 			localization_dict: dict[str, str] = {}  # localization string: id, text
 
@@ -97,6 +102,7 @@ if __name__ == '__main__':
 					from dialog_tool import DarkStyle
 					style = DarkStyle()
 
+			# print HTML header
 			if args.output_format != 'c':
 				print(f'<html>\n<head><title>{args.head}</title></head>')
 				print(f'<body style="background-color:{style.page_bgcolor};color:{style.node.color};">')
@@ -126,10 +132,11 @@ if __name__ == '__main__':
 					case 'reputation' | 'community' | 'bio': return ret + _get_element_values(element, 'name', True)
 				return ret
 
-			def add_element_values(element_name: str, use_localization = False, is_last = False):
+			def add_element_values(element_name: str, use_localization = False, is_last = False, convert = None):
+				'print table cell from XML element'
 				buff = _get_element_values(specific_character, element_name, use_localization)
 				if args.output_format != 'c':
-					print(f'<th {STYLE}>{buff}</th>')
+					print(f'<th {STYLE}>{convert(buff) if convert else buff}</th>')
 				else:
 					if type(buff) is str:
 						if '"' in buff:
@@ -142,10 +149,11 @@ if __name__ == '__main__':
 					if (graph := create_dialog_graph(dialog, args.engine, style, localization_dict)):
 						print(f'{dialog_id}:<br/>{get_svg(graph)}</br>')
 
+			# get dialogs
 			if args.output_format == 'd':
 				dialogs_dict = get_dialogs_and_add_localization(localization_dict, configs_path, localization_text_path, system_ltx_file_path, args.output_format != 'c')
 
-			FILELD_NAMES = ('No', 'Id', 'Name', 'Class', 'Community', 'Reputation', 'Bio')
+			FILELD_NAMES = ('No', 'Id', 'Name', 'Icon', 'Class', 'Community', 'Reputation', 'Bio')
 
 			def print_table_header():
 				if args.output_format != 'c':
@@ -155,10 +163,22 @@ if __name__ == '__main__':
 				else:
 					print(f'{",".join((x for x in FILELD_NAMES))}')
 
+			# print table header
 			match args.output_format:
 				case 'h' | 'c':
 					print_table_header()
+			# print table body
 			if specific_characters_dict:
+
+				def get_icon(id: str | None) -> str | None:
+					if id and ui_npc_unique:
+						if (image := ui_npc_unique.get_image(id)) or (image := ui_iconstotal.get_image(id)):
+							return f'{id}<br/>{get_image_as_html_img(image)}'
+					return id
+
+				ui_npc_unique = UiNpcUnique(gamedata_path) if args.output_format != 'c' else None
+				ui_iconstotal = UiIconstotal(gamedata_path) if args.output_format != 'c' else None
+
 				for index, specific_character in enumerate(sorted(specific_characters_dict.values(), key=lambda x:
 						_get_element_values_sort(x, args.sort_field, args.sort_field == 'name'))):
 					match args.output_format:
@@ -171,6 +191,7 @@ if __name__ == '__main__':
 							print(f'{index + 1}', end=',')
 					add_element_values('id')
 					add_element_values('name', True)
+					add_element_values('icon', convert=get_icon)
 					add_element_values('class')
 					add_element_values('community')
 					add_element_values('reputation')
@@ -184,6 +205,7 @@ if __name__ == '__main__':
 						if (dialog_ids := get_child_element_values(specific_character, 'actor_dialog')):
 							for dialog_id in dialog_ids:
 								_create_dialog_graph(dialog_id)
+			# print HTML footer
 			if args.output_format == 'h':
 				print('</tbody></table>')
 				print('</body>\n</html>')
@@ -196,5 +218,5 @@ if __name__ == '__main__':
 		exit(0)
 	except GraphEngineNotSupported as e:
 		print(f'Graph engine not suppoted: {e}', file=stderr)
-	except SvgException:
-		print(f'Svg error', file=stderr)
+	except SvgException as e:
+		print(f'Svg error: {e}', file=stderr)

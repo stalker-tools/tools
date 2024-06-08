@@ -1,10 +1,12 @@
 
-from collections.abc import Iterator
+from collections.abc import Iterator, Iterable
 from os.path import join, sep as path_sep
 from xml.dom.minidom import parse, Element
 from io import BytesIO
 from base64 import b64encode
 from PIL.Image import open as image_open, Image
+
+from paths import Paths
 
 # Usage example:
 # icons = IconsEquipment(gamedata_path)
@@ -12,6 +14,7 @@ from PIL.Image import open as image_open, Image
 
 
 def get_image_as_html_img(image: Image, format='webp') -> str:
+	'return HTML <img> tag with embedded base64 encoded image'
 	buff = BytesIO()
 	image.save(buff, format=format)
 	buff.seek(0)
@@ -25,9 +28,10 @@ class IconsTotal:
 		self.gamedata_path = gamedata_path
 		self._read_dds()
 
-	def _read_dds(self) -> Image:
-		'export ui_iconstotal.xml to image'
-		self.image, self.textures = None, None
+	def _read_dds(self):
+		'load ui_iconstotal.xml to image in self'
+		self.image: Image | None = None
+		self.textures: Iterable[Element] | None = None
 		ui_iconstotal_filepath = join(self.gamedata_path, 'configs', 'ui', 'textures_descr', 'ui_iconstotal.xml')
 		textures_path = join(self.gamedata_path, 'textures')
 		try:
@@ -39,6 +43,7 @@ class IconsTotal:
 		except: pass
 
 	def _get_image(self, texture: Element) -> tuple[str, Image] | None:
+		'get image from XML element'
 		if (id := texture.getAttribute('id')):
 			x = int(texture.getAttribute('x'))
 			y = int(texture.getAttribute('y'))
@@ -73,8 +78,8 @@ class IconsEquipment:
 		self.gamedata_path = gamedata_path
 		self._read_dds()
 
-	def _read_dds(self) -> Image:
-		'get ui_icon_equipment.dds'
+	def _read_dds(self):
+		'load ui_icon_equipment.dds to image in self'
 		ui_icon_equipment_filepath = join(self.gamedata_path, 'textures', 'ui', 'ui_icon_equipment.dds')
 		self.image = image_open(ui_icon_equipment_filepath)
 
@@ -82,6 +87,50 @@ class IconsEquipment:
 		'export ui_icon_equipment.dds to image by grid coordinates'
 		x, y = inv_grid_x * self.GRID_SIZE, inv_grid_y * self.GRID_SIZE
 		return self.image.crop((x, y, x + inv_grid_width * self.GRID_SIZE, y + inv_grid_height * self.GRID_SIZE))
+
+
+class IconsXmlDds:
+	'Pair of .xml texture tags and .dds texture files'
+
+	def __init__(self, xml_file_path: str, dds_file_path: str) -> None:
+		self.xml_file_path = xml_file_path
+		self.dds_file_path = dds_file_path
+		self._read_xml()
+		self._read_dds()
+
+	def _read_xml(self):
+		'load .xml with texture tags in self'
+		self.xml = parse(self.xml_file_path)
+
+	def _read_dds(self):
+		'load .dds to image in self'
+		self.image = image_open(self.dds_file_path)
+
+	def get_rect(self, texture: Element) -> tuple[int, int, int, int] | None:
+		try:
+			return int(texture.getAttribute('x')), int(texture.getAttribute('y')), int(texture.getAttribute('width')), int(texture.getAttribute('height'))
+		except:
+			return None
+
+	def get_image(self, id: str) -> Image | None:
+		'get image by id from .dds file'
+		for t in self.xml.getElementsByTagName('texture'):
+			if t.getAttribute('id') == id and (rect := self.get_rect(t)):
+				x, y, w, h = rect
+				return self.image.crop((x, y, x + w, y + h))
+		return None
+
+
+class UiNpcUnique(IconsXmlDds):
+	def __init__(self, gamedata_path: str) -> None:
+		paths = Paths(gamedata_path)
+		super().__init__(paths.ui_textures_descr('ui_npc_unique'), paths.ui_textures('ui_npc_unique'))
+
+
+class UiIconstotal(IconsXmlDds):
+	def __init__(self, gamedata_path: str) -> None:
+		paths = Paths(gamedata_path)
+		super().__init__(paths.ui_textures_descr('ui_iconstotal'), paths.ui_textures('ui_iconstotal'))
 
 
 if __name__ == '__main__':
