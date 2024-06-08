@@ -11,6 +11,13 @@ This brochure genarated by this line:
 python graph_tool.py -tb -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky_real_weapons_mod/gamedata/" --head "Clear Sky + SGM 3.10 + Real Weapons" > "Clear Sky + SGM 3.10 + Real Weapons.html"
 ```
 
+## Installation
+
+Ubuntu:
+```sh
+sudo apt-get install graphviz
+```
+
 ## .ltx files analysis tool
 
 Command-line tools is 100% python, so it has wide usage as cross-platform.
