@@ -13,21 +13,26 @@ python graph_tool.py -tb -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky_r
 
 ## Installation
 
-Python:
+Dependencies:
+| Python | Graphviz |
+|--------|----------|
+| ![Python](https://www.python.org/static/img/python-logo.png) | ![Graphviz](https://graphviz.org/Resources/app.png) |
+
+Python packages installation:
 ```sh
 pip3 install -r requirements.txt
 ```
 
-### Windows
+### Windows instructions
 
 Download and install Python latest version. For example:
 [Python 3.12.4](https://www.python.org/downloads/release/python-3124/)
 
-Download and install [Graphviz 11.0.0](https://graphviz.org/download/)
+Download and install [Graphviz 11.0.0](https://graphviz.org/download/#windows)
 
-### Linux
+### Linux instructions
 
-Installation instruction: [Graphviz](https://graphviz.org/download/)
+Installation instruction: [Graphviz](https://graphviz.org/download/#linux)
 
 Ubuntu:
 ```sh
