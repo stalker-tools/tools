@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from sys import stderr
-from typing import NamedTuple
+from typing import NamedTuple, Iterator
 from os.path import join, basename, split
 from glob import glob
 from base64 import b64encode

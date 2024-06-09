@@ -3,7 +3,7 @@
 from collections.abc import Iterator
 from sys import stderr
 from glob import glob
-from os.path import join, dirname, isdir
+from os.path import join, dirname, isdir, sep
 import locale
 from enum import Enum, auto
 from re import compile, IGNORECASE, Pattern
@@ -84,16 +84,16 @@ class Ltx:
 				yield self.Section(self, section_name, section_dict)
 
 
-SECTION_RE = compile('^\[([\S]+)\]:?(.*)$')
+SECTION_RE = compile(r'^\[([\S]+)\]:?(.*)$')
 
 def get_filters_re_compiled(search_patterns: list[str] | None) -> tuple[Pattern] | None:
 
 	def re_escape(search_pattern: str) -> str:
 		ret = search_pattern.replace('*', '.*')
-		ret = ret.replace('^', '\^').replace('$', '\$')
-		ret = ret.replace('(', '\(').replace(')', '\)')
-		ret = ret.replace('[', '\[').replace(']', '\]')
-		ret = ret.replace('?', '\?').replace('!', '\!')
+		ret = ret.replace(r'^', r'\^').replace(r'$', r'\$')
+		ret = ret.replace(r'(', r'\(').replace(r')', r'\)')
+		ret = ret.replace(r'[', r'\[').replace(r']', r'\]')
+		ret = ret.replace(r'?', r'\?').replace(r'!', r'\!')
 		return ret
 
 	return tuple(compile('^' + re_escape(x) + '$', IGNORECASE) for x in search_patterns) if search_patterns else None
@@ -119,9 +119,17 @@ def try_decode(buff: bytearray, encoding=locale.getpreferredencoding()) -> str:
 			# hard case - just escape the symbols
 			return buff.decode(encoding, 'backslashreplace')
 
-def parse_ltx_file(file_path: str, follow_includes=False):
+MULTIPLAYER_PATH = f'{sep}mp{sep}'
+
+def parse_ltx_file(file_path: str, follow_includes=False) -> Iterator[
+		tuple[LtxKind, int, str] |
+		tuple[LtxKind, str, tuple | None] |
+		tuple[LtxKind, int, str, str, tuple] |
+		tuple[LtxKind, str, tuple]
+		]:
+	'iter .ltx file: LtxKind.INCLUDE, LtxKind.NEW_SECTION, LtxKind.LET, LtxKind.DATA'
 	# exclude multiplayer files
-	if '/mp/' in file_path:
+	if MULTIPLAYER_PATH in file_path.lower():
 		return
 	section_name = None
 	try:
@@ -133,9 +141,11 @@ def parse_ltx_file(file_path: str, follow_includes=False):
 					pass  # ignore empty or comment line
 				elif line.startswith(b'#include'):
 					# include another ltx file
+					# example: #include "upgrades\w_ak74_up.ltx"
 					line = remove_comment(line)
 					include_file_path = line[len(b'#include'):].strip(b' \t"')
-					include_file_path = include_file_path.replace(b'\\', b'/')
+					if sep != '\\':
+						include_file_path = include_file_path.replace(b'\\', sep.encode())
 					include_file_path = try_decode(include_file_path)
 					yield LtxKind.INCLUDE, line_index, include_file_path
 					if follow_includes:
@@ -146,14 +156,17 @@ def parse_ltx_file(file_path: str, follow_includes=False):
 					line = try_decode(line)
 					if line.startswith('['):
 						# new section starts
+						# example: [ammo_base]:identity_immunities,default_weapon_params
 						section_name, section_parents = SECTION_RE.findall(line)[0]
 						if section_name:
 							yield LtxKind.NEW_SECTION, section_name, section_parents.split(',') if section_parents else None
 					elif '=' in line:
 						# let expression
+						# example: position = -0.021, -0.085, 0.0
 						lval, _, rval = line.partition('=')
 						yield LtxKind.LET, line_index, section_name, lval.strip(), tuple(map(lambda x: x.strip(), rval.split(',')))
 					else:
+						# example: 255,255,000,255
 						yield LtxKind.DATA, section_name, map(lambda x: x.strip(), line.split(','))
 
 	except IOError as e:

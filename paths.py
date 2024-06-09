@@ -7,6 +7,9 @@ class Paths:
 	def __init__(self, gamedata_path: str) -> None:
 		self.gamedata = gamedata_path
 
+	def __str__(self) -> str:
+		return f'Paths({self.gamedata})'
+
 	# Well-known paths
 
 	@property
