@@ -8,9 +8,9 @@ from xml.dom.minidom import parseString
 from xml_tool import xml_preprocessor, get_child_element_values
 from xml.dom.minidom import Element
 from dialog_tool import get_dialogs_and_add_localization, create_dialog_graph, get_svg, GraphEngineNotSupported, SvgException
-from xml_tool import add_localization_dict_from_localization_xml_file
 from icon_tools import UiNpcUnique, UiIconstotal, get_image_as_html_img
 from paths import Paths
+from localization import Localization
 
 
 def get_profiles(system_ltx_file_path: str) -> tuple[list[str], list[str]] | tuple[None, None]:
@@ -28,9 +28,9 @@ def get_profiles(system_ltx_file_path: str) -> tuple[list[str], list[str]] | tup
 	except: pass
 	return files, specific_characters_files
 
-def get_profiles_and_add_localization(localization_dict: dict[str, str], configs_path: str, localization_text_path: str, system_ltx_file_path: str, verbose = False) -> dict[str, Element] | None:
+def get_profiles_and_add_localization(paths: Paths, loc: Localization, verbose = False) -> dict[str, Element] | None:
 	'return list[id, XML element]'
-	files, specific_characters_files = get_profiles(system_ltx_file_path)
+	files, specific_characters_files = get_profiles(paths.system_ltx)
 	if not files:
 		return None
 	if verbose:
@@ -38,16 +38,16 @@ def get_profiles_and_add_localization(localization_dict: dict[str, str], configs
 		if specific_characters_files:
 			print(f'<p><code>system.ltx specific_characters_files: {sorted(specific_characters_files)}</code></p>')
 
-	add_localization_dict_from_localization_xml_file(localization_dict, configs_path, join(localization_text_path, 'st_characters.xml'), verbose)
+	loc.add_localization_xml_file(join(loc.localization_text_path, 'st_characters.xml'))
 
 	# ToDo: Add processing of .ltx [string_table] section
 
 	specific_characters_dict = {}
 	failed_include_file_paths = []
 	for specific_characters_file in specific_characters_files:
-		xml_file_path = join(configs_path, 'gameplay', f'{specific_characters_file}.xml')
+		xml_file_path = join(paths.configs, 'gameplay', f'{specific_characters_file}.xml')
 		try:
-			buff = xml_preprocessor(xml_file_path, configs_path, failed_include_file_paths=failed_include_file_paths)
+			buff = xml_preprocessor(xml_file_path, paths.configs, failed_include_file_paths=failed_include_file_paths)
 		except FileNotFoundError:
 			print(f'profile file not found: {xml_file_path}', file=stderr)
 			continue
@@ -90,9 +90,7 @@ if __name__ == '__main__':
 		def analyse(gamedata_path: str):
 
 			paths = Paths(gamedata_path)
-			configs_path, system_ltx_file_path = paths.configs, paths.system_ltx
-			localization_text_path = join(configs_path, 'text', args.localization)
-			localization_dict: dict[str, str] = {}  # localization string: id, text
+			loc = Localization(paths)
 
 			match args.style.lower():
 				case 'l':
@@ -107,7 +105,7 @@ if __name__ == '__main__':
 				print(f'<html>\n<head><title>{args.head}</title></head>')
 				print(f'<body style="background-color:{style.page_bgcolor};color:{style.node.color};">')
 				print(f'<h1>{args.head}</h1><hr/>')
-			specific_characters_dict = get_profiles_and_add_localization(localization_dict, configs_path, localization_text_path, system_ltx_file_path, args.output_format != 'c')
+			specific_characters_dict = get_profiles_and_add_localization(paths, loc, args.output_format != 'c')
 
 			STYLE = 'style="text-align: left;"'
 
@@ -116,7 +114,7 @@ if __name__ == '__main__':
 					return element.getAttribute('id')
 				if (buff := get_child_element_values(element, element_name, '\n')):
 					if use_localization:
-						if (buff2 := localization_dict.get(buff)):
+						if (buff2 := loc.string_table.get(buff)):
 							return buff2
 					if element_name == 'reputation':
 						try:
@@ -146,12 +144,12 @@ if __name__ == '__main__':
 
 			def _create_dialog_graph(dialog_id: str):
 				if (dialog := dialogs_dict.get(dialog_id)):
-					if (graph := create_dialog_graph(dialog, args.engine, style, localization_dict)):
+					if (graph := create_dialog_graph(dialog, args.engine, style, loc)):
 						print(f'{dialog_id}:<br/>{get_svg(graph)}</br>')
 
 			# get dialogs
 			if args.output_format == 'd':
-				dialogs_dict = get_dialogs_and_add_localization(localization_dict, configs_path, localization_text_path, system_ltx_file_path, args.output_format != 'c')
+				dialogs_dict = get_dialogs_and_add_localization(paths, loc, args.output_format != 'c')
 
 			FILELD_NAMES = ('No', 'Id', 'Name', 'Icon', 'Class', 'Community', 'Reputation', 'Bio')
 

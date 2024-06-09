@@ -64,27 +64,6 @@ def get_child_element_values(element: Element, child_name: str, join_str: str | 
 			ret.append(e.nodeValue)
 	return join_str.join(ret) if join_str is not None else ret
 
-def add_localization_dict_from_xml(localization_dict: dict[str, str], _xml: Element):
-	'_xml - string_table element'
-	for _string in _xml.getElementsByTagName('string'):
-		if (string_id := _string.getAttribute('id')):
-			localization_dict[string_id] = get_child_element_values(_string, 'text', '\n')
-
-def add_localization_dict_from_localization_xml_file(localization_dict: dict[str, str], configs_path: str, localization_xml_file_path: str, verbose = False):
-	'returns dict of localization string id and localization string text'
-	if verbose:
-		print(f'<p><small><code>additional localization string_tables: {localization_xml_file_path[len(configs_path) + 1:]}</code></small></p>')
-	try:
-		buff = xml_preprocessor(localization_xml_file_path, configs_path)
-	except FileNotFoundError:
-		print(f'additional localization file not found: {localization_xml_file_path}', file=stderr)
-		return
-	try:
-		if (_xml := parseString(buff)):
-			add_localization_dict_from_xml(localization_dict, _xml)
-	except Exception as e:
-		print(f'additional localization parse error: {localization_xml_file_path} {e}', file=stderr)
-
 
 if __name__ == '__main__':
 	import argparse

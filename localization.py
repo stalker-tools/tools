@@ -5,7 +5,7 @@ from xml.dom.minidom import parseString, Document
 # tools imports
 from ltx_tool import parse_ltx_file, LtxKind
 from paths import Paths
-from xml_tool import xml_preprocessor, get_child_element_values
+from xml_tool import xml_preprocessor, xml_parse, get_child_element_values
 
 
 class Localization:
@@ -50,19 +50,21 @@ class Localization:
 			for string_table_file in self.string_table_files:
 				xml_file_name = join(self.localization_text_path, f'{string_table_file}.xml')
 				if self.verbose:
-					print(f'Parce string_table file {string_table_file}: "{xml_file_name}"')
-				buff = xml_preprocessor(xml_file_name, self.paths.configs)
-				try:
-					if (_xml := parseString(buff)):
-						self.add_localization_xml(_xml)
-				except Exception as e:
-					print(f'additional localization parse error: {xml_file_name} {e}', file=stderr)
+					print(f'Parse string_table file {string_table_file}: "{xml_file_name}"')
+				self.add_localization_xml_file(xml_file_name)
 
 	def add_localization_xml(self, _xml: Document):
 		'_xml - string_table document'
 		for _string in _xml.getElementsByTagName('string'):
 			if (string_id := _string.getAttribute('id')):
 				self.string_table[string_id] = get_child_element_values(_string, 'text', '\n')
+
+	def add_localization_xml_file(self, file_path: str):
+		try:
+			if (_xml := xml_parse(file_path, self.paths.configs)):
+				self.add_localization_xml(_xml)
+		except Exception as e:
+			print(f'Localization .xml file parse error: {file_path} {e}', file=stderr)
 
 
 if __name__ == '__main__':
