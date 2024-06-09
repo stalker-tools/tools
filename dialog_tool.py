@@ -7,9 +7,10 @@ from os.path import join, basename, split, sep
 from glob import glob
 from base64 import b64encode
 import pydot
-from ltx_tool import parse_ltx_file, LtxKind, get_filters_re_compiled, is_filters_re_match
 from xml.dom.minidom import Element
 from xml.parsers.expat import ExpatError
+# stalker-tools import
+from ltx_tool import parse_ltx_file, LtxKind, get_filters_re_compiled, is_filters_re_match
 from xml_tool import iter_child_elements, get_child_by_id, get_child_element_values, xml_parse
 from paths import Paths
 from localization import Localization
@@ -454,7 +455,7 @@ if __name__ == '__main__':
 											pass
 										if dialog_id:
 											localization_xml_path = split(text_xml_file_path)[0]
-											# try find in well-known .xml files
+											# try find not well-known .xml files
 											try:
 												for file_path in glob(join(localization_xml_path, 'st_dialog*.xml')):
 													if find_in_file(file_path, dialog_id.encode()):

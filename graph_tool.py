@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-from collections.abc import Iterator, Callable
+from collections.abc import Iterator
 from typing import NamedTuple
 from plotly.subplots import make_subplots
 import plotly.graph_objects as go
@@ -528,7 +528,6 @@ background: url("data:image/svg+xml,%3Csvg viewBox='0 0 20 300' xmlns='http://ww
 				brochure(args.gamedata)
 			case _:
 				analyse(args.gamedata)
-
 
 	try:
 		main()

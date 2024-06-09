@@ -7,6 +7,7 @@ from ltx_tool import parse_ltx_file, LtxKind
 from xml.dom.minidom import parseString
 from xml_tool import xml_preprocessor, get_child_element_values
 from xml.dom.minidom import Element
+# stalker-tools import
 from dialog_tool import get_dialogs_and_add_localization, create_dialog_graph, get_svg, GraphEngineNotSupported, SvgException
 from icon_tools import UiNpcUnique, UiIconstotal, get_image_as_html_img
 from paths import Paths
@@ -80,12 +81,38 @@ if __name__ == '__main__':
 			parser.add_argument('-l', '--localization', metavar='LANG', default='rus', help='localization language (see gamedata/configs/text path): rus (default), cz, hg, pol')
 			parser.add_argument('-e', '--engine', metavar='ENGINE', default='dot', help='dot layout engine: circo, dot (default), neato')
 			parser.add_argument('-s', '--style', metavar='STYLE', default='dark', help='style: l - light, d - dark (default)')
-			parser.add_argument('-o', '--output-format', metavar='OUT_FORMAT', default='h', help='output format: h - html table (default), d - html table + svg dialogs, c - csv table')
-			parser.add_argument('--sort-field', metavar='NAME', default='id', help='sort field name: id (default), name, class, community, reputation, bio')
+			parser.add_argument('-o', '--output-format', metavar='OUT_FORMAT', default='h', help='output format: h - html table (default), d - html table + svg dialogs, c - csv table, b - brochure')
+			parser.add_argument('--sort-field', metavar='NAME', default='name', help='sort field name: id, name (default), class, community, reputation, bio')
 			parser.add_argument('--head', metavar='TEXT', default='S.T.A.L.K.E.R.', help='head text for html output')
 			return parser.parse_args()
 
 		args = parse_args()
+
+		def _get_element_values(loc: Localization | None, element: Element, element_name: str) -> str | int:
+			if element_name == 'id':
+				return element.getAttribute('id')
+			if (buff := get_child_element_values(element, element_name, '\n')):
+				if loc:
+					if (buff2 := loc.string_table.get(buff)):
+						return buff2
+					if element_name =='name':
+						# enforce localization process
+						if loc.try_find_and_add(buff):
+							if (buff2 := loc.string_table.get(buff)):
+								return buff2
+				if element_name == 'reputation':
+					try:
+						return int(buff)
+					except: pass
+				return buff
+			return ''
+
+		def _get_element_values_sort(loc: Localization | None, element: Element, element_name: str):
+			ret = _get_element_values(loc, element, element_name)
+			match element_name:
+				case 'name': return (ret if ord(ret[0]) < 128 else ' '+ret) + element.getAttribute('id')
+				case 'reputation' | 'community' | 'bio': return ret + _get_element_values(element, 'name', True)
+			return ret
 
 		def analyse(gamedata_path: str):
 
@@ -109,30 +136,9 @@ if __name__ == '__main__':
 
 			STYLE = 'style="text-align: left;"'
 
-			def _get_element_values(element: Element, element_name: str, use_localization = False):
-				if element_name == 'id':
-					return element.getAttribute('id')
-				if (buff := get_child_element_values(element, element_name, '\n')):
-					if use_localization:
-						if (buff2 := loc.string_table.get(buff)):
-							return buff2
-					if element_name == 'reputation':
-						try:
-							return int(buff)
-						except: pass
-					return buff
-				return ''
-
-			def _get_element_values_sort(element: Element, element_name: str, use_localization = False):
-				ret = _get_element_values(element, element_name, use_localization)
-				match element_name:
-					case 'name': return (ret if ord(ret[0]) < 128 else ' '+ret) + element.getAttribute('id')
-					case 'reputation' | 'community' | 'bio': return ret + _get_element_values(element, 'name', True)
-				return ret
-
-			def add_element_values(element_name: str, use_localization = False, is_last = False, convert = None):
+			def add_element_values(element_name: str, loc: Localization | None = None, is_last = False, convert = None):
 				'print table cell from XML element'
-				buff = _get_element_values(specific_character, element_name, use_localization)
+				buff = _get_element_values(loc, specific_character, element_name)
 				if args.output_format != 'c':
 					print(f'<th {STYLE}>{convert(buff) if convert else buff}</th>')
 				else:
@@ -178,7 +184,7 @@ if __name__ == '__main__':
 				ui_iconstotal = UiIconstotal(gamedata_path) if args.output_format != 'c' else None
 
 				for index, specific_character in enumerate(sorted(specific_characters_dict.values(), key=lambda x:
-						_get_element_values_sort(x, args.sort_field, args.sort_field == 'name'))):
+						_get_element_values_sort(loc if args.sort_field == 'name' else None, x, args.sort_field))):
 					match args.output_format:
 						case 'h' | 'd':
 							if args.output_format == 'd':
@@ -188,7 +194,7 @@ if __name__ == '__main__':
 						case 'c':
 							print(f'{index + 1}', end=',')
 					add_element_values('id')
-					add_element_values('name', True)
+					add_element_values('name', loc)
 					add_element_values('icon', convert=get_icon)
 					add_element_values('class')
 					add_element_values('community')
@@ -208,7 +214,41 @@ if __name__ == '__main__':
 				print('</tbody></table>')
 				print('</body>\n</html>')
 
-		analyse(args.gamedata)
+		def brochure(gamedata_path: str, k_width = 1):
+			paths = Paths(gamedata_path)
+			loc = Localization(paths)
+			specific_characters_dict = get_profiles_and_add_localization(paths, loc)
+
+			def get_icon(id: str | None) -> str | None:
+				if id and ui_npc_unique:
+					if (image := ui_npc_unique.get_image(id)) or (image := ui_iconstotal.get_image(id)):
+						return get_image_as_html_img(image)
+				return id
+
+			def get_money(specific_character: Element, prefix: str) -> str:
+				if (money := specific_character.getElementsByTagName('money')) and (money := money[0]):
+					_min, _max = money.getAttribute("min"), money.getAttribute("max")
+					return f'{prefix}: {_min}{"..."+_max if _min != _max else ""}{"..." if money.getAttribute("infinitive") != "0" else ""}'
+				return ''
+
+			ui_npc_unique = UiNpcUnique(gamedata_path) if args.output_format != 'c' else None
+			ui_iconstotal = UiIconstotal(gamedata_path) if args.output_format != 'c' else None
+			print(f'<div style="display:grid;grid-template-columns:repeat(auto-fill,{int(375*k_width)}px);">')
+			if specific_characters_dict:
+				index = 1
+				for specific_character in sorted(specific_characters_dict.values(), key=lambda x:
+						_get_element_values_sort(loc if args.sort_field == 'name' else None, x, args.sort_field)):
+					name = _get_element_values(loc, specific_character, 'name')
+					bio = _get_element_values(loc, specific_character, 'bio')
+					if not name.startswith('GENERATE_NAME'):
+						print(f'<div style="display:grid;padding:10px;margin:7px;border:1px outset;border-radius:15px;"><div style="display:flex;align-items:flex-start;">{index}&nbsp;&nbsp;&nbsp;<span style="font-weight:bold;font-size:larger;">{name}</span></div><div style="display:flex;align-items:flex-start;">{get_icon(_get_element_values(None, specific_character, "icon"))}<br/>&nbsp;Группировка: {_get_element_values(loc, specific_character, "community")}<br/>&nbsp;Ранг: {_get_element_values(loc, specific_character, "rank")}<br/>&nbsp;Репутация: {_get_element_values(loc, specific_character, "reputation")}<br/>&nbsp;{get_money(specific_character, "Деньги")}</div><div style="display:flex;align-items:end;">{bio}</div></div>')
+						index += 1
+			print('</div>')
+
+		if args.output_format == 'b':
+			brochure(args.gamedata)
+		else:
+			analyse(args.gamedata)
 
 	try:
 		main()

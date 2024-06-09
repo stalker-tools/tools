@@ -1,11 +1,12 @@
 
 from sys import stderr
 from os.path import basename, join
-from xml.dom.minidom import parseString, Document
-# tools imports
+from glob import glob
+from xml.dom.minidom import Document
+# stalker-tools import
 from ltx_tool import parse_ltx_file, LtxKind
 from paths import Paths
-from xml_tool import xml_preprocessor, xml_parse, get_child_element_values
+from xml_tool import xml_parse, get_child_element_values
 
 
 class Localization:
@@ -65,6 +66,35 @@ class Localization:
 				self.add_localization_xml(_xml)
 		except Exception as e:
 			print(f'Localization .xml file parse error: {file_path} {e}', file=stderr)
+
+	def try_find_and_add(self, id: str, file_name_filter = 'st_dialog*.xml') -> bool:
+		# try find not well-known .xml localization files
+
+		def find_in_file(file_path: str, text: bytes) -> bool:
+			with open(file_path, 'rb') as f:
+				is_localization_file = False
+				for line in f.readlines():
+					if line.strip() == b'<string_table>':
+						is_localization_file = True
+					elif is_localization_file and text in line:
+						return True
+			return False
+
+		if id.startswith('GENERATE_NAME'):
+			return False
+
+		try:
+			for file_path in glob(join(self.localization_text_path, file_name_filter)):
+				if find_in_file(file_path, f'"{id}"'.encode()):
+					# localization xml file found
+					print(f'Localization found: {file_path[len(self.paths.gamedata) + 1:]}', file=stderr)
+					self.add_localization_xml_file(file_path)
+					return True
+		except Exception as e:
+			print(e)
+			pass
+
+		return False
 
 
 if __name__ == '__main__':
