@@ -82,11 +82,7 @@ if __name__ == '__main__':
 			parser.add_argument('-e', '--engine', metavar='ENGINE', default='dot', help='dot layout engine: circo, dot (default), neato')
 			parser.add_argument('-s', '--style', metavar='STYLE', default='dark', help='style: l - light, d - dark (default)')
 			parser.add_argument('-o', '--output-format', metavar='OUT_FORMAT', default='h', help='output format: h - html table (default), d - html table + svg dialogs, c - csv table, b - brochure')
-<<<<<<< HEAD
-			parser.add_argument('--sort-field', metavar='NAME', default='name', help='sort field name: id, name (default), class, community, reputation, bio')
-=======
 			parser.add_argument('--sort-field', metavar='NAME', default='name', choices=('id', 'name', 'class', 'community', 'reputation', 'bio'), help='sort field name: id, name (default), class, community, reputation, bio')
->>>>>>> 3873aef (Add brochure format to profiles)
 			parser.add_argument('--head', metavar='TEXT', default='S.T.A.L.K.E.R.', help='head text for html output')
 			return parser.parse_args()
 
@@ -112,18 +108,11 @@ if __name__ == '__main__':
 			return ''
 
 		def _get_element_values_sort(loc: Localization | None, element: Element, element_name: str):
-<<<<<<< HEAD
-			ret = _get_element_values(loc, element, element_name)
-			match element_name:
-				case 'name': return (ret if ord(ret[0]) < 128 else ' '+ret) + element.getAttribute('id')
-				case 'reputation' | 'community' | 'bio': return ret + _get_element_values(element, 'name', True)
-=======
 			ret = _get_element_values(loc if element_name == 'name' else None, element, element_name)
 			match element_name:
 				case 'name': return (ret if ord(ret[0]) < 128 else ' '+ret) + element.getAttribute('id')
 				case 'reputation': return f'{ret:05}{_get_element_values(loc, element, "name")}'
 				case 'community' | 'bio': return ret + _get_element_values(loc, element, 'name')
->>>>>>> 3873aef (Add brochure format to profiles)
 			return ret
 
 		def analyse(gamedata_path: str):
@@ -196,11 +185,7 @@ if __name__ == '__main__':
 				ui_iconstotal = UiIconstotal(gamedata_path) if args.output_format != 'c' else None
 
 				for index, specific_character in enumerate(sorted(specific_characters_dict.values(), key=lambda x:
-<<<<<<< HEAD
-						_get_element_values_sort(loc if args.sort_field == 'name' else None, x, args.sort_field))):
-=======
 						_get_element_values_sort(loc, x, args.sort_field))):
->>>>>>> 3873aef (Add brochure format to profiles)
 					match args.output_format:
 						case 'h' | 'd':
 							if args.output_format == 'd':
@@ -253,11 +238,7 @@ if __name__ == '__main__':
 			if specific_characters_dict:
 				index = 1
 				for specific_character in sorted(specific_characters_dict.values(), key=lambda x:
-<<<<<<< HEAD
-						_get_element_values_sort(loc if args.sort_field == 'name' else None, x, args.sort_field)):
-=======
 						_get_element_values_sort(loc, x, args.sort_field)):
->>>>>>> 3873aef (Add brochure format to profiles)
 					name = _get_element_values(loc, specific_character, 'name')
 					bio = _get_element_values(loc, specific_character, 'bio')
 					if not name.startswith('GENERATE_NAME'):
