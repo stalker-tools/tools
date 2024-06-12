@@ -1,5 +1,6 @@
 
 from os.path import join
+from pathlib import Path
 
 
 class Paths:
@@ -19,6 +20,13 @@ class Paths:
 	@property
 	def system_ltx(self) -> str:
 		return join(self.gamedata, 'configs', 'system.ltx')
+
+	def relative(self, path: str) -> str:
+		'return relative path to gamedata'
+		p = Path(path)
+		if not p.is_relative_to(self.gamedata):
+			return path
+		return str(p.relative_to(self.gamedata))
 
 	def ui_textures_descr(self, common_name: str) -> str:
 		'return UI textures .xml file path: <gamedata path>/configs/ui/textures_descr/.xml'

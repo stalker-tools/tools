@@ -161,7 +161,7 @@ if __name__ == '__main__':
 					else:
 						print('<tr style="border-style:hidden">')
 					print(f'<th>{index + 1}</th>')
-					print(f'<th {STYLE}>{section.name}</th>')
+					print(f'<th {STYLE}><span style="text-decoration: underline dotted;">{game.paths.relative(section.ltx.ltx_file_path)}</span><br/>{section.name}</th>')
 					print(f'<th>{inv_name_short}</th>')
 					inv_grid = (int(section.get('inv_grid_x')), int(section.get('inv_grid_y')), int(section.get('inv_grid_width', 1)), int(section.get('inv_grid_height', 1)))
 					print(f'<th>{get_image_as_html_img(icons.get_image(*inv_grid))}</th>')
@@ -330,10 +330,10 @@ if __name__ == '__main__':
 				def get_parameters(graphs, section):
 					return "<br/>".join(f'{graph.get_title()}: {graph.get_str(section)}' for graph in graphs if section.get(graph.value_name) is not None)
 
-				print(f'<div style="display:grid;grid-template-columns:repeat(auto-fill,{int(375*k_width)}px);">')
+				print(f'<div class="main">')
 				for index, (section, inv_name_short_localized) in enumerate(sections):
 					inv_grid = (int(section.get('inv_grid_x')), int(section.get('inv_grid_y')), int(section.get('inv_grid_width', 1)), int(section.get('inv_grid_height', 1)))
-					print(f'<div style="display:grid;padding:10px;margin:7px;border:1px outset;border-radius:15px;"><div style="display:flex;align-items:flex-start;">{index+1} {get_image_as_html_img(icons.get_image(*inv_grid))}<br/><span style="font-weight:bold;font-size:larger;">{inv_name_short_localized}</span></div><div style="display:flex;align-items:end;">{get_parameters(graphs, section)}</div></div>')
+					print(f'<div class="item"><div style="display:flex;align-items:flex-start;">{index+1} {get_image_as_html_img(icons.get_image(*inv_grid))}<br/><span class="item-header">{inv_name_short_localized}</span></div><div style="display:flex;align-items:end;">{get_parameters(graphs, section)}</div></div>')
 					# <div>{game.localize(section.get("description"))}</div>
 				print('</div>')
 
@@ -344,7 +344,7 @@ if __name__ == '__main__':
 				if chapter:
 					print(f'<h3>{chapter}: описание</h3>')
 				prev_description = None
-				print(f'<div style="display:grid;grid-template-columns:repeat(auto-fill,{670*k_width}px);">')
+				print(f'<div class="description">')
 				for index, (section, inv_name_short_localized) in enumerate(sections):
 					inv_grid = (int(section.get('inv_grid_x')), int(section.get('inv_grid_y')), int(section.get('inv_grid_width', 1)), int(section.get('inv_grid_height', 1)))
 					description = game.localize(section.get('description'), True)
@@ -354,7 +354,7 @@ if __name__ == '__main__':
 						prev_description = description
 					img = icons.get_image(*inv_grid)
 					img = img.resize((int(img.width * 1.5), int(img.height * 1.5)))
-					print(f'<div style="display:grid;padding:10px;margin:7px;" class="stroke-bg">{index+1}{get_image_as_html_img(img)}<span style="font-weight:bold;font-size:larger;">{inv_name_short_localized}</span><br/>')
+					print(f'<div class="item-description stroke-bg">{index+1}{get_image_as_html_img(img)}<span class="item-header">{inv_name_short_localized}</span><br/>')
 					if (ammo_class := section.get('ammo_class')):  # has ammo
 						if type(ammo_class) is str:
 							ammo_class = (ammo_class,)
@@ -468,8 +468,15 @@ if __name__ == '__main__':
 					)
 				print_html(sections, graphs, chapter)
 
+			k_width = 1
+
 			print(f'<html><head><title>{args.head}</title></head>')
 			print(f'''<style>
+.main {{ display:grid;grid-template-columns:repeat(auto-fill,{int(375*k_width)}px); }}
+.description {{ display:grid;grid-template-columns:repeat(auto-fill,{670*k_width}px);grid-template-rows:min-content;align-content:flex-start; }}
+.item {{ display:grid;padding:10px;margin:7px;border:1px outset;border-radius:15px;align-items:flex-start;grid-template-rows:min-content; }}
+.item-description {{ display:grid;padding:10px;margin:7px; }}
+.item-header {{ font-weight:bold;font-size:larger; }}
 .stroke-bg {{
 background: url("data:image/svg+xml,%3Csvg viewBox='0 0 20 300' xmlns='http://www.w3.org/2000/svg'%3E %3Cpath vector-effect='non-scaling-stroke' transform='rotate(-30)' opacity='15%' stroke='currentColor' d='M 0,0 l 0,100'/%3E %3Cpath stroke='currentColor' d='M 0,0 l 20,0'/%3E %3C/svg%3E");
 }}

@@ -56,13 +56,48 @@ class Ltx:
 
 	def __init__(self, ltx_file_path: str, follow_includes=True) -> None:
 		self.ltx_file_path = ltx_file_path
-		self.sections: dict = self._get_ltx_dict(ltx_file_path, follow_includes)
+		self.line_number = None  # included .ltx line number
+		self.ltxs: list[Ltx] = []
+		self.sections = {}
+		self._load_tree()
+		# self.ltxs: list[Ltx] = self._get_ltxs(ltx_file_path, follow_includes)
 
-	def _get_ltx_dict(self, ltx_file_path: str, follow_includes=True) -> dict[str, dict[str, object]] | None:
+	def _load_tree(self, follow_includes=True):
+		'return list of included Ltx'
+		sections, section = {}, {}
+		prev_section_name = None
+		for x in parse_ltx_file(self.ltx_file_path, False):
+			match x:
+				case (LtxKind.INCLUDE, line_number, included_ltx_file_path):
+					if follow_includes:
+						try:
+							ltx = Ltx(join(dirname(self.ltx_file_path), included_ltx_file_path), True)
+							ltx.line_number = line_number
+							self.ltxs.append(ltx)
+						except LtxFileNotFoundException:
+							pass
+				case (LtxKind.NEW_SECTION, section_name, section_parents):
+					if section_name in sections:
+						print(f'duplicated section name: {section_name}', file=stderr)
+					if len(section) > 1:
+						sections[prev_section_name] = section
+					section = { '': section_parents }  # set parent sections names
+					prev_section_name = section_name
+				case (LtxKind.LET, _, _, lval, rvals):
+					section[lval] = rvals if len(rvals) > 1 else rvals[0]
+		if len(section) > 1:  # if section not empty
+			sections[prev_section_name] = section
+		if sections:
+			self.sections = sections
+
+	def _get_ltxs(self, ltx_file_path: str, follow_includes=True) -> dict[str, dict[str, object]] | None:
+		'return list of included Ltx'
 		sections, section = {}, {}
 		prev_section_name = None
 		for x in parse_ltx_file(ltx_file_path, follow_includes=follow_includes):
 			match x:
+				case (LtxKind.INCLUDE, line_number, included_ltx_file_path):
+					ltx = Ltx(included_ltx_file_path, True)
 				case (LtxKind.NEW_SECTION, section_name, section_parents):
 					if section_name in sections:
 						print(f'duplicated section name: {section_name}', file=stderr)
@@ -82,6 +117,8 @@ class Ltx:
 		if self.sections:
 			for section_name, section_dict in self.sections.items():
 				yield self.Section(self, section_name, section_dict)
+			for ltx in self.ltxs:
+				yield from ltx.iter_sections()
 
 
 SECTION_RE = compile(r'^\[([\S]+)\]:?(.*)$')

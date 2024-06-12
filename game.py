@@ -2,16 +2,17 @@
 from collections.abc import Iterator
 from os.path import join
 # tools imports
-from ltx_tool import Ltx, parse_ltx_file, LtxKind
-from xml_tool import add_localization_dict_from_localization_xml_file
+from paths import Paths
+from localization import Localization
+from ltx_tool import Ltx
 
 
 class SectionsBase:
 	'base class for item-type specific .ltx sections; successor examples: ammo, weapons e.t.c.'
 
-	def __init__(self, gamedata_path: str, configs_path: str, localization_text_path: str, localization_dict: dict) -> None:
-		self.gamedata_path, self.configs_path, self.localization_text_path = gamedata_path, configs_path, localization_text_path
-		self.localization_dict: dict[str, str] = localization_dict  # localization for item-type specific sections: [ID] = localization string
+	def __init__(self, paths: Paths, localization: Localization) -> None:
+		self.paths = paths
+		self.localization: Localization = localization
 		self.sections: list[Ltx.Section] = []  # item-type specific sections list
 
 	def load_section(self, section: Ltx.Section) -> bool:
@@ -19,16 +20,16 @@ class SectionsBase:
 		return False
 
 	def load_localization(self, xml_file_name: str | None = None):
-		'load well known .xml localization files from configs/self.localization_text_path/xml_file_name'
+		'load well known .xml localization files from configs/<localization text path>/xml_file_name'
 		if xml_file_name:
-			add_localization_dict_from_localization_xml_file(self.localization_dict, self.configs_path, join(self.localization_text_path, xml_file_name))
+			self.localization.add_localization_xml_file(join(self.localization.localization_text_path, xml_file_name))
 
 	def iter_value(self, value_name: str) -> Iterator[tuple[str, str, str]]:
 		'iterate value with value name for all sections: (section name, localized inv_name_short, value)'
 		for section in self.sections:
 			if (value := section.get(value_name)) and (inv_name_short := section.get('inv_name_short')):
 				# try localize name
-				if (buff := self.localization_dict.get(inv_name_short)):
+				if (buff := self.localization.string_table.get(inv_name_short)):
 					inv_name_short = buff
 				yield section.name, inv_name_short, value
 
@@ -121,18 +122,16 @@ class Game:
 		'localization - gamedata/configs/text/<localization>'
 		# set game paths
 		self.verbose = verbose
-		self.gamedata_path = gamedata_path
-		self.configs_path = join(gamedata_path, 'configs')
-		self.localization_text_path = join(self.configs_path, 'text', localization)
-		self.localization_dict: dict[str, str] = {}  # localization strings (from .xml files): key - ID, value - localization string
+		self.paths = Paths(gamedata_path)
+		self.localization = Localization(self.paths)
 		# init item-type specific lists
-		self.ammo = Ammo(self.gamedata_path, self.configs_path, self.localization_text_path, self.localization_dict)
-		self.weapons = Weapons(self.gamedata_path, self.configs_path, self.localization_text_path, self.localization_dict)
-		self.outfits = Outfits(self.gamedata_path, self.configs_path, self.localization_text_path, self.localization_dict)
-		self.damages = Damages(self.gamedata_path, self.configs_path, self.localization_text_path, self.localization_dict)
-		self.food = Food(self.gamedata_path, self.configs_path, self.localization_text_path, self.localization_dict)
-		self.medkit = Medkit(self.gamedata_path, self.configs_path, self.localization_text_path, self.localization_dict)
-		self.artefact = Artefact(self.gamedata_path, self.configs_path, self.localization_text_path, self.localization_dict)
+		self.ammo = Ammo(self.paths, self.localization)
+		self.weapons = Weapons(self.paths, self.localization)
+		self.outfits = Outfits(self.paths, self.localization)
+		self.damages = Damages(self.paths, self.localization)
+		self.food = Food(self.paths, self.localization)
+		self.medkit = Medkit(self.paths, self.localization)
+		self.artefact = Artefact(self.paths, self.localization)
 		self.load_ltx_sections((self.ammo, self.weapons, self.outfits, self.damages, self.food, self.medkit, self.artefact))
 
 	def load_ltx_sections(self, section_bases: list[SectionsBase]):
@@ -142,12 +141,12 @@ class Game:
 			if (sections := ltx.sections) and (string_table := sections.get('string_table')) \
 					and (files := string_table.get('files')):
 				for file in ((files,) if type(files) is str else files):
-					add_localization_dict_from_localization_xml_file(self.localization_dict, self.configs_path, join(self.localization_text_path, file + '.xml'), self.verbose)
+					self.localization.add_localization_xml_file(join(self.localization.localization_text_path, file + '.xml'))
 
 		for section_base in section_bases:
 			section_base.load_localization()
 
-		ltx = Ltx(join(self.configs_path, 'system.ltx'))
+		ltx = Ltx(self.paths.system_ltx)
 		for section in ltx.iter_sections():
 			for section_base in section_bases:
 				if section_base.load_section(section):
@@ -156,8 +155,8 @@ class Game:
 		load_localization()
 
 	def get_actor_outfit(self) -> Ltx | None:
-		ltx_path = join(self.gamedata_path, 'configs/misc/outfit.ltx')
-		add_localization_dict_from_localization_xml_file(self.localization_dict, self.configs_path, join(self.localization_text_path, 'st_items_outfit.xml'))
+		ltx_path = join(self.paths.gamedata, 'configs/misc/outfit.ltx')
+		self.localization.add_localization_xml_file(join(self.localization.localization_text_path, 'st_items_outfit.xml'))
 		return Ltx(ltx_path, False)
 
 	@staticmethod
@@ -205,10 +204,9 @@ class Game:
 					break
 			return ret
 
-		if self.localization_dict:
-			if (buff := self.localization_dict.get(id, None if localized_only else id)):
-				# has localization
-				if html_format and '%c[' in buff:
-					return process_tags(buff)
-				return buff
+		if (buff := self.localization.string_table.get(id, None if localized_only else id)):
+			# has localization
+			if html_format and '%c[' in buff:
+				return process_tags(buff)
+			return buff
 		return None if localized_only else id

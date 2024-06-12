@@ -232,9 +232,17 @@ if __name__ == '__main__':
 					return f'{prefix}: {_min}{"..."+_max if _min != _max else ""}{"..." if money.getAttribute("infinitive") != "0" else ""}'
 				return ''
 
+			print(f'''<html><head>
+<style>
+.main {{ display:grid;grid-template-columns:repeat(auto-fill,{int(375*k_width)}px); }}
+.item {{ display:grid;padding:10px;margin:7px;border:1px outset;border-radius:15px;align-items:flex-start;grid-template-rows:min-content; }}
+.item-header {{ font-weight:bold;font-size:larger; }}
+</style>
+</head><body>''')
+
 			ui_npc_unique = UiNpcUnique(gamedata_path) if args.output_format != 'c' else None
 			ui_iconstotal = UiIconstotal(gamedata_path) if args.output_format != 'c' else None
-			print(f'<div style="display:grid;grid-template-columns:repeat(auto-fill,{int(375*k_width)}px);">')
+			print(f'<div class="main">')
 			if specific_characters_dict:
 				index = 1
 				for specific_character in sorted(specific_characters_dict.values(), key=lambda x:
@@ -242,9 +250,10 @@ if __name__ == '__main__':
 					name = _get_element_values(loc, specific_character, 'name')
 					bio = _get_element_values(loc, specific_character, 'bio')
 					if not name.startswith('GENERATE_NAME'):
-						print(f'<div style="display:grid;padding:10px;margin:7px;border:1px outset;border-radius:15px;"><div style="display:flex;align-items:flex-start;">{index}&nbsp;&nbsp;&nbsp;<span style="font-weight:bold;font-size:larger;">{name}</span></div><div style="display:flex;align-items:flex-start;">{get_icon(_get_element_values(None, specific_character, "icon"))}<br/>&nbsp;Группировка: {_get_element_values(loc, specific_character, "community")}<br/>&nbsp;Ранг: {_get_element_values(loc, specific_character, "rank")}<br/>&nbsp;Репутация: {_get_element_values(loc, specific_character, "reputation")}<br/>&nbsp;{get_money(specific_character, "Деньги")}</div><div style="display:flex;align-items:end;">{bio}</div></div>')
+						print(f'<div class="item"><div style="display:flex;">{index}&nbsp;&nbsp;&nbsp;<span class="item-header">{name}</span></div><div style="display:flex;">{get_icon(_get_element_values(None, specific_character, "icon"))}<br/>&nbsp;Группировка: {_get_element_values(loc, specific_character, "community")}<br/>&nbsp;Ранг: {_get_element_values(loc, specific_character, "rank")}<br/>&nbsp;Репутация: {_get_element_values(loc, specific_character, "reputation")}<br/>&nbsp;{get_money(specific_character, "Деньги")}</div><div>{bio}</div></div>')
 						index += 1
 			print('</div>')
+			print('</body></html>')
 
 		if args.output_format == 'b':
 			brochure(args.gamedata)
