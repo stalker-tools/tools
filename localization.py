@@ -18,11 +18,12 @@ class Localization:
 		if self.verbose:
 			print(f'Gamedata path: "{self.paths}"')
 		# find .ltx section string_table and define localization language and string_table .xml files names
-		self.string_table_files, self.language = None, None
+		self.string_table_files, self.language = None, None  # config data
 		self._load_string_table_ltx_section()
 		self.localization_text_path = join(self.paths.configs, 'text', self.language) if self.language else None
 		# find string_table .xml files
 		self.string_table: dict[str, str] = {}  # localized strings: id, string
+		self.string_table_files_found: list[str] = []  # found localization files paths
 		self._load_string_tables()
 
 	def _load_string_table_ltx_section(self):
@@ -54,16 +55,30 @@ class Localization:
 					print(f'Parse string_table file {string_table_file}: "{xml_file_name}"')
 				self.add_localization_xml_file(xml_file_name)
 
-	def add_localization_xml(self, _xml: Document):
+	def add_localization_xml(self, _xml: Document) -> bool:
 		'_xml - string_table document'
+
+		def normalize_text(text: str) -> str:
+			'replace escape sequence: new line'
+			if text:
+				while '\\n' in text:
+					text = text.replace('\\n', '\n')
+			return text
+
+		ret = False
+
 		for _string in _xml.getElementsByTagName('string'):
 			if (string_id := _string.getAttribute('id')):
-				self.string_table[string_id] = get_child_element_values(_string, 'text', '\n')
+				self.string_table[string_id] = normalize_text(get_child_element_values(_string, 'text', '\n'))
+				ret = True
+		
+		return ret
 
 	def add_localization_xml_file(self, file_path: str):
 		try:
 			if (_xml := xml_parse(file_path, self.paths.configs)):
-				self.add_localization_xml(_xml)
+				if self.add_localization_xml(_xml):
+					self.string_table_files_found.append(file_path)
 		except Exception as e:
 			print(f'Localization .xml file parse error: {file_path} {e}', file=stderr)
 

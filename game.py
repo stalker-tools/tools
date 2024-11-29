@@ -132,7 +132,8 @@ class Game:
 		self.food = Food(self.paths, self.localization)
 		self.medkit = Medkit(self.paths, self.localization)
 		self.artefact = Artefact(self.paths, self.localization)
-		self.load_ltx_sections((self.ammo, self.weapons, self.outfits, self.damages, self.food, self.medkit, self.artefact))
+		self._items = (self.ammo, self.weapons, self.outfits, self.damages, self.food, self.medkit, self.artefact)
+		self.load_ltx_sections(self._items)
 
 	def load_ltx_sections(self, section_bases: list[SectionsBase]):
 
@@ -166,25 +167,36 @@ class Game:
 			for section in section_base.sections:
 				yield section
 
+	def iter(self) -> Iterator[Ltx.Section]:
+		'iterate for all known sections: ammo, weapons e.t.c.'
+		for item in self._items:
+			yield from self._iter(item)
+
 	def ammo_iter(self) -> Iterator[Ltx.Section]:
+		'iterate for ammunition sections'
 		yield from self._iter(self.ammo)
 
 	def weapons_iter(self) -> Iterator[Ltx.Section]:
+		'iterate for weapons sections'
 		yield from self._iter(self.weapons)
 
 	def outfits_iter(self) -> Iterator[Ltx.Section]:
+		'iterate for outfits sections'
 		yield from self._iter(self.outfits)
 
 	def damages_iter(self) -> Iterator[Ltx.Section]:
 		yield from self._iter(self.damages)
 
 	def food_iter(self) -> Iterator[Ltx.Section]:
+		'iterate for food sections'
 		yield from self._iter(self.food)
 
 	def medkit_iter(self) -> Iterator[Ltx.Section]:
+		'iterate for medkits sections'
 		yield from self._iter(self.medkit)
 
 	def artefact_iter(self) -> Iterator[Ltx.Section]:
+		'iterate for artefacts sections'
 		yield from self._iter(self.artefact)
 
 	def localize(self, id: str, html_format = False, localized_only = False) -> str | None:
@@ -210,3 +222,7 @@ class Game:
 				return process_tags(buff)
 			return buff
 		return None if localized_only else id
+
+	def has_localize(self, id: str) -> bool:
+		'returns True if id is .xml localized entry'
+		return id in self.localization.string_table

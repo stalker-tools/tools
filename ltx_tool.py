@@ -30,9 +30,10 @@ class LtxFileNotFoundException(IOError):
 	pass
 
 class Ltx:
-
+	'Ltx file'
 
 	class Section:
+		'Ltx file section'
 		
 		def __init__(self, ltx: 'Ltx', name: str, section: dict) -> None:
 			self.name, self.ltx, self.section = name, ltx, section
@@ -42,23 +43,40 @@ class Ltx:
 			return self._get_value(self.ltx.sections, self.section, value_name, default_value)
 		
 		@classmethod
-		def _get_value(cls, sections, section, value_name: str, default_value: object | None = None) -> object | None:
+		def _get_value(cls, sections: dict[str, 'Ltx.Section'], section: dict, value_name: str, default_value: object | None = None) -> object | None:
 			if value_name in section:
 				return section.get(value_name, default_value)
 			# try find value in parent sections
-			if (parents := section.get('')):
-				for parent in parents:
+			if (parents := section.get('')):  # is any parent
+				for parent in parents:  # loop thru parent sections names
 					if (parent_section := sections.get(parent)):
 						if (value := cls._get_value(sections, parent_section, value_name, default_value)) is not None:
 							return value
 			return None
+
+		def iter_parent_sections(self) -> Iterator['Ltx.Section']:
+			if (parents := self.section.get('')):  # is any parent
+				for parent in parents:  # loop thru parent sections names
+					if (parent_section := self.ltx.sections.get(parent)):
+						yield parent_section
+
+		def iter_names(self, include_parents = False) -> Iterator[str]:
+			'iterates section values names'
+			for name in self.section:
+				if name:
+					yield name
+			# iter values in parent sections
+			if include_parents:
+				for section in self.iter_parent_sections():
+					for name in section:
+						yield name
 
 
 	def __init__(self, ltx_file_path: str, follow_includes=True) -> None:
 		self.ltx_file_path = ltx_file_path
 		self.line_number = None  # included .ltx line number
 		self.ltxs: list[Ltx] = []
-		self.sections = {}
+		self.sections: dict[str, Ltx.Section] = {}
 		self._load_tree()
 		# self.ltxs: list[Ltx] = self._get_ltxs(ltx_file_path, follow_includes)
 
@@ -85,6 +103,9 @@ class Ltx:
 					prev_section_name = section_name
 				case (LtxKind.LET, _, _, lval, rvals):
 					section[lval] = rvals if len(rvals) > 1 else rvals[0]
+				case (LtxKind.DATA, _, lval):
+					for _lval in lval:
+						section[_lval] = None
 		if len(section) > 1:  # if section not empty
 			sections[prev_section_name] = section
 		if sections:
@@ -113,7 +134,7 @@ class Ltx:
 			return sections
 		return None
 
-	def iter_sections(self) -> Iterator[Section]:
+	def iter_sections(self) -> Iterator['Ltx.Section']:
 		if self.sections:
 			for section_name, section_dict in self.sections.items():
 				yield self.Section(self, section_name, section_dict)
@@ -209,6 +230,50 @@ def parse_ltx_file(file_path: str, follow_includes=False) -> Iterator[
 	except IOError as e:
 		if not follow_includes:
 			raise LtxFileNotFoundException(e)
+
+def get_section_line_index(section: Ltx.Section, value_name: str) -> int | None:
+	'gets line index of .ltx file section and lvalue'
+	is_section_body = False  # used to parse section into .ltx file
+	for x in parse_ltx_file(section.ltx.ltx_file_path):
+		match x[0]:
+			case LtxKind.NEW_SECTION:
+				if is_section_body:
+					return None  # section was read but value with name were not found
+			case LtxKind.LET:
+				if section.name == x[2]:  # check section name
+					is_section_body = True
+					if x[3] == value_name:  # check value name (lvalue)
+						# value found
+						return x[1]  # line index
+	return None  # not found
+
+def update_section_value(section: Ltx.Section, value_name: str, new_value: str) -> bool:
+	'updates lvalue of .ltx file section'
+
+	def find_in_line(line: str | bytes, what: list[bytes | str], start_index=0):
+		ret = len(line)
+		for w in what:
+			if (i := line.find(w, start_index)) >= 0 and i < ret:
+				ret = i
+		return ret
+
+	ret = False
+	if (line_index := get_section_line_index(section, value_name)):
+		# read .ltx file to buffer
+		with open(section.ltx.ltx_file_path, 'rb') as f:
+			buff = f.readlines()
+		# write buffer to .ltx file
+		with open(section.ltx.ltx_file_path, 'wb') as f:
+			for i, line in enumerate(buff):
+				if i == line_index:
+					# found .ltx file line with lvalue to update
+					eq_index = line.find(b'=')
+					end_index = find_in_line(line, (b';', b'\r', b'\n'), eq_index)
+					line = bytearray(line)
+					line[eq_index + 1:end_index] = (' ' + new_value.strip()).encode()
+				f.write(line)
+		return ret
+	return ret
 
 
 if __name__ == '__main__':
