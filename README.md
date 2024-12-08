@@ -1,15 +1,23 @@
-# Stalker xray tools
+# Stalker Xray tools
 
-This python cross-platform command-line tools used for analysis and editing of gamedata `.ltx` and `.xml` files. Developed and tested on Linux/Wine.
+This python cross-platform command-line tools used for analysis of gamedata Xray config files:
+- .ltx sections
+- .xml localization
+- .dds icons with .xml configs
+- game.graph
 
-Most useful utility for mod autor/publisher is `graph_tool.py`.
+And Xray gameplay files:
+- fsgame.ltx
+- .sav save
 
-Just see generated `.html` brochure example: [Clear Sky + SGM 3.10 + Real Weapons.html](https://html-preview.github.io/?url=https://github.com/stalker-tools/real_weapons_mod_clear_sky/blob/main/media/Clear%20Sky%20%2B%20SGM%203.10%20%2B%20Real%20Weapons.html)
+Most useful utility for mod autor/publisher is `graph_tool.py`. Just see generated `.html` brochure example: [Clear Sky + SGM 3.10 + Real Weapons.html](https://html-preview.github.io/?url=https://github.com/stalker-tools/real_weapons_mod_clear_sky/blob/main/media/Clear%20Sky%20%2B%20SGM%203.10%20%2B%20Real%20Weapons.html)
 
 This brochure genarated by this line:
 ```sh
 python graph_tool.py -tb -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky_real_weapons_mod/gamedata/" --head "Clear Sky + SGM 3.10 + Real Weapons" > "Clear Sky + SGM 3.10 + Real Weapons.html"
 ```
+
+Developed and tested on Linux/Wine.
 
 ## Installation
 
@@ -25,7 +33,7 @@ pip3 install -r requirements.txt
 
 ### Windows instructions
 
-Download and install Python latest version. For example:
+Download and install Python version 3.12 and abow. For example:
 [Python 3.12.4](https://www.python.org/downloads/release/python-3124/)
 
 Download and install [Graphviz 11.0.0](https://graphviz.org/download/#windows)
