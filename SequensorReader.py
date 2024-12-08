@@ -1,5 +1,8 @@
 
-from typing import Literal
+# Binary deserialization tool
+# Author: Stalker tools, 2023-2024
+
+from typing import Literal, Self
 from struct import Struct
 
 
@@ -8,6 +11,7 @@ class OutOfBoundException(Exception):
 
 
 class SequensorReader:
+	'binary deserialization tool'
 
 	def __init__(self, buff: bytes, byte_order: Literal['<', '>', '=', '!', '@'] = '<') -> None:
 		'''
@@ -61,3 +65,16 @@ class SequensorReader:
 	def remain(self) -> int:
 		'returns remaining bytes count'
 		return len(self.buff) - self.pos
+
+	def skip(self, format: str) -> Self:
+		'''
+		skip bytes according to Struct format
+		format:	see struct help - Format Characters
+		'''
+		s = Struct(format)
+		self.pos += s.size
+		return self
+
+	@staticmethod
+	def calc_len(format: str) -> int:
+		return Struct(format).size

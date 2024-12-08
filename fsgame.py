@@ -1,5 +1,7 @@
-
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 # fsgame.ltx parser
+# Author: Stalker tools, 2023-2024
 
 from os.path import abspath, dirname, join as pathjoin
 
@@ -7,7 +9,12 @@ from os.path import abspath, dirname, join as pathjoin
 class FormatException(Exception): pass
 
 
-def parse(file_path: str) -> dict[str, str] | None:
+NameType = str
+ValueType = str
+FsgameType = dict[NameType, ValueType]
+
+
+def parse(file_path: str) -> FsgameType | None:
 	'returns fsgame.ltx parameters: dict[parameter, value]'
 	ret, file_path = None, abspath(file_path)
 	with open(file_path, 'r') as f:

@@ -1,4 +1,8 @@
 
+# Stalker Xray game config paths tool
+# Used to locate game config files with gamedata as root path
+# Author: Stalker tools, 2023-2024
+
 from typing import Iterable
 from os.path import join, abspath, sep
 from pathlib import Path

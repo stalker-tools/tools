@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+# Author: Stalker tools, 2023-2024
 
 from collections.abc import Iterator
 from typing import NamedTuple, Literal
@@ -8,7 +9,7 @@ import plotly.graph_objects as go
 import plotly.io as pio
 # stalker-tools import
 from ltx_tool import Ltx
-from game import Game
+from GameConfig import GameConfig
 from icon_tools import IconsEquipment, get_image_as_html_img
 
 
@@ -125,7 +126,7 @@ def print_graphs(sections: list[tuple[Ltx.Section, str, str]], graphs_params: li
 
 	print(fig.to_image('svg').decode())
 
-def analyse(gamedata: str | Game, head: str, localization: None | str = None, style: None | Literal['d', 'dark'] = None):
+def analyse(gamedata: str | GameConfig, head: str, localization: None | str = None, style: None | Literal['d', 'dark'] = None):
 
 	def get_value(text: str, type_=float) -> 'type_ | None':
 		try:
@@ -270,7 +271,7 @@ def analyse(gamedata: str | Game, head: str, localization: None | str = None, st
 
 	game = gamedata
 	if type(gamedata) is str:
-		game = Game(gamedata, localization)
+		game = GameConfig(gamedata, localization)
 	icons = IconsEquipment(game.paths.gamedata)
 	match style:
 		case 'd' | 'dark':
@@ -489,7 +490,7 @@ background: url("data:image/svg+xml,%3Csvg viewBox='0 0 20 300' xmlns='http://ww
 
 	game = gamedata
 	if type(gamedata) is str:
-		game = Game(gamedata, localization, False)
+		game = GameConfig(gamedata, localization, False)
 	icons = IconsEquipment(game.paths.gamedata)
 	match style:
 		case 'd' | 'dark':

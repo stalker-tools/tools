@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+# Author: Stalker tools, 2023-2024
+
 
 from sys import stderr
 from typing import NamedTuple

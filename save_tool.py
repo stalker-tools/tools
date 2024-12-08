@@ -1,3 +1,7 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# Stalker Xray game .sav file tool
+# Author: Stalker tools, 2023-2024
 
 from typing import Iterator, Callable
 from enum import Enum
@@ -367,7 +371,7 @@ Objects.NAMES = {
 
 
 if __name__ == '__main__':
-	from sys import argv
+	from sys import argv, stderr
 	import argparse
 
 	def main():
@@ -405,215 +409,7 @@ if __name__ == '__main__':
 				# 		print(f'{chr(byte)} ' if 32 < byte < 127 else '  ', end='')
 				# 	print()
 
-	main()
-
-# save = Save(save_file_path)
-# for chunk in save.iter_chunks():
-# 	print(f'{chunk}')
-# 	match chunk.type:
-# 		case ChunkTypes.ALIFE:
-# 			if chunk.size != 4:
-# 				break
-# 			version = chunk.sr.read('I')
-# 			print(f'\t{version=}')
-# 			if version < 2:
-# 				break
-# 		case ChunkTypes.GAME_TIME:
-# 			if chunk.size != 16:
-# 				break
-# 			time_id, time_factor, normal_time_factor = chunk.sr.read('Qff')
-# 			print(f'\t{time_id=:X} {time_factor=}, {normal_time_factor=}')
-# 		case ChunkTypes.SPAWN:
-# 			# with open(save.file_path+'.SPAWN.bin', 'wb') as f:
-# 			# 	f.write(chunk.buff)
-# 			# 	print(f'Saved to "{save.file_path+'.SPAWN.bin'}"')
-# 			for type, size, bytes in chunk.iter():
-# 				print(f'\t{type=}, {size=}')
-# 				match type:
-# 					case 0:
-# 						sr = SequensorReader(bytes)
-# 						print(f'\t\tspawn "{sr.read_string()}" GUID={sr.read_bytes(16).hex()}')
-# 					case 1:
-# 						# spawn graph vertices
-# 						sr = SequensorReader(bytes)
-# 						vertex_id = sr.read('I')
-# 						print(f'\t\t{vertex_id=}')
-# 		case ChunkTypes.OBJECT:
-# 			# CALifeObjectRegistry::load
-# 			count = chunk.sr.read('I')
-# 			print(f'\t{count=}')
-# 			for i in range(count):
-# 				# CALifeObjectRegistry::get_object
-# 				# spawn
-# 				net_packet_len_s = chunk.sr.read('H')
-# 				sr = SequensorReader(chunk.sr.read_bytes(net_packet_len_s))
-# 				id_s, name_s = sr.read('H'), sr.read_string()  # M_SPAWN=1, section name
-# 				# F_entity_Create(name_s)
-# 				# CSE_Abstract::Spawn_Read
-# 				# generic
-# 				name_replace = sr.read_string()
-# 				game_id, rp = sr.read('BB')
-# 				position = sr.read('fff')
-# 				angle = sr.read('fff')
-# 				respawn_time, id, id_parent, id_phantom, flags = sr.read('HHHHH')
-# 				if flags & 0b10_0000:  # M_SPAWN_VERSION
-# 					version = sr.read('H')
-# 					if not version:
-# 						break
-# 					if version > 69:
-# 						script_version = sr.read('H')
-# 					# read specific data
-# 					if version > 70:
-# 						client_data_size = sr.read('H') if version > 93 else sr.read('B')
-# 						if client_data_size:
-# 							# sr.read_bytes(client_data_size)  # client_data
-# 							print(f'{client_data_size=} {sr.read_bytes(client_data_size).decode('ascii', 'replace')}')
-# 					if version > 79:
-# 						spawn_id = sr.read('H')
-# 					# if version < 112:
-# 					# 	if version > 82:
-# 					# 		sr.read('f')
-# 					# 	if version > 83:
-# 					# 		sr.read('I')
-# 					# 		sr.read_string()
-# 					# 		sr.read('IIQ')
-# 					# 	if version > 84:
-# 					# 		sr.read('QQ')
-# 					size = sr.read('H')
-# 					# STATE_Read
-
-
-# 					if name_s == 'actor':
-# 						# CSE_ALifeCreatureActor::STATE_Read
-# 						# CSE_ALifeCreatureAbstract::STATE_Read
-# 						# CSE_ALifeDynamicObjectVisual::STATE_Read
-# 						# CSE_ALifeDynamicObject::STATE_Read
-# 						# CSE_ALifeObject::STATE_Read
-# 						if version >= 1:
-# 							if version > 24:
-# 								if version < 83:
-# 									sr.read('f')  # m_spawn_probability
-# 							else:
-# 								sr.read('B')  # m_spawn_probability
-# 							if version < 83:
-# 								sr.read('I')
-# 							if version < 4:
-# 								sr.read('H')
-# 							graph_id, distance = sr.read('Hf')
-# 						if version >= 4:
-# 							sr.read('I')  # is direct control
-# 						if version >= 8:
-# 							node_id = sr.read('I')
-# 						if version > 22 and version <= 79:
-# 							spawn_id = sr.read('H')
-# 						if version > 23 and version < 84:
-# 							spawn_control = sr.read_string()
-# 						if version > 49:
-# 							sr.read('I')
-# 						if version > 57:
-# 							ini_string = sr.read_string()
-# 						if version > 61:
-# 							story_id = sr.read('I')
-# 						if version > 111:
-# 							spawn_story_id = sr.read('I')
-
-# 						# CSE_ALifeDynamicObjectVisual::STATE_Read
-# 						if version > 31:
-# 							# CSE_Visual::visual_read
-# 							visual_name = sr.read_string()  # visual name
-# 							if version > 103:
-# 								sr.read('B')  # flags
-
-# 						# CSE_ALifeCreatureAbstract::STATE_Read
-# 						team, squad, group = sr.read('BBB')
-
-# 						if version > 18:
-# 							health = sr.read('f')
-# 						if version < 115:
-# 							health /= 100.0
-
-# 						# if version > 87:
-# 						# 	load_data m_dynamic_out_restrictions xr_vector<u16>
-# 						# 	load_data m_dynamic_in_restrictions  xr_vector<u16>
-
-# 						# if version > 94:
-# 						# 	killer_id = sr.read('H')
-
-# 						# if version > 115:
-# 						# 	game_death_time = sr.read('Q')
-
-# 						# CSE_ALifeTraderAbstract::STATE_Read
-# 						# if version < 108:
-# 						# 	sr.read('I')
-
-# 						# if version > 62:
-# 						# 	money = sr.read('I')
-
-# 						# if version > 75 and version < 98:
-# 						# 	sr.read('i')  # CSpecificCharacter::IndexToId
-# 						# elif version >= 98:
-# 						# 	specific_character = sr.read_string()
-
-# 						# if version > 77:
-# 						# 	trader_flags = sr.read('I')
-
-# 						# if version > 81 and version < 96:
-# 						# 	sr.read('i')  # CCharacterInfo::IndexToId
-# 						# elif version > 95:
-# 						# 	character_profile = sr.read_string()
-
-# 						# if version > 85:
-# 						# 	community_index = sr.read('i')
-
-# 						# if version > 86:
-# 						# 	rank, reputation = sr.read('ii')
-
-# 						# if version > 104:
-# 						# 	character_name
-
-# 						# # CSE_ALifeCreatureActor::STATE_Read
-# 						# if version > 91:
-# 						#	# CSE_PHSkeleton::STATE_Read
-# 						#	startup_animation = sr.read_string()
-# 						#	flags, source_id = sr.read('BH')
-# 						#	if flags & (1 << 2):  # flSavedData
-# 						#		# SPHBonesData::net_Load
-# 						# 		bones_mask, root_bone = sr.read('QH')
-# 						# 		sr.read('fff')
-# 						# 		sr.read('fff')
-# 						# 		bones_number = sr.read('H')
-# 						# 		for i in range(bones_number):
-# 						# 			sr.read('BBB')  # quaternion, quaternion, enabled
-# 						# if version > 88:
-# 						# 	holder_ID = sr.read('H')
-
-# 					# CSE_ALifeItem::STATE_Read
-# 					# if ((m_tClassID == CLSID_OBJECT_W_BINOCULAR) && (m_wVersion < 37)) {
-# 					# 	tNetPacket.r_u16		();
-# 					# 	tNetPacket.r_u16		();
-# 					# 	tNetPacket.r_u8			();
-# 					# }
-# 					# CSE_ALifeInventoryItem::STATE_Read
-# 					# if version > 52:
-# 					# 	condition = sr.read('f')
-# 				# update
-# 				net_packet_len_u = chunk.sr.read('H')
-# 				sr = SequensorReader(chunk.sr.read_bytes(net_packet_len_u))
-# 				id_u = sr.read('H')#, sr.read_bytes()  # M_UPDATE=0, buffer
-# 				# id_u, buff_u = sr.read('H')#, sr.read_bytes()  # M_UPDATE=0, buffer
-# 				print(f'\t\tnet_packet {i:05} len={net_packet_len_s:05}/{net_packet_len_u:05} name={name_s:^15} repl={name_replace:^19} {game_id=} {rp=} pos=({','.join(f'{x:.0f}' for x in position)}) angle=({','.join(f'{x:.0f}' for x in angle)}) {respawn_time=} {id=} {version=} {flags=:b}{f' id_parent={id_parent}' if id_parent != 0xffff else ''}{f' id_phantom={id_phantom}' if id_phantom != 0xffff else ''}')
-# 				# print(buff_u.hex())
-# 				# print(buff_u.decode('windows-1251', errors='replace').replace('\n', '').replace('\r', ''))
-# 				if (update := Objects.get_update(name_s)):
-# 					ret = update(sr, version)
-# 					print(ret)
-# 				# print(f'\t\t\td id={id_s}, name={name_s} u id={id_u}')
-# 			print(f'\t{chunk.size=} {chunk.sr.pos=}')
-# 		case ChunkTypes.REGISTRY:
-# 			pass
-# 		case ChunkTypes.SCRIPT_VARS:
-# 			count = chunk.sr.read('I')
-# 			print(f'\t{count=}')
-# 			for i in range(count):
-# 				name, (type, size) = chunk.sr.read_string(), chunk.sr.read('II')
-# 				print(f'\t\tvar "{name}" {type=} {size=}')
+	try:
+		main()
+	except FileNotFoundError as e:
+		print(e, file=stderr)

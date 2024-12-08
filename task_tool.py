@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+# Stalker Xray game .ltx and .xml files tool for actor tasks
+# Author: Stalker tools, 2023-2024
 
 from sys import stderr
 from os.path import join, basename
@@ -12,7 +14,7 @@ from xml_tool import add_localization_dict_from_localization_xml_file
 
 def get_tasks_ltx_file_path(configs_path: str) -> str | None:
 	'returns path to task_manager.ltx file'
-	# try find tasks ltx file
+	# try find tasks .ltx file
 	if (task_manager_file_path := glob(join(configs_path, '**', 'task_manager.ltx'), recursive=True)):
 		return task_manager_file_path[0]
 	return None

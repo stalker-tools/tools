@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# Stalker Xray game .ltx files relations tool
+# Author: Stalker tools, 2023-2024
 
 from typing import NamedTuple
 from os.path import join, basename, split
@@ -18,6 +21,7 @@ class NodeStyle(NamedTuple):
 	level_height: tuple[float] = (2, 1)
 	def get_height(self, level: int):
 		return self.level_height[level] if level < len(self.level_height) else self.level_height[-1]
+
 
 class EdgeStyle(NamedTuple):
 	color: str = 'black'

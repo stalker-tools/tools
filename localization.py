@@ -1,3 +1,7 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# Stalker Xray game .xml localization files tool
+# Author: Stalker tools, 2023-2024
 
 from sys import stderr
 from os.path import basename, join

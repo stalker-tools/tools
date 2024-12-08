@@ -1,3 +1,8 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# Stalker Xray game .xml files tool
+# Since .xml files break W3C XML rules
+# Author: Stalker tools, 2023-2024
 
 from sys import stderr
 from io import BytesIO

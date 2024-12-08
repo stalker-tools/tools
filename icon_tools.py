@@ -1,16 +1,19 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# Stalker Xray game icons files tool
+# Author: Stalker tools, 2023-2024
+#
+# Python usage example:
+# icons = IconsEquipment(gamedata_path)
+# icons.get_image(inv_grid_x, inv_grid_y, inv_grid_width, inv_grid_height)  # values inv_grid_* from .ltx section
 
 from collections.abc import Iterator, Iterable
 from os.path import join, sep as path_sep
+from paths import Paths
 from xml.dom.minidom import parse, Element
 from io import BytesIO
 from base64 import b64encode
 from PIL.Image import open as image_open, Image
-
-from paths import Paths
-
-# Usage example:
-# icons = IconsEquipment(gamedata_path)
-# icons.get_image(inv_grid_x, inv_grid_y, inv_grid_width, inv_grid_height)  # values inv_grid_* from .ltx section
 
 
 def get_image_as_html_img(image: Image, format='webp') -> str:

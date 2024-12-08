@@ -1,9 +1,11 @@
 
+# Stalker Xray game map (level) files tool
+# Author: Stalker tools, 2023-2024
+
 from collections.abc import Iterator
 # tools imports
 from paths import Paths
 from ltx_tool import Ltx
-from PIL.Image import open as image_open, Image
 
 
 class Maps:
@@ -46,52 +48,21 @@ class Maps:
 		if maps:
 			self.maps = tuple(maps)
 
-	def get_image(self, section: Ltx.Section) -> Image:
+	def iter_maps_sections(self) -> Iterator[Ltx.Section]:
+		if self.global_map:
+			yield self.global_map
+		if self.maps:
+			for section in self.maps:
+				yield section
+
+	def get_map_section(self, map_name: str) -> Ltx.Section | None:
+		'returns map .ltx file section'
+		if (section := next((x for x in self.iter_maps_sections() if x.name == map_name), None)):
+			return section
+		return None
+
+	def get_image_file_path(self, section: Ltx.Section) -> str | None:
+		'returns map image file path'
 		if section and (texture := section.get('texture')):
-			return image_open(self.paths.join(self.paths.gamedata, 'textures', texture+'.dds'))
-
-
-if __name__ == '__main__':
-	from sys import argv
-	import argparse
-
-	DEFAULT_IMAGE_EXT = '.png'
-
-	def main():
-
-		def parse_args():
-			parser = argparse.ArgumentParser(
-				description='game.ltx parser',
-				epilog=f'Examples: {argv[0]} -f Stalker/gamedata',
-			)
-			parser.add_argument('-f', metavar='PATH', help='gamedata path')
-			parser.add_argument('-i', action='store_true', help='save map images to .png files')
-			return parser.parse_args()
-
-		# read command line arguments
-		args = parse_args()
-
-		maps = Maps(args.f)
-		# print maps names
-		if maps.maps:
-			for section in maps.maps:
-				print(f'{section.name}')
-		# save maps images
-		if (image := maps.get_image(maps.global_map)):  # get map image
-			# save image
-			image_path = f'global_map{DEFAULT_IMAGE_EXT}'
-			print(f'Save image: {image_path}')
-			image.save(image_path)
-		else:
-			print(f'Image error: global_map{DEFAULT_IMAGE_EXT}')
-		if args.i and maps.maps:
-			for section in maps.maps:
-				if (image := maps.get_image(section)):  # get map image
-					# save image
-					image_path = section.name + DEFAULT_IMAGE_EXT
-					print(f'Save image: {image_path}')
-					image.save(image_path)
-				else:
-					print(f'Image error: {section.name}')
-
-	main()
+			return self.paths.join(self.paths.gamedata, 'textures', texture+'.dds')
+		return None

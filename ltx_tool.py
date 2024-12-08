@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+# Stalker Xray game .ltx configuration files tool
+# Author: Stalker tools, 2023-2024
 
 from collections.abc import Iterator
 from sys import stderr
