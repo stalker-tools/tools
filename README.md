@@ -1,5 +1,11 @@
 # Stalker Xray tools
 
+The software consists of two parts:
+- Analysis tools for Xray game engine.
+- Hybrid game engine: Xray (.exe with Lua scripts) + Odyssey (Python with web interface).
+
+## Analysis tools
+
 This python cross-platform command-line tools used for analysis of gamedata Xray config files:
 - .ltx sections
 - .xml localization
@@ -19,7 +25,20 @@ python graph_tool.py -tb -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky_r
 
 Developed and tested on Linux/Wine.
 
-## Installation
+## Hybrid game engine
+
+This is cross-platform combination of following game engines:
+- Xray game engine: .exe and .dll files with Lua scripts and config files, it cross-platform via Wine.
+- Odyssey game engine: event-driven game logic with web interface, it cross-platform via Python.
+
+Web interface allow involve mobile devices into game process. And can be used by game modification developers to increase game immersion thru device profiles: radio and PDA.
+
+For example, play audio on radio with talks and radio interference according to gameplay.
+And also provide offline access to game thru saved PDA states on smartphone. So player can see much more gameplay information such as fiction texts, photos, videos. That helps understand main idea of screenplay and deep into details if player wants.
+
+Finally, nowadays AI allows game designers create multimedia content and this hybrid engine provide simply way to use it.
+
+# Installation
 
 Dependencies:
 | Python | Graphviz |
@@ -54,7 +73,7 @@ sudo zypper refresh
 sudo zypper install graphviz
 ```
 
-## .ltx files analysis tool
+# .ltx files analysis tool
 
 Command-line tools is 100% python, so it has wide usage as cross-platform.
 * `ltx_tool.py` for **text**-based view/edit and has .ltx-specific filters capabilities.
@@ -88,7 +107,7 @@ Command-line tools is 100% python, so it has wide usage as cross-platform.
 
   This utility can be handle to _system game designers_.
 
-## Tools usage examples
+### Tools usage examples
 
 ### Analysis examples for stalker games:
 * [Clear Sky Analysis](analysis_cs.md) and [Run Clear Sky](run_cs.md)
