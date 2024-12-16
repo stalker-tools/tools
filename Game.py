@@ -1,5 +1,5 @@
 
-# Main class for Stalker Xray game files
+# Main class for Stalker Xray and Odyssey game files
 # Author: Stalker tools, 2023-2024
 
 from typing import Iterator
@@ -18,14 +18,19 @@ from save_tool import Save
 
 DEFAULT_TITLE = 'Stalker'
 DEFAULT_AUTHOR = 'stalker-tools'
-DEFAULT_TOOLS_CONFIG_FILE_NAME = 'stalker-tools.ini'
 DEFAULT_LOCALIZATION = 'ru'
 DEFAULT_FSGAME_FILE_NAME = 'fsgame.ltx'
 DEFAULT_GAMEDATA = 'gamedata'
+DEFAULT_ODYSSEY_CONFIG_FILE_NAME = 'odyssey.ini'
+DEFAULT_ODYSSEY_PATH = 'odyssey'
 
 
 class Game:
-	'game .ltx config, .xml localization, items images, maps images, savings'
+	'''
+	Xray game config: .ltx, .xml localization, items images (icons), maps (levels), game.graph
+	Odyssey game config (if any): .ini
+	Xray gameplay: fsgame.ltx, .sav savings
+	'''
 
 
 	class GameBaseException(Exception): pass
@@ -39,13 +44,14 @@ class Game:
 	class Config:
 		game_path: Path  # game path; path that contains fsgame.ltx file and gamedata folder
 		gamedata_path: Path
-		title: str  # stalker-tools title; comes from stalker-tools.ini
-		author: str  # stalker-tools author; comes from stalker-tools.ini
+		title: str  # odyssey title; comes from odyssey.ini
+		author: str  # odyssey author; comes from odyssey.ini
 		maps: Maps  # game maps .ltx files; loads from gamedata folder
 		game_config: GameConfig  # game .ltx files; loads from gamedata folder
 		icons: IconsEquipment  # game icons; loads from gamedata folder
+		odyssey_path: Path  # odyssey path; path that contains python files and profiles for web interface
 
-		def __init__(self, game_path: str, tools_config_file_name: str = DEFAULT_TOOLS_CONFIG_FILE_NAME,
+		def __init__(self, game_path: str, odyssey_config_file_name: str = DEFAULT_ODYSSEY_CONFIG_FILE_NAME,
 			   fsgame_file_name: str = DEFAULT_FSGAME_FILE_NAME,
 			   gamedata_path: str | None = DEFAULT_GAMEDATA,
 			   localization: str = DEFAULT_LOCALIZATION,
@@ -54,7 +60,8 @@ class Game:
 			# check game path
 			self.game_path = self._check_path(game_path, 'Game', Game.GamePathNotValidError, Game.GamePathNotExistsError)
 			# load configs
-			self._read_tools_config(tools_config_file_name)  # load stalker-tools config
+			self._read_odyssey_config(odyssey_config_file_name)  # load odyssey config
+			self._ini_python()
 			self._read_fsgame(fsgame_file_name)  # load stalker config
 			# check gamedata path
 			self.gamedata_path = self._check_path(gamedata_path, 'Gamedata',
@@ -81,15 +88,29 @@ class Game:
 				raise not_valid_exeption(f'{name} path is not directory: {path}')
 			return path
 
-		def _read_tools_config(self, tools_config_file_name: str) -> None:
-			'reads stalker-tools.ini file'
-			tools_config_file_path = self.game_path.joinpath(tools_config_file_name)
+		def _read_odyssey_config(self, odyssey_config_file_name: str) -> None:
+			'reads odyssey.ini file'
+			self.odyssey_config_file_path = self.game_path.joinpath(odyssey_config_file_name)
 			if self.debug:
-				print(f'Read stalker-tools config file: {tools_config_file_path}')
-			config_parser = ConfigParser()
-			config_parser.read(tools_config_file_path)
+				print(f'Read odyssey config file: {self.odyssey_config_file_path}')
+			config_parser = self.odyssey
+			config_parser.read(self.odyssey_config_file_path)
 			self.title = config_parser.get('global', 'title', fallback=None) or DEFAULT_TITLE
 			self.author = config_parser.get('global', 'author', fallback=None) or DEFAULT_AUTHOR
+			self.odyssey_path = Path(self.game_path).joinpath(
+				config_parser.get('global', 'odyssey', fallback=None) or DEFAULT_ODYSSEY_PATH)
+
+		def _ini_python(self):
+			self.odyssey_python_root_file_path: Path | None = None
+			if (root := self.odyssey.get('game', 'root', fallback=None)):
+				self.odyssey_python_root_file_path = self.odyssey_config_file_path.parent.joinpath('odyssey').joinpath(root)
+
+		@property
+		def odyssey(self) -> ConfigParser:
+			'odyssey config'
+			config_parser = ConfigParser()
+			config_parser.read(self.odyssey_config_file_path)
+			return config_parser
 
 		def _read_fsgame(self, fsgame_file_name: str) -> None:
 			'reads fsgame.ltx file'

@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+	<meta charset="UTF-8">
+	<title>Рация</title>
+	<script src="/brython.js"></script>
+	<script src="/brython_stdlib.js"></script>
+	<style>
+		body {
+			background-color:black;
+			background-image:url("/profiles/static/radio.webp");
+			background-repeat:no-repeat;
+			background-size:contain;
+			background-position:center;
+		}
+		button {
+			background-color:#303234;
+			border-radius:20%;
+			font-weight:bold;
+		}
+		.off {
+			box-shadow:0 2px 4px white;
+			color:white;
+			filter:unset;
+		}
+		.on {
+			box-shadow:0 2px 4px green;
+			color:greenyellow;
+			filter:blur(1px);
+		}
+	</style>
+</head>
+<body onload="brython()">
+	<script type="text/python">
+		# Odyssey Profile API: poll for radio audio
+		from browser import window, aio, document, console, bind, timer
+		from time import time
+		from random import random
+
+		AUDIO_POLL_INTERVAL = 1500  # ms
+
+		radio_enabled = False
+		audio = window.Audio.new('')
+
+		def switch_state_classes(obj, is_enabled: bool):
+			obj.classList.remove('off' if is_enabled else 'on')
+			obj.classList.add('on' if is_enabled else 'off')
+
+		def refresh_enable_btn():
+			btn = document['btnEnable']
+			btn.text = 'Выкл' if radio_enabled else 'Вкл'
+			switch_state_classes(btn, radio_enabled)
+
+		refresh_enable_btn()
+
+		def btnEnable_click(ev):
+			global radio_enabled
+			radio_enabled = not radio_enabled
+			if radio_enabled:
+				audio.src = f'/profiles/audio?s={time()}'
+				audio.play()
+			else:
+				audio.src = ''
+			refresh_enable_btn()
+
+		def audio_poll():
+			global audio
+			#console.log(f'{radio_enabled=} {audio.ended=} {audio.error=}')
+			if radio_enabled and (audio.ended or audio.error):
+				console.log(f'{audio.readyState=} {audio.ended=}')
+				audio.src = f'/profiles/audio?s={time()}'
+				audio.play()
+
+		document['btnEnable'].bind('click', btnEnable_click)
+		timer.set_interval(audio_poll, AUDIO_POLL_INTERVAL)
+	</script>
+	<!-- Add user interaction according to Autoplay policies: https://developer.mozilla.org/en-US/docs/Web/Media/Autoplay_guide -->
+	<button type="button" id="btnEnable" class="off"></button>
+</body>
+</html>
