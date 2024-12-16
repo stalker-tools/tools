@@ -38,6 +38,8 @@ And also provide offline access to game thru saved PDA states on smartphone. So 
 
 Finally, nowadays AI allows game designers create multimedia content and this hybrid engine provide simply way to use it.
 
+Tested on Firefox and Chrome on Ubuntu and Android.
+
 # Installation
 
 Dependencies:
