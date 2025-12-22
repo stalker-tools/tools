@@ -212,19 +212,18 @@ class XRReader:
 					buff = unscramble(buff, XRScramblerConfig.CC_WW)
 		return buff
 
+	DB_VERSION_FILE_OR_PATH = {
+		DbVersion.DB_VERSION_1114: FileOrPath_1114,
+		DbVersion.DB_VERSION_2215: FileOrPath_2215,
+		DbVersion.DB_VERSION_2945: FileOrPath_2945,
+		DbVersion.DB_VERSION_2947RU: FileOrPath_2947,
+		DbVersion.DB_VERSION_2947WW: FileOrPath_2947,
+		DbVersion.DB_VERSION_XDB: FileOrPath_2947,
+	}
+
 	def _get_file_or_path_type(self) -> FileOrPath:
 		# returns type of files iterator according to .db file version
-		match self.version:
-			case DbVersion.DB_VERSION_1114:
-				return self.FileOrPath_1114
-			case DbVersion.DB_VERSION_2215:
-				return self.FileOrPath_2215
-			case DbVersion.DB_VERSION_2945:
-				return self.FileOrPath_2945
-			case DbVersion.DB_VERSION_2947RU |\
-					DbVersion.DB_VERSION_2947WW |\
-					DbVersion.DB_VERSION_XDB:
-				return self.FileOrPath_2947
+		return self.DB_VERSION_FILE_OR_PATH[self.version]
 
 	def iter_files(self) -> Iterator[FileOrPath]:
 		# iters files or paths

@@ -10,7 +10,7 @@ Cross-platform command-line _.db, .xdb, .xrp, .xp_ files extract tool.
 
 This ability allows to game developers working with gamedata without nessesarity extracting of .db files.
 
-And also be freely to analysis of .db files content - game files/folders structure - just import `XRReader` class from `DBReader.py`. See DBReader.py `main()` function code for usage examples.
+And also be free to analysis of .db files content - game files/folders structure - just import `XRReader` class from `DBReader.py`. See `DBReader.py:main()` function code for usage examples.
 
 ## Analysis tools
 
@@ -274,7 +274,7 @@ python DBReader.py -f "gamedata.db*" -t 2947ru g -c
 
 1.1.2 count all .script **gamedata** files:
 ```sh
-python DBReader.py -f "gamedata.db*" -t 2947ru g -n -c -g "*.script"
+python DBReader.py -f "gamedata.db*" -t 2947ru g -c -g "*.script"
 442
 ```
 
@@ -339,7 +339,7 @@ scripts\stalker_generic.script
         gamedata.dbc
         gamedata.dbd
 ```
-Here we see three versions of file. Last version in gamedata.dbb file. To get .db file with file latest version use `--last` option.
+Here we see three versions of file. Latest version in `gamedata.dbb` file. To get .db file with file latest version use `--last` option.
 
 ## examples for development purposes
 
@@ -367,12 +367,12 @@ python DBReader.py -f "gamedata.dbd" -t 2947ru i
 1 Chunk type=DB_CHUNK_HEADER(1) offset=100_804 size=210 compressed
 ```
 
-4.1 chunk **dump** from .db file to binary file:
+4.1 chunk **dump** (raw data) from .db file to binary file:
 ```sh
 python DBReader.py -f "gamedata.dbd" -t 2947ru d --head > "gamedata.dbd.header.bin"
 ```
 
-4.2 chunk **dump** from .db file as human-readable format:
+4.2 chunk **dump** (raw data) from .db file as human-readable format (`-v` option using):
 ```sh
 python DBReader.py -v -f "gamedata.dbd" -t 2947ru d --head > "gamedata.dbd.header.bin"
 File: gamedata.dbd
