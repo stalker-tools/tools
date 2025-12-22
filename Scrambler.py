@@ -95,8 +95,10 @@ class XRScrambler:
 		dest = bytearray(b'0' * len(src))
 		seed = self.m_seed
 		for i in range(len(src)):
-			seed = 1 + seed * self.SEED_MULT
-			seed &= 0xFFFFFFFF
+			seed = (1 + seed * self.SEED_MULT) & 0xFFFFFFFF
+			if seed & 0x80000000:
+				# negative value # correct negative bit-shift operation
+				seed = (seed & 0x7FFFFFFF) - 0x80000000
 			dest[i] = self.m_enc_sbox[src[i]] ^ ((seed >> 24) & 0xff)
 		return dest
 

@@ -4,15 +4,34 @@ The software consists of two parts:
 - Analysis tools for Xray game engine.
 - Hybrid game engine: Xray (.exe with Lua scripts) + Odyssey (Python with web interface).
 
+## Table of contents:
+
+### [Brief introduction](#extract-tool)
+- #### [Extract tool](#extract-tool)
+- #### [Gamedata analysis tools](#gamedata-analysis-tools)
+- #### [Hybrid game engine](#hybrid-game-engine)
+### [Installation](#installation)
+- #### [Windows instructions](#windows-instructions)
+- #### [Linux instructions](#linux-instructions)
+### [Usage](#usage)
+- #### [.db files extract](#db-files-extract)
+- #### [Extract command-line interface](#extract-command-line-interface)
+- #### [Extract command-line examples](#extract-command-line-examples)
+- #### [.ltx files analysis tool](#ltx-files-analysis-tool)
+
+# Brief introduction
+
 ## Extract tool
 
 Cross-platform command-line _.db, .xdb, .xrp, .xp_ files extract tool.
 
 This ability allows to game developers working with gamedata without nessesarity extracting of .db files.
 
-And also be free to analysis of .db files content - game files/folders structure - just import `XRReader` class from `DBReader.py`. See `DBReader.py:main()` function code for usage examples.
+See comman-line help: [.db files extract](#db-files-extract).
 
-## Analysis tools
+And also be free to Python-way analysis of .db files content - game files/folders structure - just import `XRReader` class from `DBReader.py`. See `DBReader.py:main()` function code for usage examples.
+
+## Gamedata analysis tools
 
 This python cross-platform command-line tools used for analysis of gamedata Xray config files:
 - .ltx sections
@@ -83,7 +102,11 @@ sudo zypper refresh
 sudo zypper install graphviz
 ```
 
-# .db files extract
+# Usage
+
+## .db files extract
+
+<a name="db-files-extract"></a>
 
 As .db file is files container what is organized into filesystem with folders tree. And there is number of .db files. One gamedata file can be located into multiple .db files. So tools for showing such multiple versions of file is wanted. For this purpose use particular `--last` option with `gamedata` sub-command.
 
