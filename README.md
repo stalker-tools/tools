@@ -6,18 +6,18 @@ The software consists of two parts:
 
 ## Table of contents:
 
-### [Brief introduction](#extract-tool)
-- #### [Extract tool](#extract-tool)
-- #### [Gamedata analysis tools](#gamedata-analysis-tools)
-- #### [Hybrid game engine](#hybrid-game-engine)
-### [Installation](#installation)
-- #### [Windows instructions](#windows-instructions)
-- #### [Linux instructions](#linux-instructions)
-### [Usage](#usage)
+### [Brief introduction](#brief-introduction-1)
+- #### [Extract tool](#extract-tool-1)
+- #### [Gamedata analysis tools](#gamedata-analysis-tools-1)
+- #### [Hybrid game engine](#hybrid-game-engine-1)
+### [Installation](#installation-1)
+- #### [Windows instructions](#windows-instructions-1)
+- #### [Linux instructions](#linux-instructions-1)
+### [Usage](#usage-1)
 - #### [.db files extract](#db-files-extract)
-- #### [Extract command-line interface](#extract-command-line-interface)
-- #### [Extract command-line examples](#extract-command-line-examples)
-- #### [.ltx files analysis tool](#ltx-files-analysis-tool)
+- #### [Extract command-line interface](#extract-command-line-interface-1)
+- #### [Extract command-line examples](#extract-command-line-examples-1)
+- #### [.ltx files analysis tool](#ltx-files-analysis-tool-1)
 
 # Brief introduction
 
@@ -29,7 +29,7 @@ This ability allows to game developers working with gamedata without nessesarity
 
 See comman-line help: [.db files extract](#db-files-extract).
 
-And also be free to Python-way analysis of .db files content - game files/folders structure - just import `XRReader` class from `DBReader.py`. See `DBReader.py:main()` function code for usage examples.
+And also be free to Python-way analysis of .db files content - game files/folders structure - just import `XRReader` class from `DBReader.py`. See [DBReader.py:main()](https://github.com/stalker-tools/tools/blob/0b7f1c134f875a457119ae87c7187c0d3708e0a6/DBReader.py#L262)) function code for usage examples.
 
 ## Gamedata analysis tools
 
