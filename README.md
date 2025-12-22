@@ -14,7 +14,7 @@ The software consists of two parts:
 - #### [Windows instructions](#windows-instructions-1)
 - #### [Linux instructions](#linux-instructions-1)
 ### [Usage](#usage-1)
-- #### [.db files extract](#db-files-extract)
+- #### [.db files extract](#db-files-extract-1)
 - #### [Extract command-line interface](#extract-command-line-interface-1)
 - #### [Extract command-line examples](#extract-command-line-examples-1)
 - #### [.ltx files analysis tool](#ltx-files-analysis-tool-1)
@@ -105,8 +105,6 @@ sudo zypper install graphviz
 # Usage
 
 ## .db files extract
-
-<a name="db-files-extract"></a>
 
 As .db file is files container what is organized into filesystem with folders tree. And there is number of .db files. One gamedata file can be located into multiple .db files. So tools for showing such multiple versions of file is wanted. For this purpose use particular `--last` option with `gamedata` sub-command.
 
