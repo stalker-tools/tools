@@ -1,5 +1,9 @@
 
+# Binary reader by formatted chunks
+# Author: Stalker tools, 2023-2025
+
 from collections.abc import Iterator
+# tools imports
 from SequensorReader import SequensorReader
 
 

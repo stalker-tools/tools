@@ -4,6 +4,14 @@ The software consists of two parts:
 - Analysis tools for Xray game engine.
 - Hybrid game engine: Xray (.exe with Lua scripts) + Odyssey (Python with web interface).
 
+## Extract tool
+
+Cross-platform command-line _.db, .xdb, .xrp, .xp_ files extract tool.
+
+This ability allows to game developers working with gamedata without nessesarity extracting of .db files.
+
+And also be freely to analysis of .db files content - game files/folders structure - just import `XRReader` class from `DBReader.py`. See DBReader.py `main()` function code for usage examples.
+
 ## Analysis tools
 
 This python cross-platform command-line tools used for analysis of gamedata Xray config files:
@@ -73,6 +81,303 @@ OpenSUSE:
 ```sh
 sudo zypper refresh
 sudo zypper install graphviz
+```
+
+# .db files extract
+
+As .db file is files container what is organized into filesystem with folders tree. And there is number of .db files. One gamedata file can be located into multiple .db files. So tools for showing such multiple versions of file is wanted. For this purpose use particular `--last` option with `gamedata` sub-command.
+
+Be free to use two different practice:
+- Overall view of gamedata files from all .db files. This is usual for working with latest gamedata file version.
+
+For example, show latest version of X-ray Lua files as table (human-readable output):
+```sh
+python DBReader.py -f "gamedata.db*" -t 2947ru g -l -n -g "*xr_*.script"
+    1 scripts\xr_abuse.script           gamedata.dbb
+    2 scripts\xr_actions_id.script      gamedata.dbb
+...
+```
+
+By the way, remove `-n` option in previous example to get machine-readable output:
+```sh
+python DBReader.py -f "gamedata.db*" -t 2947ru g -l -g "*xr_*.script"
+scripts\xr_abuse.script gamedata.dbb
+scripts\xr_actions_id.script gamedata.dbb
+...
+```
+
+One more example, show latest version of .dds image files table (human-readable output):
+```sh
+python DBReader.py -f "gamedata.db*" -t 2947ru g -l -n -g "*.dds"
+    1 levels\l01_escape\build_details.dds                                gamedata.db0
+...
+   74 levels\l04u_labx18\lmap#1_2.dds                                    gamedata.db1
+...
+ 5306 textures\wpn\wpn_zink_svd.dds                                      gamedata.db8
+```
+
+- Split gamedata files by .db files. Here is possible to track gamedata files versions by .db files.
+
+For example, show all versions of X-ray Lua files by .db files (key-values list):
+
+```ssh
+python DBReader.py -f "gamedata.db*" -t 2947ru g -s -g "*xr_*.script"
+        gamedata.db0
+        gamedata.db1
+        gamedata.db2
+        gamedata.db3
+        gamedata.db4
+scripts\xr_abuse.script
+...
+        gamedata.db5
+        gamedata.db6
+        gamedata.db7
+        gamedata.db8
+        gamedata.db9
+        gamedata.dba
+scripts\xr_abuse.script
+        gamedata.dbb
+scripts\xr_abuse.script
+        gamedata.dbc
+scripts\xr_motivator.script
+        gamedata.dbd
+```
+Here is three versions of `scripts\xr_abuse.script` file in .db files: `gamedata.db4`, `gamedata.dba` and latest version in `gamedata.dbb`.
+
+
+## Extract command-line interface
+
+1. `DBReader.py` help:
+```sh
+usage: DBReader.py [-h] -f PATH [-t TYPE] [-v] {gamedata,g,files,f,info,i,dump,d} ...
+
+DBReader test
+
+positional arguments:
+  {gamedata,g,files,f,info,i,dump,d}
+                        sub-commands:
+    gamedata (g)        gamedata .db files manipulations
+    files (f)           show files info
+    info (i)            dump chunks info
+    dump (d)            dump chunks raw data
+
+options:
+  -h, --help            show this help message and exit
+  -f PATH               .db file path
+  -t TYPE               .db file type; one of: 11xx, 2215, 2945, 2947ru, 2947ww, xdb
+  -v                    verbose mode
+
+Examples:
+
+1. Overal gamedata files
+
+1.1 Gamedata overall in all .db files
+
+        Show all files in all .db game files:
+DBReader.py -f "gamedata.db*" -t 2947ru g
+
+        Show .script files (Unix shell pattern) in selected .db game files (GLOB pattern):
+DBReader.py -f "gamedata.db[04]" -t 2947ru g -g "*.script"
+
+        Show latest version files from all .db game files:
+DBReader.py -f "gamedata.db*" -t 2947ru g -l -g "*dialog*.script"
+
+        Count files in all .db game files:
+DBReader.py -f "gamedata.db*" -t 2947ru g -c
+
+1.2 Gamedata separated by .db files
+
+        Count files by .db game files:
+DBReader.py -f "gamedata.db*" -t 2947ru g -s -c
+
+        Count .script files by .db game files:
+DBReader.py -f "gamedata.db*" -t 2947ru g -s -c -g "*.script"
+
+2. One .db file
+
+        Show files info (names only):
+DBReader.py -f gamedata.dbd" -t 2947ru f
+
+        Show files info as table format:
+DBReader.py -f gamedata.dbd" -t 2947ru f --table
+
+3. Examples for development purposes
+
+        Show files info from unscrambled header chunk binary file:
+DBReader.py -f "gamedata.dbd.header-unscrambled.bin" -t 2947ru f --header
+
+        Show chunks info:
+DBReader.py -f "gamedata.dbd" -t 2947ru i
+
+        Dump raw header chunk to binary file:
+DBReader.py -f "gamedata.dbd" -t 2947ru d --head > "gamedata.dbd.header.bin"
+
+        Dump raw chunk (by index) to binary file:
+DBReader.py -f "gamedata.dbd" -t 2947ru d -i 1 > "gamedata.dbd.chunk-1.bin"
+```
+
+2. `DBReader.py` **gamedata** sub-command help:
+```sh
+python DBReader.py g -h
+usage: DBReader.py gamedata [-h] [-g PATTERN] [-s] [-n] [-c] [-l]
+
+options:
+  -h, --help            show this help message and exit
+  -g PATTERN, --filter PATTERN
+                        filter files by name use Unix shell-style wildcards: *, ?, [seq], [!seq]
+  -s, --split           show files by .db files
+  -n, --number          show number the files
+  -c, --count           count files
+  -l, --last            show .db file of latest version of file
+```
+
+3. `DBReader.py` **files** sub-command help:
+```sh
+python DBReader.py f -h
+usage: DBReader.py files [-h] [--table] [--header]
+
+options:
+  -h, --help  show this help message and exit
+  --table     show files as table format
+  --header    treat file as header chunk binary dump file
+```
+
+4. `DBReader.py` **info** sub-command help:
+```sh
+python DBReader.py i -h
+usage: DBReader.py info [-h]
+
+options:
+  -h, --help  show this help message and exit
+```
+
+5. `DBReader.py` **dump** sub-command help:
+```sh
+python DBReader.py d -h
+usage: DBReader.py dump [-h] [-i NUMBER] [--header]
+
+options:
+  -h, --help  show this help message and exit
+  -i NUMBER   print chunk by index: 0..
+  --header    print header chunk
+```
+
+## Extract command-line examples
+
+### **gamedata** files count overall for .db files:
+
+1.1.1 count all **gamedata** files:
+```sh
+python DBReader.py -f "gamedata.db*" -t 2947ru g -c
+25684
+```
+
+1.1.2 count all .script **gamedata** files:
+```sh
+python DBReader.py -f "gamedata.db*" -t 2947ru g -n -c -g "*.script"
+442
+```
+
+### **gamedata** files count by .db files:
+
+1.2.1 all **gamedata** files count:
+```sh
+python DBReader.py -f "gamedata.db*" -t 2947ru g -s -n -c
+01 gamedata.db0  1195
+02 gamedata.db1   413
+03 gamedata.db2   200
+04 gamedata.db3   300
+05 gamedata.db4 14800
+06 gamedata.db5  3459
+07 gamedata.db6   170
+08 gamedata.db7  2570
+09 gamedata.db8  1035
+10 gamedata.db9  1473
+11 gamedata.dba  1526
+12 gamedata.dbb  1547
+13 gamedata.dbc    11
+14 gamedata.dbd     6
+```
+
+1.2.2 .script **gamedata** files count:
+```sh
+python DBReader.py -f "gamedata.db*" -t 2947ru g -s -n -c -g "*.script"
+01 gamedata.db0     2
+02 gamedata.db1     0
+03 gamedata.db2     0
+04 gamedata.db3     0
+05 gamedata.db4   440
+06 gamedata.db5     0
+07 gamedata.db6     0
+08 gamedata.db7     0
+09 gamedata.db8     0
+10 gamedata.db9     0
+11 gamedata.dba   441
+12 gamedata.dbb   441
+13 gamedata.dbc     6
+14 gamedata.dbd     3
+```
+
+1.2.3 `scripts\stalker_generic.script` **gamedata** file count:
+```sh
+python DBReader.py -f "gamedata.db*" -t 2947ru g -s -g "scripts\stalker_generic.script"
+        gamedata.db0
+        gamedata.db1
+        gamedata.db2
+        gamedata.db3
+        gamedata.db4
+scripts\stalker_generic.script
+        gamedata.db5
+        gamedata.db6
+        gamedata.db7
+        gamedata.db8
+        gamedata.db9
+        gamedata.dba
+scripts\stalker_generic.script
+        gamedata.dbb
+scripts\stalker_generic.script
+        gamedata.dbc
+        gamedata.dbd
+```
+Here we see three versions of file. Last version in gamedata.dbb file. To get .db file with file latest version use `--last` option.
+
+## examples for development purposes
+
+2. **files** listing in .db file:
+```sh
+python DBReader.py -f "gamedata.dbd" -t 2947ru f --table
+Type Offset  Compressed    CRC       Size    Name
+D 0x00000000         0 0x00000000         0 config\
+D 0x00000000         0 0x00000000         0 config\mp\
+D 0x00000000         0 0x00000000         0 config\mp\weapons_mp\
+D 0x00000000         0 0x00000000         0 config\ui\
+D 0x00000000         0 0x00000000         0 scripts\
+F 0x00000008    57_567 0xa5c60df5    57_567 config\mp\weapons_mp\weapons_mp.ltx
+F 0x0000e0e7     7_311 0xce9244d4     7_311 config\ui\ui_mm_mp_tabclient.xml
+F 0x0000fd76    10_286 0xf1855d14    10_286 config\ui\ui_mm_mp_taboptions.xml
+F 0x000125a4     2_811 0x720eb5bd     2_811 scripts\ui_mm_mp_join.script
+F 0x0001309f     6_567 0x6efd782e     6_567 scripts\ui_mm_mp_options.script
+F 0x00014a46    16_246 0x36410070    16_246 scripts\ui_mp_main.script
+```
+
+3. chunks **info** in .db file:
+```sh
+python DBReader.py -f "gamedata.dbd" -t 2947ru i
+0 Chunk type=DB_CHUNK_DATA(0) offset=8 size=100_788 
+1 Chunk type=DB_CHUNK_HEADER(1) offset=100_804 size=210 compressed
+```
+
+4.1 chunk **dump** from .db file to binary file:
+```sh
+python DBReader.py -f "gamedata.dbd" -t 2947ru d --head > "gamedata.dbd.header.bin"
+```
+
+4.2 chunk **dump** from .db file as human-readable format:
+```sh
+python DBReader.py -v -f "gamedata.dbd" -t 2947ru d --head > "gamedata.dbd.header.bin"
+File: gamedata.dbd
+Chunk type=DB_CHUNK_HEADER(1) offset=100_804 size=210 compressed
+b"\xder\xc3I\xf1j\xf5\xb6\xa3Z\xeb\x87\xa3\xc3\x94\x02\xf4\x85J8\xbe\xac\x1a6/k\x9c\x11\xe6\xa5\xd2\xab\x01\xa4\x1a\x98\xc2#\x1b\xdd+i6\xcb\xdb\xd0=\xb0\xc3\xbb\xd6,\xa4\xce\xf5\xb4\xbe\x12\x0b\x9e\xeet\xfcA\\&\x82P\x12\xb3\xa1\xa6Q\x08\xb8\x0f!\x0f\xab\xd4\xaaWl\xc6\x9b,\x14/\xe7k\xb1\xe7\x86\xc5z\xb1C\xc9\x19\x11\xb4D>\xb3\x95\xc3r\xc5r5\xcfh\xb3\xffW\xbd&WH=\x1a\x9b\xb4F\xd0}R\xabg-\xc2\x88\xe3u\x8eW\x02\xe5\xc0\x99l_i\x99\x05my\x89\xd6f||zt\xb4pk\xec\x03\x0e\x8b\x88\xecf\x0e\xc5\x94\xa25\xa4+\x02Nb\xde\xbeJ\xf9\xbf\xe5NI\xa2\xf3\xd5\x0ce\x8d\xd9\x9c\xad\x1b\x1b_\x81\xd0'6\xd8\xe7.\xe5o\xcf\xbd\x03}T\xa5\xa1"
 ```
 
 # .ltx files analysis tool

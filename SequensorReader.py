@@ -18,7 +18,7 @@ class SequensorReader:
 		byte_order:	Struct format byte order: < - little-endian; > - big-endian; = - native; ! - network; @ - string native
 		'''
 		self.buff, self.byte_order = buff, byte_order
-		self.pos = 0
+		self.pos = 0  # position, bytes
 	
 	def read(self, format: str) -> tuple[int | float] | int | float:
 		'''
@@ -30,7 +30,7 @@ class SequensorReader:
 		if self.pos + _size > len(self.buff):
 			raise OutOfBoundException()
 		ret = s.unpack(self.buff[self.pos:self.pos+_size])
-		self.pos += _size
+		self.pos += _size  # advance the position
 		return ret[0] if len(ret) == 1 else ret
 
 	def read_string(self) -> str:
@@ -41,7 +41,7 @@ class SequensorReader:
 		if string_end_index < 0:
 			raise OutOfBoundException()
 		ret = self.buff[self.pos:string_end_index].decode()
-		self.pos = string_end_index + 1  # after null byte
+		self.pos = string_end_index + 1  # advance the position: after null byte
 		return ret
 
 	def read_bytes(self, size: int | None = None, *, update_position = True) -> bytes:
@@ -66,13 +66,17 @@ class SequensorReader:
 		'returns remaining bytes count'
 		return len(self.buff) - self.pos
 
-	def skip(self, format: str) -> Self:
+	def skip(self, formatOrLen: str | int) -> Self:
 		'''
-		skip bytes according to Struct format
-		format:	see struct help - Format Characters
+		skip bytes according to Struct format or number of bytes
+		formatOrLen: str - see struct help - Format Characters
+		formatOrLen: int - skip number of bytes
 		'''
-		s = Struct(format)
-		self.pos += s.size
+		if isinstance(formatOrLen, str):
+			s = Struct(formatOrLen)
+			self.pos += s.size
+		elif isinstance(formatOrLen, int):
+			self.pos += formatOrLen
 		return self
 
 	@staticmethod
