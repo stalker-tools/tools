@@ -1,5 +1,5 @@
 
-# Xray .db files reader
+# Xray .db/.xdb files reader
 # Author: Stalker tools, 2023-2025
 
 from typing import Iterator
@@ -41,9 +41,10 @@ class DbFileOverrun(Exception): pass
 
 class XRReader:
 
+	# binary access classes
 
 	class Chunk:
-		'base chunk'
+		'base chunk to read .db/.xdb file'
 
 		def __init__(self, type: int, size: int, parent_sr: SequensorReader) -> None:
 			try:
@@ -62,16 +63,20 @@ class XRReader:
 				raise DbFileOverrun()
 
 		def get_data(self) -> bytes:
+			'returns chunk binary data'
 			self._check()
 			return self.buff[self.parent_pos:self.parent_pos + self.size]
 
+	# files/path access classes
 
 	class FileOrPath:
 
 		def __init__(self, sr: SequensorReader) -> None:
-			self.crc = None
 			self.sr = sr
+			# must be defined by inheritance classes:
+			self.crc = None
 			self.name = None
+			self.size_real = self.offset = self.size_compressed = None
 
 		def __str__(self) -> str:
 			return self.name if self.name else ''
@@ -81,24 +86,30 @@ class XRReader:
 			return f'Type Offset  Compressed    CRC       Size    Name'
 
 		def get_table_row(self):
-			return f'{'F' if self.is_file else 'D'} 0x{self.offset:08x} {self.size_compressed: 9_} 0x{self.crc:08x} {self.size_real: 9_} {self.name}'
+			return f'{"F" if self.is_file else "D"} 0x{self.offset:08x} {self.size_compressed: 9_} 0x{self.crc:08x} {self.size_real: 9_} {self.name}'
 
 		@property
 		def is_file(self) -> bool:
 			'returns True: is file; False: is path'
 			return bool(self.offset)
 
+		@property
+		def size(self) -> int:
+			return self.size_real
+
 		def skip_data(self) -> None:
 			'skips file data'
 			self.sr.skip(self.size_compressed)
 
-		def get_data(self) -> bytes | None:
-			'gets file data or None for path'
+		def get_data(self, db_reader: 'XRReader', keep_mv = False) -> bytes | None:
+			'gets file data or None for path from data chunk'
 			if self.is_file:
-				raw_data = self.sr.read_bytes(self.size_compressed)
-				if self.size_compressed != self.size_real:
-					return lzo.decompress(raw_data, False, self.size_real, algorithm='LZO1X')
-				return raw_data
+				raw_data = db_reader.sr.buff[self.offset:self.offset+self.size_compressed]
+				if self.size_compressed == self.size_real:  # is not need to decompress
+					if not keep_mv:  # not keep memoryview
+						raw_data = bytes(raw_data)
+					return raw_data
+				return lzo.decompress(raw_data, False, self.size_real, algorithm='LZO1X')
 			else:
 				return None
 
@@ -145,27 +156,19 @@ class XRReader:
 			self.name, self.offset = sr.read_bytes(name_size - 16).decode(), sr.read('I')
 
 
-	def __init__(self, file_path: str, version: DbVersion = DbVersion.DB_VERSION_AUTO) -> None:
-		self.file_path = file_path
-		self.sr = self._read_file()  # chunk reader
-		self.version = version
-		if version == DbVersion.DB_VERSION_AUTO:
-			# try to define file type by extention
-			file_ext = Path(file_path).suffix
-			if len(file_ext) == 5 and file_ext.startswith('.xdb') and file_ext[4].isalnum():
-				self.version = DbVersion.DB_VERSION_XDB
-			elif file_ext == '.xrp':
-				self.version = DbVersion.DB_VERSION_1114
-			elif len(file_ext) == 4 and file_ext.startswith('.xp') and file_ext[3].isalnum():
-				self.version = DbVersion.DB_VERSION_2215
-		if (self.version == DbVersion.DB_VERSION_AUTO or (self.version.value & (self.version.value - 1)) != 0):
-			raise UnspecifiedDbFormat()
+	def __init__(self, file_path: str | Path, version: str) -> None:
+		self.file_path = Path(file_path)
+		self._buff: bytes | None = None
+		self.sr = self._read_file()  # read .db file and create chunk reader
+		self.version = DbFileVersion.get_version_by_file_name(self.file_path, version)
+		self._header_chunk_sr: SequensorReader | None = None  # SR cache
 
 	def _read_file(self) -> SequensorReader:
 		'read .db file'
 		with open(self.file_path, 'rb') as f:
 			# init chunk reader
-			sr = SequensorReader(f.read())
+			self._buff = f.read()
+			sr = SequensorReader(memoryview(self._buff))
 			return sr
 
 	def iter_chunks(self) -> Iterator[Chunk]:
@@ -228,13 +231,18 @@ class XRReader:
 	def iter_files(self) -> Iterator[FileOrPath]:
 		# iters files or paths
 
-		if (chunk := self.find_chunk(ChunkTypes.DB_CHUNK_HEADER)):
+		f_type = self._get_file_or_path_type()
+
+		if self._header_chunk_sr:  # is cache created
+			self._header_chunk_sr.pos = 0  # reset pointer to iter from beginning
+			while self._header_chunk_sr.remain:  # iter paths and files
+				yield f_type(self._header_chunk_sr)
+		elif (chunk := self.find_chunk(ChunkTypes.DB_CHUNK_HEADER)):
 			if chunk.size:
 				# head chunk found # decrypt and/or decompress chunk data
 				buff = self._unscramble_chunk(chunk)
 				# iter paths and files from decompressed head chunk data: buff
-				f_type = self._get_file_or_path_type()
-				sr = SequensorReader(buff)
+				self._header_chunk_sr = sr = SequensorReader(buff)  # create SR and set SR cache
 				while sr.remain:  # iter paths and files
 					yield f_type(sr)
 			else:
@@ -252,6 +260,42 @@ class XRReader:
 				# f.skip_data()
 
 
+class DbFileVersion:
+
+	FILE_VERSIONS = {
+		'11xx': DbVersion.DB_VERSION_1114,
+		'2215': DbVersion.DB_VERSION_2215,
+		'2945': DbVersion.DB_VERSION_2945,
+		'2947ru': DbVersion.DB_VERSION_2947RU,
+		'2947ww': DbVersion.DB_VERSION_2947WW,
+		'xdb': DbVersion.DB_VERSION_XDB,
+		}
+
+	@classmethod
+	def get_versions_names(cls) -> tuple[str]:
+		return cls.FILE_VERSIONS.keys()
+
+	@classmethod
+	def get_version_by_name(cls, version_name: str) -> DbVersion:
+		return cls.FILE_VERSIONS[version_name] if version_name else DbVersion.DB_VERSION_AUTO
+
+	@classmethod
+	def get_version_by_file_name(cls, file_name: Path, version_name: str) -> DbVersion:
+		if (version := cls.get_version_by_name(version_name)) == DbVersion.DB_VERSION_AUTO:
+			# try to define file version by extention
+			file_ext = file_name.suffix
+			if len(file_ext) == 5 and file_ext.startswith('.xdb') and file_ext[4].isalnum():
+				version = DbVersion.DB_VERSION_XDB
+			elif file_ext == '.xrp':
+				version = DbVersion.DB_VERSION_1114
+			elif len(file_ext) == 4 and file_ext.startswith('.xp') and file_ext[3].isalnum():
+				version = DbVersion.DB_VERSION_2215
+		# check defined version
+		if (version == DbVersion.DB_VERSION_AUTO or (version.value & (version.value - 1)) != 0):
+			raise UnspecifiedDbFormat()
+		return version
+
+
 if __name__ == "__main__":
 	import argparse
 	from sys import argv, stdout, exit
@@ -260,18 +304,6 @@ if __name__ == "__main__":
 	from fnmatch import fnmatch
 
 	def main():
-
-		FILE_TYPES = {
-			'11xx': DbVersion.DB_VERSION_1114,
-			'2215': DbVersion.DB_VERSION_2215,
-			'2945': DbVersion.DB_VERSION_2945,
-			'2947ru': DbVersion.DB_VERSION_2947RU,
-			'2947ww': DbVersion.DB_VERSION_2947WW,
-			'xdb': DbVersion.DB_VERSION_XDB,
-			}
-
-		def get_db_file_type() -> DbVersion:
-			return FILE_TYPES[args.t] if args.t else DbVersion.DB_VERSION_AUTO
 
 		def parse_args():
 			parser = argparse.ArgumentParser(
@@ -326,21 +358,24 @@ if __name__ == "__main__":
 ''',
 				formatter_class=argparse.RawTextHelpFormatter
 			)
-			parser.add_argument('-f', metavar='PATH', required=True, help='.db file path')
-			parser.add_argument('-t', metavar='TYPE', choices=FILE_TYPES.keys(), help=f'.db file type; one of: {', '.join(FILE_TYPES.keys())}')
+			parser.add_argument('-f', metavar='PATH', required=True,
+				help='.db file path; for gamedata sub-command: GLOB pattern; for another sub-commands: path to .db file')
+			parser.add_argument('-t', '--version', metavar='VER', choices=DbFileVersion.get_versions_names(),
+				help=f'.db files version; usually 2947ru/2947ww for SC, xdb for CS and CP; one of: {", ".join(DbFileVersion.get_versions_names())}')
 			parser.add_argument('-v', action='store_true', help='verbose mode')
 			subparsers = parser.add_subparsers(dest='mode', help='sub-commands:')
-			parser_ = subparsers.add_parser('gamedata', aliases=('g',), help='gamedata .db files manipulations')
-			parser_.add_argument('-g', '--filter', metavar='PATTERN', help='filter files by name use Unix shell-style wildcards: *, ?, [seq], [!seq]')
+			parser_ = subparsers.add_parser('gamedata', aliases=('g',), help='gamedata files and .db files manipulations')
+			parser_.add_argument('-g', '--filter', metavar='PATTERN',
+				help='filter files by name use Unix shell-style wildcards: *, ?, [seq], [!seq]')
 			parser_.add_argument('-s', '--split', action='store_true', help='show files by .db files')
 			parser_.add_argument('-n', '--number', action='store_true', help='show number the files')
 			parser_.add_argument('-c', '--count', action='store_true', help='count files')
 			parser_.add_argument('-l', '--last', action='store_true', help='show .db file of latest version of file')
-			parser_ = subparsers.add_parser('files', aliases=('f',), help='show files info')
+			parser_ = subparsers.add_parser('files', aliases=('f',), help='one .db file: show files info')
 			parser_.add_argument('--table', action='store_true', help='show files as table format')
 			parser_.add_argument('--header', action='store_true', help='treat file as header chunk binary dump file')
-			parser_ = subparsers.add_parser('info', aliases=('i',), help='dump chunks info')
-			parser_ = subparsers.add_parser('dump', aliases=('d',), help='dump chunks raw data')
+			parser_ = subparsers.add_parser('info', aliases=('i',), help='one .db file: dump chunks info')
+			parser_ = subparsers.add_parser('dump', aliases=('d',), help='one .db file: dump chunks raw data')
 			parser_.add_argument('-i', metavar='NUMBER', type=int, help='print chunk by index: 0..')
 			parser_.add_argument('--header', action='store_true', help='print header chunk')
 			return parser.parse_args()
@@ -369,7 +404,6 @@ if __name__ == "__main__":
 						elif fnmatch(f.name, args.filter):  # Unix shell-style wildcards
 							yield f
 
-				db_file_type = get_db_file_type()
 				if args.split:
 					# files by .db files
 					db_pref = '' if args.count else '\t'
@@ -379,7 +413,7 @@ if __name__ == "__main__":
 						else:
 							print(f'{db_pref}{f.name}', end=' ' if args.count else '\n')
 						# open .db file
-						db_reader = XRReader(str(f.absolute()), db_file_type)
+						db_reader = XRReader(f, args.version)
 						if args.count:  # count files in .db file
 							print(f'{sum(1 for _ in iter_files_in_db_file(db_reader)):5}')
 						else:
@@ -391,10 +425,10 @@ if __name__ == "__main__":
 				else:
 					# files for all .db files
 					if args.last:  # show last version of files
-						files = {}  # file and .db file
+						files = {}  # gamedata file: .db file
 						for i, f in enumerate(iter_db_files()):
 							# open .db file
-							db_reader = XRReader(str(f.absolute()), db_file_type)
+							db_reader = XRReader(f, args.version)
 							for ff in iter_files_in_db_file(db_reader):
 								files[ff.name] = f.name
 						if files:
@@ -411,7 +445,7 @@ if __name__ == "__main__":
 						files = set()  # files names
 						for i, f in enumerate(iter_db_files()):
 							# open .db file
-							db_reader = XRReader(str(f.absolute()), db_file_type)
+							db_reader = XRReader(f, args.version)
 							for ff in iter_files_in_db_file(db_reader):
 								files.add(ff.name)
 						if args.count:  # count files in .db file
@@ -426,7 +460,7 @@ if __name__ == "__main__":
 			case 'files' | 'f':
 
 				def iter_files() -> Iterator[XRReader.FileOrPath]:
-					db_reader = XRReader(args.f, get_db_file_type())
+					db_reader = XRReader(args.f, args.version)
 					if args.header:
 						# from header dump binary file
 						f_type = db_reader._get_file_or_path_type()
@@ -445,14 +479,14 @@ if __name__ == "__main__":
 						print(f)
 
 			case 'info' | 'i':
-				db_reader = XRReader(args.f, get_db_file_type())
+				db_reader = XRReader(args.f, args.version)
 				for i, chunk in enumerate(db_reader.iter_chunks()):
 					print(i, chunk)
 
 			case 'dump' | 'd':
 				if args.header:
 					# print header chunk
-					db_reader = XRReader(args.f, get_db_file_type())
+					db_reader = XRReader(args.f, args.version)
 					if (chunk := db_reader.find_chunk(ChunkTypes.DB_CHUNK_HEADER)):
 						if chunk.size:
 							# head chunk found
@@ -464,7 +498,7 @@ if __name__ == "__main__":
 								stdout.buffer.write(buff)
 				elif (chunk_index := args.i) is not None and chunk_index >= 0:
 					# print chunk by index
-					db_reader = XRReader(args.f, get_db_file_type())
+					db_reader = XRReader(args.f, args.version)
 					for i, chunk in enumerate(db_reader.iter_chunks()):
 						if i == chunk_index:
 							buff = chunk.get_data()

@@ -1,3 +1,4 @@
+python-lzo
 plotly
 kaleido
 Pillow

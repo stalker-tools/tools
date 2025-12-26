@@ -19,7 +19,7 @@ class SequensorReader:
 		'''
 		self.buff, self.byte_order = buff, byte_order
 		self.pos = 0  # position, bytes
-	
+
 	def read(self, format: str) -> tuple[int | float] | int | float:
 		'''
 		reads according to Struct format
