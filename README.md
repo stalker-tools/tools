@@ -47,6 +47,9 @@ Python-way API - just import `XRReader` class from `DBReader.py`. See [DBReader.
 
 See help: [3.1 .db/.xdb files extraction](EXTRACT.md).
 
+Installation for standalon extractor utility see [2.2.3 db-extractor instructions](#223-db-extractor-instructions)
+
+
 ## 1.2 Gamedata analysis tools
 
 This command-line tools used for analysis of gamedata Xray config files:
@@ -99,33 +102,47 @@ Tested on Firefox and Chrome on Ubuntu and Android.
 
 ### 2.1 Windows instructions
 
-2.1.1. Download and install Python version 3.12 and abow. For example:
+#### 2.1.1. Download and install Python version 3.12 and abow. For example:
 [Python 3.12.4](https://www.python.org/downloads/release/python-3124/)
 
-2.1.2 Download and install [Graphviz 11.0.0](https://graphviz.org/download/#windows)
+#### 2.1.2 Download and install [Graphviz 11.0.0](https://graphviz.org/download/#windows)
 
-2.1.3 Install Python packages:
+#### 2.1.3 Install Python packages:
 ```sh
 pip3 install -r requirements.txt
 ```
 
 ### 2.2 Linux instructions
 
-2.2.1 Install Graphviz, instruction: [Graphviz](https://graphviz.org/download/#linux)
+#### 2.2.1 Install Graphviz, instruction: [Graphviz](https://graphviz.org/download/#linux)
 
-Ubuntu:
+- Ubuntu 24:
+
 ```sh
 sudo apt-get update
 sudo apt-get install graphviz
 ```
 
-OpenSUSE:
+- OpenSUSE:
 ```sh
 sudo zypper refresh
 sudo zypper install graphviz
 ```
 
-2.2.2 Install Python packages:
+#### 2.2.2 Install Python packages:
+
 ```sh
 pip3 install -r requirements.txt
 ```
+
+#### 2.2.3 db-extractor instructions
+
+Download latest version: [db-extract](https://github.com/stalker-tools/tools/releases/latest).
+
+Ubuntu 24:
+
+- Install LZO development package: `apt install liblzo2-dev`
+- Install LZO Python package:
+  - for Python venv: `python3 -m pip install python-lzo`
+  - for system Python: `apt install python3-lzo`
+- Run: `+x ./db-extract`
