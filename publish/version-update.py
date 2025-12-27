@@ -15,9 +15,9 @@ print(f'New version: {git_version.decode()}')
 
 with open('version.py', 'wb') as f:
 	f.write(b'# This is automatic generated file. Do not edit.\n')
-	f.write(b'# ')
-	f.write(datetime.now().isoformat().encode())
-	f.write(b'\n')
-	f.write(b'VERSION = \'')
+	f.write(b'PUBLIC_VERSION = \'')
 	f.write(git_version)
+	f.write(b'\'\n')
+	f.write(b'PUBLIC_DATETIME=\'')
+	f.write(datetime.now().astimezone().isoformat(timespec='minutes').encode())
 	f.write(b'\'\n')
