@@ -13,6 +13,7 @@ from contextlib import contextmanager
 from codecs import getreader, StreamReader
 from io import UnsupportedOperation
 # tools imports
+from version import VERSION
 from LayeredFileSystem import LayeredFileSystem, PathType, LayerBase, FileIoBase
 from DBReader import XRReader, DbFileVersion, ChunkTypes, WrongDbFormat, UnspecifiedDbFormat
 
@@ -381,7 +382,7 @@ if __name__ == "__main__":
 
 		def parse_args():
 			parser = argparse.ArgumentParser(
-				description=f'''Odyssey/Stalker Xray game file paths tool.
+				description=f'''Odyssey/Stalker Xray game file paths tool; version: {VERSION}
 
 Used to extract files from .db/.xdb files to gamedata or whatever place: see extract sub-command -d option.
 Be free to filter extracted files: see extract sub-command -f option examples below; get help: {basename(argv[0])} e -h
@@ -436,6 +437,7 @@ This is a way to find out what an X-ray engine see all game data files.
 			parser.add_argument('-d', '--gamedata', metavar='PATH', default=DEFAULT_GAMEDATA_PATH,
 				help=f'gamedata path; used to diff sub-command; default: {DEFAULT_GAMEDATA_PATH}')
 			parser.add_argument('-v', action='count', default=0, help='verbose mode: 0..; examples: -v, -vv')
+			parser.add_argument('-V', action='version', version=VERSION, help='show version')
 			subparsers = parser.add_subparsers(dest='mode', help='sub-commands:')
 			parser_ = subparsers.add_parser('extract', aliases=('e',), help='extract files from .db/.xdb files')
 			parser_.add_argument('-e', '--extract-path', metavar='PATH', default=DEFAULT_GAMEDATA_PATH,
