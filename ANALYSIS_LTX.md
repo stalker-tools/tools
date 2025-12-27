@@ -1,4 +1,4 @@
-# .ltx files analysis tool
+# 3.2 .ltx files analysis tool
 
 Command-line tools is 100% python, so it has wide usage as cross-platform.
 * `ltx_tool.py` for **text**-based view/edit and has .ltx-specific filters capabilities.

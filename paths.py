@@ -396,13 +396,13 @@ Note: while extraction gamedata files is sorted by paths and grouped by .db/.dbx
 {basename(argv[0])} -g "S.T.A.L.K.E.R" -t 2947ru e
 
 	The same to whatever place:
-{basename(argv[0])} -g "S.T.A.L.K.E.R" -t 2947ru e -d "path to extract"
+{basename(argv[0])} -g "S.T.A.L.K.E.R" -t 2947ru e -e "path to extract"
 
 	Extract filtered (from ai\\alife\\ folder) gamedata files from all .db/.xdb files:
 {basename(argv[0])} -f "ai\\alife\\*" -g "S.T.A.L.K.E.R" -t 2947ru e
 
 	The same with all .ltx files:
-{basename(argv[0])} -f "ai\\alife\\*" -g "S.T.A.L.K.E.R" -t 2947ru e "*.ltx"
+{basename(argv[0])} -f "*.ltx" -g "S.T.A.L.K.E.R" -t 2947ru e
 
 	Extract all gamedata files from filtered .db/.xdb files:
 {basename(argv[0])} --exclude-db-files "gamedata.db0" "gamedata.db1" -g "S.T.A.L.K.E.R" -t 2947ru e
@@ -425,7 +425,7 @@ This is a way to find out what an X-ray engine see all game data files.
 ''',
 				formatter_class=argparse.RawTextHelpFormatter
 			)
-			parser.add_argument('-g', '--gamepath', metavar='PATH', required=True,
+			parser.add_argument('-g', '--gamepath', metavar='PATH', default='.',
 				help='game path that contains .db/.xdb files and optional gamedata folder')
 			parser.add_argument('--exclude-db-files', metavar='FILE_NAME|PATTERN', nargs='+',
 				help='game path that contains .db/.xdb files and optional gamedata folder; Unix shell-style wildcards: *, ?, [seq], [!seq]')
@@ -434,7 +434,7 @@ This is a way to find out what an X-ray engine see all game data files.
 			parser.add_argument('-f', '--filter', metavar='FILE|PATTERN', nargs='+',
 				help='filter gamedata files by name use Unix shell-style wildcards: *, ?, [seq], [!seq]')
 			parser.add_argument('-d', '--gamedata', metavar='PATH', default=DEFAULT_GAMEDATA_PATH,
-				help=f'destination path to extract files; default: {DEFAULT_GAMEDATA_PATH}')
+				help=f'gamedata path; used to diff sub-command; default: {DEFAULT_GAMEDATA_PATH}')
 			parser.add_argument('-v', action='count', default=0, help='verbose mode: 0..; examples: -v, -vv')
 			subparsers = parser.add_subparsers(dest='mode', help='sub-commands:')
 			parser_ = subparsers.add_parser('extract', aliases=('e',), help='extract files from .db/.xdb files')
@@ -447,7 +447,7 @@ used to copy of all gamedata files (.db/.xdb and gamedata sub-path) to another l
 			parser_.add_argument('--encoding', default=DEFAULT_OS_ENCODING, help=f'extract text files encoding to convert to; text files: {", ".join(TEXT_FILES_EXT)}; to binary copy of text files use "raw" encoding; default: {DEFAULT_OS_ENCODING}')
 			parser_.add_argument('-m', '--dummy', action='store_true', help='dummy run: do not write files; used for command-line options debugging')
 			parser_ = subparsers.add_parser('diff', aliases=('d',), help='compare text files from two medias: .db/.xdb files and gamedata files; output format is unified_diff: ---, +++, @@')
-			parser_.add_argument('--encoding', default=DEFAULT_OS_ENCODING, help=f'.db/.xdb text files encoding to convert to; text files: {", ".join(TEXT_FILES_EXT)}; default: {DEFAULT_OS_ENCODING}')
+			parser_.add_argument('--encoding', default=DEFAULT_OS_ENCODING, help=f'.db/.xdb text files encoding to convert to; text files: {", ".join(TEXT_FILES_EXT)}; to binary copy of text files use "raw" encoding; default: {DEFAULT_OS_ENCODING}')
 			parser_ = subparsers.add_parser('info', aliases=('i',), help='show info about files from .db/.xdb files')
 			parser_.add_argument('--paths', action='store_true', help='show paths')
 			parser_.add_argument('--table', action='store_true', help='human-readable format')
@@ -562,9 +562,9 @@ used to copy of all gamedata files (.db/.xdb and gamedata sub-path) to another l
 						print(f'{i+1:5} {f} extract {ff}')
 					if args.dummy:
 						continue  # is dummy run
+					# open .db/.xdb file
 					if not db_reader or prev_f != f:
 						prev_f = f
-						# open .db/.xdb file
 						db_reader = XRReader(str(p.path / f), p.config.version)
 					# find file info in .db/.xdb header chunk and get it data from .db/.xdb file
 					for f_f in db_reader.iter_files():
@@ -582,7 +582,7 @@ used to copy of all gamedata files (.db/.xdb and gamedata sub-path) to another l
 					save_file(pp, buff)
 					stat_write += 1
 				# all files extracted
-				print(f'Total files: check {i+1}, write {stat_write}, skip {stat_skip}, text encoding {args.encoding}, line separator: {str(LINESEP_B)[1:]} (hex: {LINESEP_B.hex()})')
+				print(f'Total files: check {i+1}, write {stat_write}, skip {stat_skip}, text encoding {args.encoding}, line separator: {str(LINESEP_B if args.encoding != 'raw' else DEFAULT_GAME_LENESEP_B)[1:]} (hex: {(LINESEP_B if args.encoding != 'raw' else DEFAULT_GAME_LENESEP_B).hex()})')
 
 			case 'diff' | 'd':
 				# compare files: .db/.xdb and gamedata
@@ -607,25 +607,51 @@ used to copy of all gamedata files (.db/.xdb and gamedata sub-path) to another l
 
 				# text compare file by file ordered by gamedata file path
 				stat_modified = stat_os_missing = stat_os_encoding = 0  # files statistics
-				for i, (ff, f) in enumerate(iter_gamedata_files(p)):
+				prev_f = None
+				db_reader: XRReader = None  # cache
+				for i, (ff, f) in enumerate(iter_db_gamedata_files(p)):
 					# read text files from two media sources
 					if not is_text_file(ff):
 						continue  # is not text file
 					# get first: .db/.xdb file data
 					if verbose > 1:
 						print(f'{i+1:5} {ff}')
-					with p.open(ff, 'rb') as f1:  # open compared file from .db/.xdb file
-						buff_db = f1.read()
+					# open .db/.xdb file
+					if not db_reader or prev_f != f:
+						prev_f = f
+						db_reader = XRReader(str(p.path / f), p.config.version)
+					# find file info in .db/.xdb header chunk and get it data from .db/.xdb file
+					for f_f in db_reader.iter_files():
+						if f_f.name == ff:
+							# file info found
+							buff_db = f_f.get_data(db_reader, not is_text_file(f_f.name))  # enable memoryview for binary files
+							break
+					# with p.open(ff, 'rb') as f1:  # open compared file from OS or .db/.xdb file
+					# 	buff_db = f1.read()
+					if args.encoding == 'raw':
+						try:
+							buff_db = buff_db.decode(DEFAULT_GAME_ENCODING).splitlines()
+						except UnicodeDecodeError:  # try utf-8 for .xml
+							buff_db = buff_db.decode().splitlines()
+					else:
 						buff_db = text_to_os(ff, buff_db).splitlines()
 					# get second: OS file data
 					pp = p.gamedata / p.convert_path_to_os(ff)
 					try:
-						with pp.open('rt', encoding='utf-8') as f2:  # open extracted file on OS filesystem
-							try:
-								buff_os = normalize_lines(f2.readlines())
-							except UnicodeDecodeError as e:
-								stat_os_encoding += 1
-								print(f'Skip file "{ff}" due to fail text decoding: {e}')
+						if args.encoding == 'raw':
+							with pp.open('rb') as f2:
+								buff_os = f2.read()
+								try:
+									buff_os = buff_os.decode(DEFAULT_GAME_ENCODING).splitlines()
+								except UnicodeDecodeError:  # try utf-8 for .xml
+									buff_os = buff_os.decode().splitlines()
+						else:
+							with pp.open('rt', encoding='utf-8') as f2:  # open extracted file on OS filesystem
+								try:
+									buff_os = normalize_lines(f2.readlines())
+								except UnicodeDecodeError as e:
+									stat_os_encoding += 1
+									print(f'Skip file "{ff}" due to fail text decoding: {e}')
 					except FileNotFoundError:
 						buff_os = b''
 						stat_os_missing += 1

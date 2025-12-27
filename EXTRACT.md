@@ -1,9 +1,25 @@
-# .db/.xdb files extraction
+# 3.1 .db/.xdb files extraction
 
-## 1. Batch extraction command-line utility
+## 1. Batch extraction
 
 As .db/.xdb files is container with filesystem, export process include definition of latest version of extracted file.
-This utility works with latest files only. To low-level access to .db/.xdb files use `DBReader.py` command-line utility.
+This utility works with **latest** files version only. For low-level access to .db/.xdb files use `DBReader.py` command-line utility, see [3. Low-level .db/.xdb files information](#3-low-level-dbxdb-files-information).
+
+Command-line interface of export utility consists of common part and sub-commands:
+- common part:
+  - game root path (_-g \<PATH\>_), default: current path
+  - .db/.xdb version (_-t \<VER\>_), one of: _2947ru_, _2947ww_, _xdb_; there is another option values but not tested; see [1.3.1 common help](#131-common-help)
+  - verbose (_-v_, _-vv_), default: minimum verbose
+- sub-commands
+  - extract (e) - main feature: extraction gamedata files from .db/.xdb files; see [1.1 Common use](#11-common-use)
+  - diff (d) - game developer feature: unified diff of text files between: .db/.xdb files and _gamedata_ OS pathl see [2. Diff sub-command](#2-diff-sub-command)
+  - info (i) - game developer feature: show dump of gamedata files paths from .db/.xdb; see [1.2.2 Show gamedata files paths <ins>info</ins> sub-command](#122-show-gamedata-files-paths-info-sub-command), [1.3.4 <ins>info</ins> sub-command help](#134-info-sub-command-help)
+
+This allows to users more flexible way of using features. And for developers - more structured view of codebase and more rich functionality.
+
+Most command-line options has name and short name. For example: .db/.xdb version: (_--version_) and (_-t_). Be free to use compact-way or meaningful-way. Note, short name of _--version_ option is not _-v_ because _-v_ is short name for verbore option. Thereby verbore option has widely used and has historical reason.
+
+Export do not overwrite files by default. Use (_-r_) option of export sub-command to enable overwrite.
 
 Export order of gamedata files is sorted and grouped by .db/.xdb file name.
 
@@ -11,7 +27,7 @@ Export order of gamedata files is sorted and grouped by .db/.xdb file name.
 
 #### 1.1.1 Extract <ins>all</ins> files to _gamedata_ sub-folder:
 ```sh
-python paths.py -g ".../S.T.A.L.K.E.R" -t 2947ru e -e
+python paths.py -g ".../S.T.A.L.K.E.R" -t 2947ru e
 ```
 Use _-g_ option to set game root path (with gamedata.db* files).
 
@@ -57,10 +73,21 @@ And lower the verbose level (_-v_) to show only **extract** files.
 python paths.py -vv -f "*.ltx" "*.xml" "*.script" -g ".../S.T.A.L.K.E.R" -t 2947ru e -e "gamedata-extracted"
 ```
 Use _-f_ to set one or more file path pattern to export. Unix shell-style wildcards: _*_, _?_, _[seq]_, _[!seq]_.
-Example for media files _.ogg_ and _.dds_: `-f "*.ogg" "*.dds"`
+Example for media files _.ogg_ and _.dds_: _-f "*.ogg" "*.dds"_
 
-Extraction process includes very useful thing for text files: automation encoding and line separator conversion for used OS.
+##### 1.2.1.1 Working with text files <ins>encoding</ins>:
+
+Extraction process includes very useful thing for text files: **automation encoding and line separator conversion** for used OS.
 So, I hope we can't see encoding mess in text files anymore. Please, learn and edit text files with pleasure on youre own OS.
+
+##### 1.2.1.2 Disable text files automation conversion:
+
+To disable text files conversion use (_--encoding raw_):
+```sh
+python paths.py -f "*.ltx" "*.xml" "*.script" -g ".../S.T.A.L.K.E.R" -t 2947ru e --encoding raw
+```
+
+##### 1.2.1.3 Usage example of extraction <ins>text files</ins>
 
 Example extraction of all text files (_.ltx_, _.xml_, _.script_) and verbose (use _-vv_) to _gamedata-extracted_ sub-folder:
 ```sh
@@ -94,12 +121,7 @@ To overwrite existing files with exported files use _-r_:
 python paths.py -v -f "*.ltx" "*.xml" "*.script" -g ".../S.T.A.L.K.E.R" -t 2947ru e -e "gamedata-extracted" -r
 ```
 
-It possible get binary copy of text files (use `--encoding raw`):
-```sh
-python paths.py -vv -f "*.ltx" "*.xml" "*.script" -g ".../S.T.A.L.K.E.R" -t 2947ru e -e "gamedata-extracted" --encoding raw
-```
-
-#### 1.2.2 Show gamedata <ins>info</ins> sub-command:
+#### 1.2.2 Show gamedata files paths <ins>info</ins> sub-command:
 
 It can be helpful to list file paths and .db/.xdb file names sources. And it can be used in automation.
 
@@ -122,11 +144,12 @@ python paths.py -vv -f "*.ltx" -g ".../S.T.A.L.K.E.R" -t 2947ru i --table --reve
   522 textures\textures.ltx gamedata.db7
 ```
 
-### 1.2 Command-line utility help
+### 1.3 Command-line utility help
 
-#### 1.2.1 common help:
+#### 1.3.1 common help:
 ```sh
-usage: paths.py [-h] -g PATH [--exclude-db-files FILE_NAME|PATTERN [FILE_NAME|PATTERN ...]] [-t VER] [-f FILE|PATTERN [FILE|PATTERN ...]] [-d PATH] [-v] {extract,e,diff,d,info,i} ...
+python paths.py -h
+sage: paths.py [-h] [-g PATH] [--exclude-db-files FILE_NAME|PATTERN [FILE_NAME|PATTERN ...]] [-t VER] [-f FILE|PATTERN [FILE|PATTERN ...]] [-d PATH] [-v] {extract,e,diff,d,info,i} ...
 
 Odyssey/Stalker Xray game file paths tool.
 
@@ -153,7 +176,7 @@ options:
   -f FILE|PATTERN [FILE|PATTERN ...], --filter FILE|PATTERN [FILE|PATTERN ...]
                         filter gamedata files by name use Unix shell-style wildcards: *, ?, [seq], [!seq]
   -d PATH, --gamedata PATH
-                        destination path to extract files; default: gamedata
+                        gamedata path; used to diff sub-command; default: gamedata
   -v                    verbose mode: 0..; examples: -v, -vv
 
 Examples:
@@ -164,13 +187,13 @@ Examples:
 paths.py -g "S.T.A.L.K.E.R" -t 2947ru e
 
         The same to whatever place:
-paths.py -g "S.T.A.L.K.E.R" -t 2947ru e -d "path to extract"
+paths.py -g "S.T.A.L.K.E.R" -t 2947ru e -e "path to extract"
 
         Extract filtered (from ai\alife\ folder) gamedata files from all .db/.xdb files:
 paths.py -f "ai\alife\*" -g "S.T.A.L.K.E.R" -t 2947ru e
 
         The same with all .ltx files:
-paths.py -f "ai\alife\*" -g "S.T.A.L.K.E.R" -t 2947ru e "*.ltx"
+paths.py -f "*.ltx" -g "S.T.A.L.K.E.R" -t 2947ru e
 
         Extract all gamedata files from filtered .db/.xdb files:
 paths.py --exclude-db-files "gamedata.db0" "gamedata.db1" -g "S.T.A.L.K.E.R" -t 2947ru e
@@ -192,7 +215,7 @@ paths.py -g "S.T.A.L.K.E.R" -t 2947ru i
 paths.py -f "*.ltx" -g "S.T.A.L.K.E.R" -t 2947ru i --table
 ```
 
-#### 1.2.2 <ins>extract</ins> sub-command help:
+#### 1.3.2 <ins>extract</ins> sub-command help:
 ```sh
 python paths.py e -h
 usage: paths.py extract [-h] [-e PATH] [-r] [--include-gamedata] [--encoding ENCODING] [-m]
@@ -207,17 +230,17 @@ options:
   -m, --dummy           dummy run: do not write files; used for command-line options debugging
 ```
 
-#### 1.2.3 <ins>diff</ins> sub-command help:
+#### 1.3.3 <ins>diff</ins> sub-command help:
 ```sh
 python paths.py d -h
 usage: paths.py diff [-h] [--encoding ENCODING]
 
 options:
   -h, --help           show this help message and exit
-  --encoding ENCODING  .db/.xdb text files encoding to convert to; text files: .ltx, .xml, .script; default: utf-8
+  --encoding ENCODING  .db/.xdb text files encoding to convert to; text files: .ltx, .xml, .script; to binary copy of text files use "raw" encoding; default: utf-8
 ```
 
-#### 1.2.4 <ins>info</ins> sub-command help:
+#### 1.3.4 <ins>info</ins> sub-command help:
 ```sh
 python paths.py i -h
 usage: paths.py info [-h] [--paths] [--table] [--reverse]
@@ -229,7 +252,7 @@ options:
   --reverse   output gamedata file path first
 ```
 
-## 2. Diff command-line utility
+## 2. Diff sub-command
 
 ### 2.1 Diff for text files
 
@@ -246,12 +269,25 @@ Output format is [unified diff](https://www.gnu.org/software/diffutils/manual/ht
 
 #### 2.1.1 Compare text files from: .db/.xdb and _gamedata_ sub-path:
 ```sh
-python paths.py -vv -f "*.ltx" "*.xml" "*.script" -g ".../S.T.A.L.K.E.R" -t 2947ru d
+python paths.py -v -f "*.ltx" "*.xml" "*.script" -g ".../S.T.A.L.K.E.R" -t 2947ru d
 ```
+Use (_-vv_) to increase verbose: show all text files paths.
 
-#### 2.1.2 Compare text files from: .db/.xdb and _gamedata-extracted_ sub-path:
+#### 2.1.2 Compare text files from: .db/.xdb and _gamedata-extracted_ sub-path
+
+For example, all text files extracted to _gamedata-extracted_ path.
+
+Then add empty line to beginning in file _scripts\.script_ to get diff sub-command output:
 ```sh
 python paths.py -vv -f "*.ltx" "*.xml" "*.script" -g ".../S.T.A.L.K.E.R" -d "gamedata-extracted" -t 2947ru d
+--- gamedata.dbb:scripts\.script
++++           OS:scripts\.script
+@@ -1,3 +1,4 @@
++
+ schemes = {} -- соответствие схем модулям
+ stypes = {} -- типы схем
+ 
+Total files: compared 1367, modified 1, os missing 0
 ```
 It is possible compare files to whatever path: use _-d_ with absolute path.
 
@@ -319,7 +355,7 @@ scripts\xr_motivator.script
 ```
 Here is three versions of _scripts\xr_abuse.script_ file in .db files: _gamedata.db4_, _gamedata.dba_ and latest version in _gamedata.dbb_.
 
-## 4. Low-level extract command-line interface
+## 4. Low-level command-line interface
 
 ### 4.1 `DBReader.py` help:
 ```sh
@@ -436,17 +472,17 @@ options:
   --header    print header chunk
 ```
 
-## 5. Extract command-line examples
+## 5. Low-level command-line examples
 
-### **gamedata** files count overall for .db/.xdb files:
+### 5.1 **gamedata** files count overall for .db/.xdb files
 
-### 5.1.1 count <ins>all</ins> **gamedata** files:
+#### 5.1.1 count <ins>all</ins> **gamedata** files:
 ```sh
 python DBReader.py -f "gamedata.db*" -t 2947ru g -c
 25684
 ```
 
-### 5.1.2 count <ins>all .script</ins> **gamedata** files:
+#### 5.1.2 count <ins>all .script</ins> **gamedata** files:
 ```sh
 python DBReader.py -f "gamedata.db*" -t 2947ru g -c -g "*.script"
 442
@@ -454,7 +490,7 @@ python DBReader.py -f "gamedata.db*" -t 2947ru g -c -g "*.script"
 
 ### 5.2 **gamedata** files count by .db/.xdb files separatelly
 
-### 5.2.1 <ins>all</ins> **gamedata** files count:
+#### 5.2.1 <ins>all</ins> **gamedata** files count:
 ```sh
 python DBReader.py -f "gamedata.db*" -t 2947ru g -s -n -c
 01 gamedata.db0  1195
@@ -473,7 +509,7 @@ python DBReader.py -f "gamedata.db*" -t 2947ru g -s -n -c
 14 gamedata.dbd     6
 ```
 
-### 5.2.2 <ins>all</ins> _.script_ **gamedata** files count:
+#### 5.2.2 <ins>all _.script_</ins> **gamedata** files count:
 ```sh
 python DBReader.py -f "gamedata.db*" -t 2947ru g -s -n -c -g "*.script"
 01 gamedata.db0     2
@@ -492,7 +528,7 @@ python DBReader.py -f "gamedata.db*" -t 2947ru g -s -n -c -g "*.script"
 14 gamedata.dbd     3
 ```
 
-### 5.2.3 <ins>one</ins> _scripts\stalker_generic.script_ **gamedata** file count:
+#### 5.2.3 <ins>one _scripts\stalker_generic.script_</ins> **gamedata** file count:
 ```sh
 python DBReader.py -f "gamedata.db*" -t 2947ru g -s -g "scripts\stalker_generic.script"
         gamedata.db0
@@ -514,7 +550,7 @@ scripts\stalker_generic.script
         gamedata.dbd
 ```
 Here we see three versions of file. Latest version in <ins>gamedata.dbb</ins> file.
-To get .db/.xdb file with file latest version use <ins>--last</ins> option.
+To get .db/.xdb file with file latest version use (_--last_) option.
 
 ## 6. Examples for development purposes
 

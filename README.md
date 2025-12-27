@@ -6,14 +6,14 @@ The software consists of two parts:
 
 ## Table of contents:
 
-### [1. Brief introduction](#brief-introduction-1)
-- #### [1.1 Extract tool](#extract-tool-1)
-- #### [1.2 Gamedata analysis tools](#gamedata-analysis-tools-1)
-- #### [1.3 Hybrid game engine](#hybrid-game-engine-1)
-### [2. Installation](#installation-1)
-- #### [2.1 Windows instructions](#windows-instructions-1)
-- #### [2.2 Linux instructions](#linux-instructions-1)
-### [3. Usage](#usage-1)
+### [1. Brief introduction](#1-brief-introduction-1)
+- #### [1.1 Extract tool](#11-extract-tool-1)
+- #### [1.2 Gamedata analysis tools](#12-gamedata-analysis-tools-1)
+- #### [1.3 Hybrid game engine](#13-hybrid-game-engine-1)
+### [2. Installation](#2-installation-1)
+- #### [2.1 Windows instructions](#21-windows-instructions-1)
+- #### [2.2 Linux instructions](#22-linux-instructions-1)
+### 3. Usage
 - #### [3.1 .db/.xdb files extraction](EXTRACT.md)
 - #### [3.2 .ltx files analysis tool](ANALYSIS_LTX.md)
 
@@ -21,8 +21,8 @@ The software consists of two parts:
 
 Odyssey/Stalker Xray tools is a cross-platform Python-based tools.
 
-It main feature:
-- Direct working with packet .db/.xdb files without needs for gamedata extraction.
+Main feature:
+- Direct working with packed .db/.xdb files without needs for gamedata extraction.
 - Python-way API support:
   - .db/.xdb files;
   - config files: .ltx sections, .xml localization and game.graph;
@@ -38,7 +38,7 @@ Take a fact that tools is in developing process. And API may be changed.
 
 ## 1.1 Extract tool
 
-Command-line _.db, .xdb, .xrp, .xp_ files extract tool. See help: `paths.py -h` and it sub-command `paths.py e -h`.
+Command-line tool to extract _.db, .xdb, .xrp, .xp_ files. See help: `paths.py -h` and it sub-command `paths.py e -h`.
 
 Of course there is low-level command-line tool for analysis of .db/.xdb files content - game files/folders structure. See help: `DBReader.py -h` and it sub-commands.
 
@@ -90,12 +90,12 @@ Tested on Firefox and Chrome on Ubuntu and Android.
 ### Dependencies:
 | Python | LZO |
 |--------|-----|
-| ![Python](https://www.python.org/static/img/python-logo.png){width=250} | python-lzo |
+| ![Python](https://www.python.org/static/img/python-logo.png) | python-lzo |
 
 ### Analysis dependencies:
  Graphviz | plotly + kaleido | Pillow |
 |---------|--------|--------|
-| ![Graphviz](https://graphviz.org/Resources/app.png){width=250} | ![plotly](https://plotly.github.io/documentation/all_static/images/graphing_library.svg) | ![Pillow](https://pillow.readthedocs.io/en/stable/_static/pillow-logo-dark-text.png) |
+| ![Graphviz](https://graphviz.org/Resources/app.png) | ![plotly](https://plotly.github.io/documentation/all_static/images/graphing_library.svg) | ![Pillow](https://pillow.readthedocs.io/en/stable/_static/pillow-logo-dark-text.png) |
 
 ### 2.1 Windows instructions
 
@@ -113,8 +113,6 @@ pip3 install -r requirements.txt
 
 2.2.1 Install Graphviz, instruction: [Graphviz](https://graphviz.org/download/#linux)
 
-2.2.2 Install Python packages:
-
 Ubuntu:
 ```sh
 sudo apt-get update
@@ -127,7 +125,7 @@ sudo zypper refresh
 sudo zypper install graphviz
 ```
 
-2.2.3 Install Python packages:
+2.2.2 Install Python packages:
 ```sh
 pip3 install -r requirements.txt
 ```
