@@ -33,6 +33,7 @@ Main feature:
   - It can greatly helps gamers to involve into game action and choose gameplay.
   - Moreover, such brochure can help introduce audience with game developer.
   - Finally, that should people become a bit serious to game author. :)
+  - See infographics .html example: [Clear Sky + SGM 3.10 + Real Weapons](https://html-preview.github.io/?url=https://github.com/stalker-tools/real_weapons_mod_clear_sky/blob/main/media/Clear%20Sky%20%2B%20SGM%203.10%20%2B%20Real%20Weapons.html)
   - See installation for standalon utility: [2.2.4 stalker-brochure instructions](#224-stalker-brochure-instructions)
 
 Take a fact that tools is in developing process. And API may be changed.
@@ -162,7 +163,7 @@ Ubuntu 24:
 
 Install packages for [2.2.3 db-extract instructions](#223-db-extract-instructions)
 
-- Install plotly and PIL Python package:
+- Install Python packages:
   - for Python venv: `python3 -m pip install plotly pillow`
   - for system Python: `apt install python3-plotly python3-pillow`
 - Run: `+x ./stalker-brochure`
