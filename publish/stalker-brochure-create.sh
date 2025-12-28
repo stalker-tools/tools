@@ -1,7 +1,7 @@
 
-ZIPPED_PY_NAME=db-extract
-MAIN_FILE="paths.py"
-COPY_FILES="LzHuf.py DBReader.py LayeredFileSystem.py SequensorReader.py Scrambler.py version.py"
+ZIPPED_PY_NAME=stalker-brochure
+MAIN_FILE="graph_tool.py"
+COPY_FILES="ltx_tool.py paths.py GameConfig.py icon_tools.py xml_tool.py localization.py LzHuf.py DBReader.py LayeredFileSystem.py SequensorReader.py Scrambler.py version.py"
 
 PUBLISH_PATH=./publish
 

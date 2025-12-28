@@ -361,7 +361,7 @@ if __name__ == "__main__":
 			parser.add_argument('-f', metavar='PATH', required=True,
 				help='.db file path; for gamedata sub-command: GLOB pattern; for another sub-commands: path to .db file')
 			parser.add_argument('-t', '--version', metavar='VER', choices=DbFileVersion.get_versions_names(),
-				help=f'.db files version; usually 2947ru/2947ww for SC, xdb for CS and CP; one of: {", ".join(DbFileVersion.get_versions_names())}')
+				help=f'.db files version; usually 2947ru/2947ww for SoC, xdb for CS and CP; one of: {", ".join(DbFileVersion.get_versions_names())}')
 			parser.add_argument('-v', action='store_true', help='verbose mode')
 			subparsers = parser.add_subparsers(dest='mode', help='sub-commands:')
 			parser_ = subparsers.add_parser('gamedata', aliases=('g',), help='gamedata files and .db files manipulations')

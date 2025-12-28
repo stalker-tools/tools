@@ -3,14 +3,42 @@
 # Author: Stalker tools, 2023-2024
 
 from collections.abc import Iterator
-from typing import NamedTuple, Literal
+from typing import NamedTuple, Literal, Self
+from configparser import ConfigParser
 from plotly.subplots import make_subplots
 import plotly.graph_objects as go
 import plotly.io as pio
+from PIL.Image import open as image_open
 # stalker-tools import
+from version import PUBLIC_VERSION, PUBLIC_DATETIME
 from ltx_tool import Ltx
+from paths import Config as PathsConfig, DbFileVersion, DEFAULT_GAMEDATA_PATH
 from GameConfig import GameConfig
 from icon_tools import IconsEquipment, get_image_as_html_img
+
+
+class BrochureConfig(NamedTuple):
+	caption: str
+	author: str
+	head: str
+	head_pictures: tuple[str]
+	style: Literal['d', 'dark']
+	localization: str
+
+	@classmethod
+	def from_file(cls, path: str) -> Self:
+		config_parser = ConfigParser()
+		config_parser.read(path)
+		caption = config_parser.get('global', 'caption', fallback=None)
+		author = config_parser.get('global', 'author', fallback=None)
+		localization = config_parser.get('global', 'localization', fallback=None)
+		style = config_parser.get('global', 'style', fallback=None)
+		head = config_parser.get('head', 'title', fallback=None)
+		head_pictures = config_parser.get('head', 'pictures', fallback=None)
+		if head_pictures:
+			head_pictures = head_pictures.split(',')
+		ret = cls(caption, author, head, head_pictures, style, localization)
+		return ret
 
 
 class GraphParams(NamedTuple):
@@ -270,9 +298,8 @@ def analyse(gamedata: str | GameConfig, head: str, localization: None | str = No
 	print(f'<h1>{head}<h1><hr/>')
 
 	game = gamedata
-	if type(gamedata) is str:
-		game = GameConfig(gamedata, localization)
-	icons = IconsEquipment(game.paths.gamedata)
+	game = GameConfig(gamedata, localization)
+	icons = IconsEquipment(game.paths)
 	match style:
 		case 'd' | 'dark':
 			pio.templates.default = 'plotly_dark'
@@ -314,7 +341,7 @@ def analyse(gamedata: str | GameConfig, head: str, localization: None | str = No
 
 	print(f'</body></html>')
 
-def brochure(gamedata: str, head: str, localization: None | str = None, style: None | Literal['d', 'dark'] = None):
+def brochure(gamedata: PathsConfig | str, config: BrochureConfig):
 
 	def print_html(sections: list[tuple[Ltx.Section, str, str]], graphs: list[GraphParams], chapter: str | None = None, k_width = 1):
 
@@ -473,7 +500,7 @@ def brochure(gamedata: str, head: str, localization: None | str = None, style: N
 
 	k_width = 1
 
-	print(f'<html><head><title>{head}</title></head>')
+	print(f'<html><head><title>{config.caption}</title></head>')
 	print(f'''<style>
 .main {{ display:grid;grid-template-columns:repeat(auto-fill,{int(375*k_width)}px); }}
 .description {{ display:grid;grid-template-columns:repeat(auto-fill,{670*k_width}px);grid-template-rows:min-content;align-content:flex-start; }}
@@ -486,23 +513,28 @@ background: url("data:image/svg+xml,%3Csvg viewBox='0 0 20 300' xmlns='http://ww
 </style>''')
 	print(f'</head>')
 	print(f'<body>')
-	print(f'<h1>{head}<h1><hr/>')
+	if config.head_pictures:
+		print('<p align="center">')
+		for pict_path in config.head_pictures:
+			print(f'{get_image_as_html_img(image_open(Path(gamedata.game_path) / pict_path))} ')
+		print('</p>')
+	print(f'<h1 align="center">{config.head}<h1><hr/>')
 
 	game = gamedata
-	if type(gamedata) is str:
-		game = GameConfig(gamedata, localization, False)
-	icons = IconsEquipment(game.paths.gamedata)
-	match style:
+	game = GameConfig(gamedata, config.localization, False)
+	icons = IconsEquipment(game.paths)
+	match config.style:
 		case 'd' | 'dark':
 			pio.templates.default = 'plotly_dark'
 
 	print('<h2>Содержание</h2>')
 	print('<p><a href="#1">1 Защитные костюмы</a></p>')
 	print('<p><a href="#2">2 Патроны</a></p>')
-	print('<p><a href="#3.1">3.1 Оружие: Пистолеты</a></p>')
-	print('<p><a href="#3.2">3.2 Оружие: Автоматы</a></p>')
-	print('<p><a href="#3.3">3.3 Оружие: Ружья</a></p>')
-	print('<p><a href="#3.4">3.4 Оружие: Винтовки/пулемёты</a></p>')
+	print('<p><a href="#3">3 Оружие</a></p>')
+	print('<p><a href="#3.1" style="margin-left: 2.5em;">3.1 Оружие: Пистолеты</a></p>')
+	print('<p><a href="#3.2" style="margin-left: 2.5em;">3.2 Оружие: Автоматы</a></p>')
+	print('<p><a href="#3.3" style="margin-left: 2.5em;">3.3 Оружие: Ружья</a></p>')
+	print('<p><a href="#3.4" style="margin-left: 2.5em;">3.4 Оружие: Винтовки/пулемёты</a></p>')
 	print('<p><a href="#4">4 Продовольствие</a></p>')
 	print('<p><a href="#5">5 Медицинские препараты</a></p>')
 	print('<p><a href="#6">6 Артефакты</a></p>')
@@ -533,34 +565,96 @@ background: url("data:image/svg+xml,%3Csvg viewBox='0 0 20 300' xmlns='http://ww
 	print('<h2 id="6">6 Артефакты</h2>')
 	print_artefact_html('Артефакты')
 
+	print(f'<hr/><p align="center">{config.author}</p>')
+
 	print(f'</body></html>')
 
 
 if __name__ == '__main__':
-	import argparse
 	from sys import argv, exit
+	import argparse
+	from pathlib import Path
+
+	DEFAULT_CONFIG_PATH = 'brochure.ini'
 
 	def main():
 
 		def parse_args():
 			parser = argparse.ArgumentParser(
-				description='X-ray .ltx file parser. Out format: plotly graphs embedded in html as images',
-				epilog=f'Examples: {argv[0]} -tb -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" --head "Clear Sky" > "ClearSky_brochure.htm"',
+				description='''Infographics brochure maker for X-ray gamedata files; out format: .html file
+
+Note:
+It is not necessary to extract .db/.xdb files to gamedata path. This utility can read all game files from .db/.xdb files !
+''',
+				epilog=f'''Examples:
+
+Note:
+You should implement "brochure.ini" file in game folder (where .db/.xdb files).
+
+For example, "brochure.ini" for SoC (download Stalkercover.jpg from wiki to game folder):
+[global]
+caption = SoC
+author = GSC Game World
+localization = rus
+style = dark
+[head]
+title = S.T.A.L.K.E.R.: Тень Чернобыля
+pictures = Stalkercover.jpg
+
+Run from game path (where .db/.xdb files):
+{argv[0]} -t 2947ru > "SoC.htm"
+
+Run outside of game path:
+{argv[0]} -g .../S.T.A.L.K.E.R. -t 2947ru > "SoC.htm"
+
+For game developers may be helpful to get an analyse output type of .html page (--type a):
+{argv[0]} -g .../S.T.A.L.K.E.R. -t 2947ru --type a > "SoC.analyse.htm"
+''',
+				formatter_class=argparse.RawTextHelpFormatter
 			)
-			parser.add_argument('-f', '--gamedata', metavar='PATH', required=True, help='gamedata directory path')
-			parser.add_argument('-l', '--localization', metavar='LANG', default='rus', help='localization language (see gamedata/configs/text path): rus (default), cz, hg, pol')
-			parser.add_argument('--head', default='S.T.A.L.K.E.R.', metavar='TEXT', help='head text')
-			parser.add_argument('-s', '--style', metavar='STYLE', default='dark', help='style: l - light, d - dark (default)')
-			parser.add_argument('-t', '--type', metavar='TYPE', default='a', help='type: a - analyse (default), b - brochure')
+			parser.add_argument('-g', '--gamepath', metavar='PATH', help='game root path (with .db/.xdb files); default: current path')
+			parser.add_argument('-t', '--version', metavar='VER', choices=DbFileVersion.get_versions_names(),
+				help=f'.db/.xdb files version; usually 2947ru/2947ww for SoC, xdb for CS and CP; one of: {", ".join(DbFileVersion.get_versions_names())}')
+			parser.add_argument('-V', action='version', version=f'{PUBLIC_VERSION} {PUBLIC_DATETIME}', help='show version')
+			parser.add_argument('-f', '--gamedata', metavar='PATH', default=DEFAULT_GAMEDATA_PATH,
+				help=f'gamedata directory path; default: {DEFAULT_GAMEDATA_PATH}')
+			parser.add_argument('--type', metavar='TYPE', default='b', help='out type: a - analyse, b - brochure (default)')
+			parser.add_argument('--exclude-gamedata', action='store_true', help='''exclude files from gamedata sub-path;
+used to get original game (.db/.xdb files only) infographics; default: false
+''')
+			parser.add_argument('-c', '--config', metavar='PATH', default=DEFAULT_CONFIG_PATH,
+				help=f'config file path; used for brochure; default: {DEFAULT_CONFIG_PATH}')
+			parser.add_argument('-v', action='count', default=0, help='verbose mode: 0..; examples: -v, -vv')
 			return parser.parse_args()
 
 		args = parse_args()
+		verbose = args.v
+
+		gamepath = Path(args.gamepath) if args.gamepath else Path()
+		paths_config = None
+		if gamepath:
+			if not args.version:
+				raise ValueError(f'Argument --version or -t is missing; see help: {argv[0]} -h')
+			paths_config = PathsConfig(
+				gamepath.absolute(), args.version,
+				args.gamedata,
+				verbose=verbose,
+				exclude_gamedata=args.exclude_gamedata)
 
 		match args.type:
 			case 'b':
-				brochure(args.gamedata, args.head, args.localization)
+				# read config
+				config_path = Path(args.config)
+				if not config_path.is_absolute():
+					config_path = gamepath / config_path
+				if not gamepath.exists():
+					raise ValueError(f'Game path not found: {args.gamepath}')
+				if not config_path.exists():
+					raise ValueError(f'Config file not found: {config_path}')
+				config = BrochureConfig.from_file(config_path.absolute().resolve())
+				brochure(paths_config if paths_config else args.gamedata, config)
 			case _:
-				analyse(args.gamedata, args.head, args.localization)
+				analyse(paths_config if paths_config else args.gamedata, args.head, args.localization)
 
 	try:
 		main()

@@ -10,3 +10,6 @@ echo
 
 echo "Create db-extract"
 $PUBLISH_PATH/db-extract-create.sh
+
+echo "Create stalker-brochure"
+$PUBLISH_PATH/stalker-brochure-create.sh

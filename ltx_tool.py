@@ -75,9 +75,10 @@ class Ltx:
 						yield name
 
 
-	def __init__(self, ltx_file_path: str, follow_includes=True) -> None:
+	def __init__(self, ltx_file_path: str, follow_includes = True, open_fn = open) -> None:
 		self.ltx_file_path = ltx_file_path
 		self.line_number = None  # included .ltx line number
+		self.open_fn = open_fn  # open function; used to files open: either .db/.xdb or OS filesystem
 		self.ltxs: list[Ltx] = []
 		self.sections: dict[str, Ltx.Section] = {}
 		self._load_tree()
@@ -87,12 +88,12 @@ class Ltx:
 		'return list of included Ltx'
 		sections, section = {}, {}
 		prev_section_name = None
-		for x in parse_ltx_file(self.ltx_file_path, False):
+		for x in parse_ltx_file(self.ltx_file_path, False, open_fn=self.open_fn):
 			match x:
 				case (LtxKind.INCLUDE, line_number, included_ltx_file_path):
 					if follow_includes:
 						try:
-							ltx = Ltx(join(dirname(self.ltx_file_path), included_ltx_file_path), True)
+							ltx = Ltx(join(dirname(self.ltx_file_path), included_ltx_file_path), True, open_fn=self.open_fn)
 							ltx.line_number = line_number
 							self.ltxs.append(ltx)
 						except LtxFileNotFoundException:
@@ -118,10 +119,10 @@ class Ltx:
 		'return list of included Ltx'
 		sections, section = {}, {}
 		prev_section_name = None
-		for x in parse_ltx_file(ltx_file_path, follow_includes=follow_includes):
+		for x in parse_ltx_file(ltx_file_path, follow_includes=follow_includes, open_fn=self.open_fn):
 			match x:
 				case (LtxKind.INCLUDE, line_number, included_ltx_file_path):
-					ltx = Ltx(included_ltx_file_path, True)
+					ltx = Ltx(included_ltx_file_path, True, open_fn=self.open_fn)
 				case (LtxKind.NEW_SECTION, section_name, section_parents):
 					if section_name in sections:
 						print(f'duplicated section name: {section_name}', file=stderr)
@@ -182,7 +183,7 @@ def try_decode(buff: bytearray, encoding=locale.getpreferredencoding()) -> str:
 
 MULTIPLAYER_PATH = f'{sep}mp{sep}'
 
-def parse_ltx_file(file_path: str, follow_includes=False) -> Iterator[
+def parse_ltx_file(file_path: str, follow_includes=False, open_fn = open) -> Iterator[
 		tuple[LtxKind, int, str] |
 		tuple[LtxKind, str, tuple | None] |
 		tuple[LtxKind, int, str, str, tuple] |
@@ -194,7 +195,7 @@ def parse_ltx_file(file_path: str, follow_includes=False) -> Iterator[
 		return
 	section_name = None
 	try:
-		with open(file_path, 'rb') as f:
+		with open_fn(file_path, 'rb') as f:
 			for line_index, line in enumerate(f.readlines()):
 				# print(f'{line=}')
 				line = line.strip(b' \t\r\n')
@@ -210,7 +211,7 @@ def parse_ltx_file(file_path: str, follow_includes=False) -> Iterator[
 					include_file_path = try_decode(include_file_path)
 					yield LtxKind.INCLUDE, line_index, include_file_path
 					if follow_includes:
-						yield from parse_ltx_file(join(dirname(file_path), include_file_path), True)
+						yield from parse_ltx_file(join(dirname(file_path), include_file_path), True, open_fn=open_fn)
 				else:
 					# process line
 					line = remove_comment(line)
@@ -234,10 +235,10 @@ def parse_ltx_file(file_path: str, follow_includes=False) -> Iterator[
 		if not follow_includes:
 			raise LtxFileNotFoundException(e)
 
-def get_section_line_index(section: Ltx.Section, value_name: str) -> int | None:
+def get_section_line_index(section: Ltx.Section, value_name: str, open_fn = open) -> int | None:
 	'gets line index of .ltx file section and lvalue'
 	is_section_body = False  # used to parse section into .ltx file
-	for x in parse_ltx_file(section.ltx.ltx_file_path):
+	for x in parse_ltx_file(section.ltx.ltx_file_path, open_fn=open_fn):
 		match x[0]:
 			case LtxKind.NEW_SECTION:
 				if is_section_body:
@@ -250,7 +251,7 @@ def get_section_line_index(section: Ltx.Section, value_name: str) -> int | None:
 						return x[1]  # line index
 	return None  # not found
 
-def update_section_value(section: Ltx.Section, value_name: str, new_value: str) -> bool:
+def update_section_value(section: Ltx.Section, value_name: str, new_value: str, open_fn = open) -> bool:
 	'updates lvalue of .ltx file section'
 
 	def find_in_line(line: str | bytes, what: list[bytes | str], start_index=0):
@@ -261,12 +262,12 @@ def update_section_value(section: Ltx.Section, value_name: str, new_value: str) 
 		return ret
 
 	ret = False
-	if (line_index := get_section_line_index(section, value_name)):
+	if (line_index := get_section_line_index(section, value_name, open_fn=open_fn)):
 		# read .ltx file to buffer
-		with open(section.ltx.ltx_file_path, 'rb') as f:
+		with open_fn(section.ltx.ltx_file_path, 'rb') as f:
 			buff = f.readlines()
 		# write buffer to .ltx file
-		with open(section.ltx.ltx_file_path, 'wb') as f:
+		with open_fn(section.ltx.ltx_file_path, 'wb') as f:
 			for i, line in enumerate(buff):
 				if i == line_index:
 					# found .ltx file line with lvalue to update

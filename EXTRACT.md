@@ -172,7 +172,7 @@ options:
   --exclude-db-files FILE_NAME|PATTERN [FILE_NAME|PATTERN ...]
                         game path that contains .db/.xdb files and optional gamedata folder; Unix shell-style wildcards: *, ?, [seq], [!seq]
   -t VER, --version VER
-                        .db/.xdb files version; usually 2947ru/2947ww for SC, xdb for CS and CP; one of: 11xx, 2215, 2945, 2947ru, 2947ww, xdb
+                        .db/.xdb files version; usually 2947ru/2947ww for SoC, xdb for CS and CP; one of: 11xx, 2215, 2945, 2947ru, 2947ww, xdb
   -f FILE|PATTERN [FILE|PATTERN ...], --filter FILE|PATTERN [FILE|PATTERN ...]
                         filter gamedata files by name use Unix shell-style wildcards: *, ?, [seq], [!seq]
   -d PATH, --gamedata PATH

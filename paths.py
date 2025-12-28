@@ -6,7 +6,7 @@
 # Note: it ready-to-use with pypy: pypy3.11-7.3.20 tested
 # Author: Stalker tools, 2023-2025
 
-from typing import Iterable, Self, Generator
+from typing import Iterable, Self, Generator, Iterator
 from os.path import join, abspath, sep
 from pathlib import Path
 from contextlib import contextmanager
@@ -128,7 +128,7 @@ class Paths:
 		''' loads all .db/.xdb files and defines latest version of gamedata files
 
 		game_path: root game path: search path for .db/.xdb files
-		version: .db/.xdb files version: usually 2947ru/2947ww for SC, xdb for CS and CP
+		version: .db/.xdb files version: usually 2947ru/2947ww for SoC, xdb for CS and CP
 		exclude_db_files: filter for .db/.xdb files names: Unix shell pattern
 		verbose: verbose level: 0..
 		
@@ -172,7 +172,11 @@ class Paths:
 	@contextmanager
 	def open(self, path: str, mode: str = 'r') -> Generator[FileIoBase | StreamReader, None, None]:
 		# print(f'OPEN {mode=} {path=}')
+		if self.config.verbose > 2:
+			print(f'Open {path=} {mode=}')
 		if (f := self.layered_fs.open(path, mode)):
+			if self.config.verbose > 2:
+				print(f'\t{f=}')
 			try:
 				text_reader = None
 				if not 'b' in mode:
@@ -286,6 +290,11 @@ class DbFileIo(FileIoBase):
 	def readall(self) -> bytes | None:
 		return self.read()
 
+	def readlines(self) -> Iterable[str]:
+		if (buff := self.read()):
+			return buff.splitlines()
+		return tuple()
+
 	def write(self, data: bytes) -> int:
 		raise UnsupportedOperation('cannot write to .db/.xdb, it read-only filesystem')
 
@@ -300,6 +309,10 @@ class DbGamedataFs(LayerBase):
 	def __init__(self, paths: Paths):
 		super().__init__()
 		self.paths: Paths = paths
+
+	@classmethod
+	def normalize_path(cls, path: str) -> str:
+		return path.replace('/', Paths.SEP)  # convert to .db/.xdb gamegata paths
 
 	def _find(self, path: str, file_wanted: bool = True) -> tuple[PathType, str, str] | None:
 		'''finds file in all .db/.xdb files
@@ -320,11 +333,13 @@ class DbGamedataFs(LayerBase):
 		return None
 
 	def exists(self, path: str, file_wanted: bool = True) -> PathType:
+		path = self.normalize_path(path)
 		if (item := self._find(path, file_wanted)):
 			return item[0]
 		return PathType.NotExists
 
 	def open(self, path: str, mode: str) -> object | None:
+		path = self.normalize_path(path)
 		if '+' in mode or 'w' in mode:
 			raise self.DbFilesIsReadOnlyFs(f'open(path={path}, {mode=})')
 		if (item := self._find(path)):
@@ -332,6 +347,7 @@ class DbGamedataFs(LayerBase):
 			# print(f'{item}')
 			return DbFileIo(path, str(self.paths.path / db_name), self.paths.config.version)
 		return None
+
 
 class OsGamedataFs(LayerBase):
 	'OS filesystem; used for read from gamedata path'
@@ -352,8 +368,8 @@ class OsGamedataFs(LayerBase):
 			return (PathType.File if f.is_file() else PathType.Path, f)
 		return None
 
-	def exists(self, path: str) -> PathType:
-		if (item := self._find(path)):
+	def exists(self, path: str, file_wanted: bool = True) -> PathType:
+		if (item := self._find(path, file_wanted)):
 			return item[0]
 		return PathType.NotExists
 
@@ -431,7 +447,7 @@ This is a way to find out what an X-ray engine see all game data files.
 			parser.add_argument('--exclude-db-files', metavar='FILE_NAME|PATTERN', nargs='+',
 				help='game path that contains .db/.xdb files and optional gamedata folder; Unix shell-style wildcards: *, ?, [seq], [!seq]')
 			parser.add_argument('-t', '--version', metavar='VER', choices=DbFileVersion.get_versions_names(),
-				help=f'.db/.xdb files version; usually 2947ru/2947ww for SC, xdb for CS and CP; one of: {", ".join(DbFileVersion.get_versions_names())}')
+				help=f'.db/.xdb files version; usually 2947ru/2947ww for SoC, xdb for CS and CP; one of: {", ".join(DbFileVersion.get_versions_names())}')
 			parser.add_argument('-f', '--filter', metavar='FILE|PATTERN', nargs='+',
 				help='filter gamedata files by name use Unix shell-style wildcards: *, ?, [seq], [!seq]')
 			parser.add_argument('-d', '--gamedata', metavar='PATH', default=DEFAULT_GAMEDATA_PATH,

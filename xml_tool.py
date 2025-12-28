@@ -11,7 +11,8 @@ from os.path import join, basename, split
 from xml.dom.minidom import parseString, Element, Document
 
 
-def xml_preprocessor(xml_file_path: str, include_base_path: str | None = None, included = False, failed_include_file_paths: list[str] = None) -> bytes:
+def xml_preprocessor(xml_file_path: str, include_base_path: str | None = None, included = False, failed_include_file_paths: list[str] = None,
+		open_fn=open) -> bytes:
 	'''features:
 		- process #include to include text from another .xml files
 		- removes comments <!-----> since they break W3C XML rules
@@ -19,7 +20,7 @@ def xml_preprocessor(xml_file_path: str, include_base_path: str | None = None, i
 	'''
 
 	buff = BytesIO()
-	with open(xml_file_path, 'rb') as f:
+	with open_fn(xml_file_path, 'rb') as f:
 		for line in f.readlines():
 			line_stripped = line.lstrip()
 			if line_stripped.startswith(b'#include'):
@@ -28,7 +29,7 @@ def xml_preprocessor(xml_file_path: str, include_base_path: str | None = None, i
 				line_stripped = line_stripped.replace(b'\\', path_separator.encode())  # convert path splitter to ext filesystem
 				include_file_path = join(include_base_path if include_base_path else split(xml_file_path)[0], line_stripped.decode())
 				try:
-					buff.write(xml_preprocessor(include_file_path, include_base_path, True))
+					buff.write(xml_preprocessor(include_file_path, include_base_path, True, open_fn=open_fn))
 				except FileNotFoundError:
 					if failed_include_file_paths is not None:
 						if include_file_path in failed_include_file_paths:
@@ -43,13 +44,14 @@ def xml_preprocessor(xml_file_path: str, include_base_path: str | None = None, i
 				buff.write(line)
 	return buff.getvalue()
 
-def xml_parse(xml_file_path: str, include_base_path: str | None = None, included = False, failed_include_file_paths: list[str] = None) -> Document:
+def xml_parse(xml_file_path: str, include_base_path: str | None = None, included = False, failed_include_file_paths: list[str] = None,
+		open_fn = open) -> Document:
 	'''features:
 		- process #include to include text from another .xml files
 		- removes comments <!-----> since they break W3C XML rules
 		- removes <?xml tags in included documents since they break W3C XML rules
 	'''
-	buff = xml_preprocessor(xml_file_path, include_base_path, included, failed_include_file_paths)
+	buff = xml_preprocessor(xml_file_path, include_base_path, included, failed_include_file_paths, open_fn=open_fn)
 	return parseString(buff)
 
 def iter_child_elements(element: Element):

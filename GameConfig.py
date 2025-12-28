@@ -6,7 +6,7 @@
 from collections.abc import Iterator
 from os.path import join
 # tools imports
-from paths import Paths
+from paths import Paths, Config as PathsConfig
 from localization import Localization
 from ltx_tool import Ltx
 
@@ -125,11 +125,11 @@ class GameConfig:
 	includes .ltx and .xml localization files
 	'''
 
-	def __init__(self, gamedata_path: str, localization: str, verbose = True) -> None:
+	def __init__(self, config_or_gamedata_path: PathsConfig | str, localization: str, verbose = True) -> None:
 		'localization - gamedata/configs/text/<localization>'
 		# set game paths
 		self.verbose = verbose
-		self.paths = Paths(gamedata_path)
+		self.paths = Paths(config_or_gamedata_path)
 		self.localization = Localization(self.paths)
 		# init item-type specific lists
 		self.ammo = Ammo(self.paths, self.localization)
@@ -154,7 +154,7 @@ class GameConfig:
 		for section_base in section_bases:
 			section_base.load_localization()
 
-		ltx = Ltx(self.paths.system_ltx)
+		ltx = Ltx(self.paths.system_ltx, open_fn=self.paths.open)
 		for section in ltx.iter_sections():
 			for section_base in section_bases:
 				if section_base.load_section(section):
@@ -165,7 +165,7 @@ class GameConfig:
 	def get_actor_outfit(self) -> Ltx | None:
 		ltx_path = join(self.paths.gamedata, 'configs/misc/outfit.ltx')
 		self.localization.add_localization_xml_file(join(self.localization.localization_text_path, 'st_items_outfit.xml'))
-		return Ltx(ltx_path, False)
+		return Ltx(ltx_path, False, open_fn=self.paths.open)
 
 	@staticmethod
 	def _iter(section_base) -> Iterator[Ltx.Section]:

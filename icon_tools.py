@@ -7,13 +7,15 @@
 # icons = IconsEquipment(gamedata_path)
 # icons.get_image(inv_grid_x, inv_grid_y, inv_grid_width, inv_grid_height)  # values inv_grid_* from .ltx section
 
-from collections.abc import Iterator, Iterable
-from os.path import join, sep as path_sep
-from paths import Paths
+from collections.abc import Iterator
+from os.path import join
 from xml.dom.minidom import parse, Element
 from io import BytesIO
 from base64 import b64encode
 from PIL.Image import open as image_open, Image
+# tools imports
+from version import PUBLIC_VERSION, PUBLIC_DATETIME
+from paths import Paths, Config as PathsConfig, DbFileVersion
 
 
 def get_image_as_html_img(image: Image, format='webp') -> str:
@@ -29,14 +31,14 @@ class IconsEquipment:
 
 	GRID_SIZE = 50
 
-	def __init__(self, gamedata_path: str) -> None:
-		self.gamedata_path = gamedata_path
+	def __init__(self, paths: Paths) -> None:
+		self.paths = paths
 		self._read_dds()
 
 	def _read_dds(self):
 		'load ui_icon_equipment.dds to image in self'
-		ui_icon_equipment_filepath = join(self.gamedata_path, 'textures', 'ui', 'ui_icon_equipment.dds')
-		self.image = image_open(ui_icon_equipment_filepath)
+		with self.paths.open(join('textures', 'ui', 'ui_icon_equipment.dds'), 'rb') as f:
+			self.image = image_open(f)
 
 	def get_image(self, inv_grid_x: int, inv_grid_y: int, inv_grid_width: int, inv_grid_height: int) -> Image:
 		'export ui_icon_equipment.dds to image by grid coordinates'
@@ -120,8 +122,14 @@ if __name__ == '__main__':
 {argv[0]} -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" ui_iconstotal -i ui_iconsTotal_artefact
 ''',
 			)
+			parser.add_argument('-g', '--gamepath', metavar='PATH', default='.',
+				help='game path that contains .db/.xdb files and optional gamedata folder')
+			parser.add_argument('-t', '--version', metavar='VER', choices=DbFileVersion.get_versions_names(),
+				help=f'.db/.xdb files version; usually 2947ru/2947ww for SoC, xdb for CS and CP; one of: {", ".join(DbFileVersion.get_versions_names())}')
 			parser.add_argument('-f', '--gamedata', metavar='PATH', required=True, help='gamedata directory path')
 			parser.add_argument('-l', '--localization', metavar='LANG', default='rus', help='localization language (see gamedata/configs/text path): rus (default), cz, hg, pol')
+			parser.add_argument('-v', action='count', default=0, help='verbose mode: 0..; examples: -v, -vv')
+			parser.add_argument('-V', action='version', version=f'{PUBLIC_VERSION} {PUBLIC_DATETIME}', help='show version')
 			subparsers = parser.add_subparsers(dest='mode', help='sub-commands:')
 			parser_ = subparsers.add_parser('equipment', aliases=('e',), help='icons by ui_icon_equipment.dds')
 			parser_.add_argument('-p', metavar='FILENAME', required=True, help='.png filename to save icon to')
@@ -146,9 +154,13 @@ if __name__ == '__main__':
 					save_image(id, icons._get_image(t))
 
 		args = parse_args()
+		verbose = args.v
 		match args.mode:
 			case 'equipment' | 'e':
-				icons = IconsEquipment(args.gamedata)
+				if not args.version:
+					raise ValueError(f'Argument --version or -t is missing; see help: {argv[0]} -h')
+				paths = Paths(PathsConfig(args.gamepath, args.version, args.gamedata, verbose=verbose))
+				icons = IconsEquipment(paths)
 				if (image := icons.get_image(*args.c)):
 					image.save(args.p + '.png')
 				else:

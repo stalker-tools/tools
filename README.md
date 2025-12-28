@@ -7,7 +7,7 @@ The software consists of two parts:
 ## Table of contents:
 
 ### [1. Brief introduction](#1-brief-introduction-1)
-- #### [1.1 Extract tool](#11-extract-tool-1)
+- #### [1.1 .db/.xdb extract tool](#11-dbxdb-extract-tool-1)
 - #### [1.2 Gamedata analysis tools](#12-gamedata-analysis-tools-1)
 - #### [1.3 Hybrid game engine](#13-hybrid-game-engine-1)
 ### [2. Installation](#2-installation-1)
@@ -33,10 +33,18 @@ Main feature:
   - It can greatly helps gamers to involve into game action and choose gameplay.
   - Moreover, such brochure can help introduce audience with game developer.
   - Finally, that should people become a bit serious to game author. :)
+  - See installation for standalon utility: [2.2.4 stalker-brochure instructions](#224-stalker-brochure-instructions)
 
 Take a fact that tools is in developing process. And API may be changed.
 
-## 1.1 Extract tool
+## 1.1 .db/.xdb extract tool
+
+At all, using scenarios involves two ways:
+
+- Standalone command-line utility - ready-to-use for game enthusiasts. See: installation [2.2.3 db-extract instructions](#223-db-extract-instructions)
+
+- Python-way API to access game resources as flexible as python can - for developers.
+
 
 Command-line tool to extract _.db, .xdb, .xrp, .xp_ files. See help: `paths.py -h` and it sub-command `paths.py e -h`.
 
@@ -46,9 +54,6 @@ This tool allows to game developers working with gamedata without nessesarity ex
 Python-way API - just import `XRReader` class from `DBReader.py`. See [DBReader.py:main()](https://github.com/stalker-tools/tools/blob/0b7f1c134f875a457119ae87c7187c0d3708e0a6/DBReader.py#L262) function code for low-level usage examples.
 
 See help: [3.1 .db/.xdb files extraction](EXTRACT.md).
-
-Installation for standalon extractor utility see [2.2.3 db-extractor instructions](#223-db-extractor-instructions)
-
 
 ## 1.2 Gamedata analysis tools
 
@@ -135,9 +140,10 @@ sudo zypper install graphviz
 pip3 install -r requirements.txt
 ```
 
-#### 2.2.3 db-extractor instructions
+#### 2.2.3 db-extract instructions
 
 Download latest version: [db-extract](https://github.com/stalker-tools/tools/releases/latest).
+Please, read release notes for using instructions.
 
 Ubuntu 24:
 
@@ -146,3 +152,17 @@ Ubuntu 24:
   - for Python venv: `python3 -m pip install python-lzo`
   - for system Python: `apt install python3-lzo`
 - Run: `+x ./db-extract`
+
+#### 2.2.4 stalker-brochure instructions
+
+Download latest version: [stalker-brochure](https://github.com/stalker-tools/tools/releases/latest).
+Please, read release notes for using instructions.
+
+Ubuntu 24:
+
+Install packages for [2.2.3 db-extract instructions](#223-db-extract-instructions)
+
+- Install plotly and PIL Python package:
+  - for Python venv: `python3 -m pip install plotly pillow`
+  - for system Python: `apt install python3-plotly python3-pillow`
+- Run: `+x ./stalker-brochure`

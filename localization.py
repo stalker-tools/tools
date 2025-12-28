@@ -33,7 +33,7 @@ class Localization:
 	def _load_string_table_ltx_section(self):
 		'load localization parameters from .ltx string_table section included from system.ltx'
 		try:
-			for x in parse_ltx_file(self.paths.system_ltx, follow_includes=True):
+			for x in parse_ltx_file(self.paths.system_ltx, follow_includes=True, open_fn=self.paths.open):
 				match x:
 					case (LtxKind.LET, _, 'string_table', 'files', buff):
 						self.string_table_files = buff
@@ -47,7 +47,7 @@ class Localization:
 							print(f'Language: {self.language}')
 						if self.string_table_files:
 							return
-		except:
+		except Exception as e:
 			pass
 
 	def _load_string_tables(self):
@@ -80,7 +80,7 @@ class Localization:
 
 	def add_localization_xml_file(self, file_path: str):
 		try:
-			if (_xml := xml_parse(file_path, self.paths.configs)):
+			if (_xml := xml_parse(file_path, self.paths.configs, open_fn=self.paths.open)):
 				if self.add_localization_xml(_xml):
 					self.string_table_files_found.append(file_path)
 		except Exception as e:
@@ -90,7 +90,7 @@ class Localization:
 		# try find not well-known .xml localization files
 
 		def find_in_file(file_path: str, text: bytes) -> bool:
-			with open(file_path, 'rb') as f:
+			with self.paths.open(file_path, 'rb') as f:
 				is_localization_file = False
 				for line in f.readlines():
 					if line.strip() == b'<string_table>':
