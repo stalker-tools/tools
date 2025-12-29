@@ -34,8 +34,10 @@ Tools usage falls into two category:
 
   List of standalone tools:
   - db-extract
-  - stalker-brochure
-  - stalker-dialogs
+  - stalker-brochure<br/>
+    example: [Clear Sky + SGM 3.10 + Real Weapons](https://html-preview.github.io/?url=https://github.com/stalker-tools/real_weapons_mod_clear_sky/blob/main/media/Clear%20Sky%20%2B%20SGM%203.10%20%2B%20Real%20Weapons.html)
+  - stalker-dialogs<br/>
+    example: [CS: Join dialog to "Duty"](https://github.com/stalker-tools/real_weapons_mod_clear_sky/blob/main/media/agr_leader_join_duty.png?raw=true).
 
 ### Main features
 
