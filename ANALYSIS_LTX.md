@@ -39,7 +39,7 @@ Command-line tools is 100% python, so it has wide usage as cross-platform.
 
 ### Tools help
 
-* **ltx_tool.py** help:
+#### **ltx_tool.py** help:
 ```sh
 python ltx_tool.py -h
 usage: ltx_tool.py [-h] -f FILE_PATH [FILE_PATH ...] [-p [SECTION NAMES ...]] [-s [SECTION NAMES ...]] [-l [LET RLVALUES ...]] [-r] [-m VALUE]
@@ -118,7 +118,7 @@ configs/mp/weapons_mp/outfit_mp.ltx [mp_exo_outfit_bones] hit_fraction = 0.2
 
 ---
 ---
-* **graph_tool.py** help:
+#### **graph_tool.py** help:
 ```sh
 python graph_tool.py -h
 usage: graph_tool.py [-h] -f PATH [-l LANG] [--head TEXT] [-s STYLE] [-t TYPE]
@@ -152,7 +152,7 @@ python graph_tool.py -ta -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky_r
 
 ---
 ---
-* **profiles_tool.py** help:
+#### **profiles_tool.py** help:
 ```sh
 python profiles_tool.py -h
 usage: profiles_tool.py [-h] [-v] -f PATH [-l LANG] [-e ENGINE] [-s STYLE] [-o OUT_FORMAT] [--sort-field NAME] [--head TEXT]
@@ -188,7 +188,7 @@ Example of profiles table for Clear Sky Sigerous Mod [profiles - Sigerous Mod.cs
 
 ---
 ---
-* **task_tool.py** help:
+#### **task_tool.py** help:
 ```sh
 python task_tool.py -h
 usage: task_tool.py [-h] [-v] -f PATH [-l LANG] [-o OUT_FORMAT] [--sort-field NAME] [--head TEXT]
@@ -218,20 +218,28 @@ Example of profiles table for Clear Sky Sigerous Mod [tasks - Sigerous Mod.csv](
 
 ---
 ---
-* **dialog_tool.py** help:
+#### **dialog_tool.py** help:
 ```sh
 python dialog_tool.py -h
-usage: dialog_tool.py [-h] [-v] -f PATH [-l LANG] [-d DIALOG_FILE [DIALOG_FILE ...]] [-i IDS [IDS ...]] [-p TEXT [TEXT ...]] [-a NAMES [NAMES ...]] [-e ENGINE] [-s STYLE] [-g IMG_FORMAT] [--head TEXT]
+usage: dialog_tool.py [-h] [-g PATH] [-t VER] [--exclude-gamedata] [-V] [-f PATH] [-l LANG] [-d DIALOG_FILE [DIALOG_FILE ...]] [-i IDS [IDS ...]] [-p TEXT [TEXT ...]] [-a NAMES [NAMES ...]] [-e ENGINE] [-s STYLE]
+                      [--graph-format IMG_FORMAT] [--head TEXT] [-v]
 
 X-ray dialog xml file parser. Dialogs xml file names reads from system.ltx file.
-Out format: html with dialog phrases digraphs embedded as images.
-Use different layout engines: https://www.graphviz.org/docs/layouts/
+Out format: html with dialog phrases digraphs embedded as svg or images.
+In case of svg - dialogue phrases is text searchable: just open .html and use text search.
+Use different layout engines, see: https://www.graphviz.org/docs/layouts/
 
 options:
   -h, --help            show this help message and exit
-  -v                    increase information verbosity: show phrase id
+  -g PATH, --gamepath PATH
+                        game root path (with .db/.xdb files); default: current path
+  -t VER, --version VER
+                        .db/.xdb files version; usually 2947ru/2947ww for SoC, xdb for CS and CP; one of: 11xx, 2215, 2945, 2947ru, 2947ww, xdb
+  --exclude-gamedata    exclude files from gamedata sub-path;
+                        used to get original game (.db/.xdb files only) infographics; default: false
+  -V                    show version
   -f PATH, --gamedata PATH
-                        gamedata directory path
+                        gamedata directory path; default: gamedata
   -l LANG, --localization LANG
                         localization language (see gamedata/configs/text path): rus (default), cz, hg, pol
   -d DIALOG_FILE [DIALOG_FILE ...], --dialog-files DIALOG_FILE [DIALOG_FILE ...]
@@ -246,16 +254,17 @@ options:
                         dot layout engine: circo, dot (default), neato
   -s STYLE, --style STYLE
                         style: l - light, d - dark (default)
-  -g IMG_FORMAT, --graph-format IMG_FORMAT
+  --graph-format IMG_FORMAT
                         digraph image format: s - svg (default), p - png
   --head TEXT           head text for html output
+  -v                    verbose mode: 0..; shows phrase id; examples: -v, -vv
 
 Examples:
-dialog_tool.py -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" --head "Clear Sky 1.5.10 dialogs" > "dialogs.html"
-dialog_tool.py -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" -sl > "dialogs light theme.html"
-dialog_tool.py -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" -i "*hello*" "*barman*" --head "Clear Sky 1.5.10 dialogs" > "dialogs id hello or barman.html"
-dialog_tool.py -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" -p "*сигнал*" "*шрам*" --head "Clear Sky 1.5.10 dialogs" > "dialogs text filtered.html"
-dialog_tool.py -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" -a "*not_in_dolg" "agru_open_story_door" --head "Clear Sky 1.5.10 dialogs" > "dialogs variable and function names filtered.html"
+dialog_tool.py -g ".../S.T.A.L.K.E.R" -t 2947ru --head "Clear Sky 1.5.10 dialogs" > "dialogs.html"
+dialog_tool.py -g ".../S.T.A.L.K.E.R" -t 2947ru -sl > "dialogs light theme.html"
+dialog_tool.py -g ".../S.T.A.L.K.E.R" -t 2947ru -i "*hello*" "*barman*" --head "Clear Sky 1.5.10 dialogs" > "dialogs id hello or barman.html"
+dialog_tool.py -g ".../S.T.A.L.K.E.R" -t 2947ru -p "*сигнал*" "*шрам*" --head "Clear Sky 1.5.10 dialogs" > "dialogs text filtered.html"
+dialog_tool.py -g ".../S.T.A.L.K.E.R" -t 2947ru -a "*not_in_dolg" "agru_open_story_door" --head "Clear Sky 1.5.10 dialogs" > "dialogs variable and function names filtered.html"
 ```
 
 Example of dialog digraphs for Clear Sky:
@@ -264,7 +273,7 @@ Example of dialog digraphs for Clear Sky:
 
 ---
 ---
-* **tree_tool.py** help:
+#### **tree_tool.py** help:
 ```sh
 python tree_tool.py -h
 usage: tree_tool.py [-h] -f PATH [-e ENGINE] [-s STYLE] [--head TEXT]

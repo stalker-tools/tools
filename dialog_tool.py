@@ -255,11 +255,11 @@ Out format: html with dialog phrases digraphs embedded as svg or images.
 In case of svg - dialogue phrases is text searchable: just open .html and use text search.
 Use different layout engines, see: https://www.graphviz.org/docs/layouts/''',
 				epilog=f'''Examples:
-{basename(argv[0])} -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" --head "Clear Sky 1.5.10 dialogs" > "dialogs.html"
-{basename(argv[0])} -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" -sl > "dialogs light theme.html"
-{basename(argv[0])} -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" -i "*hello*" "*barman*" --head "Clear Sky 1.5.10 dialogs" > "dialogs id hello or barman.html"
-{basename(argv[0])} -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" -p "*сигнал*" "*шрам*" --head "Clear Sky 1.5.10 dialogs" > "dialogs text filtered.html"
-{basename(argv[0])} -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" -a "*not_in_dolg" "agru_open_story_door" --head "Clear Sky 1.5.10 dialogs" > "dialogs variable and function names filtered.html"''',
+{basename(argv[0])} -g ".../S.T.A.L.K.E.R" -t 2947ru --head "Clear Sky 1.5.10 dialogs" > "dialogs.html"
+{basename(argv[0])} -g ".../S.T.A.L.K.E.R" -t 2947ru -sl > "dialogs light theme.html"
+{basename(argv[0])} -g ".../S.T.A.L.K.E.R" -t 2947ru -i "*hello*" "*barman*" --head "Clear Sky 1.5.10 dialogs" > "dialogs id hello or barman.html"
+{basename(argv[0])} -g ".../S.T.A.L.K.E.R" -t 2947ru -p "*сигнал*" "*шрам*" --head "Clear Sky 1.5.10 dialogs" > "dialogs text filtered.html"
+{basename(argv[0])} -g ".../S.T.A.L.K.E.R" -t 2947ru -a "*not_in_dolg" "agru_open_story_door" --head "Clear Sky 1.5.10 dialogs" > "dialogs variable and function names filtered.html"''',
 				formatter_class=argparse.RawTextHelpFormatter
 			)
 			parser.add_argument('-g', '--gamepath', metavar='PATH', help='game root path (with .db/.xdb files); default: current path')
