@@ -50,7 +50,8 @@ Tools usage falls into two category:
   - dialogue tool; out format: html with dialog phrases digraphs that embedded as svg or images.
 In case of svg - dialogue phrases is text searchable: just open .html and use text search.
 Use different layout engines, see: [graphviz layouts](https://www.graphviz.org/docs/layouts/).<br/>
-See dialogs digraphs (.png) example: [CS: Join dialog to "Duty"](https://github.com/stalker-tools/real_weapons_mod_clear_sky/blob/main/media/agr_leader_join_duty.png?raw=true).
+See dialogs digraphs (.png) example: [CS: Join dialog to "Duty"](https://github.com/stalker-tools/real_weapons_mod_clear_sky/blob/main/media/agr_leader_join_duty.png?raw=true).<br/>
+See installation for standalon utility: [2.2.5 stalker-dialogs instructions](#225-stalker-dialogs-instructions)
 - Tools to extract UI .dds icons sets.
 - Tools for automatic brochure generation with rich infographics of game actors, suits, ammo, artifacts, food.
   - It can greatly helps gamers to involve into game action and choose gameplay.

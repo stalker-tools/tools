@@ -121,34 +121,55 @@ configs/mp/weapons_mp/outfit_mp.ltx [mp_exo_outfit_bones] hit_fraction = 0.2
 #### **graph_tool.py** help:
 ```sh
 python graph_tool.py -h
-usage: graph_tool.py [-h] -f PATH [-l LANG] [--head TEXT] [-s STYLE] [-t TYPE]
+usage: graph_tool.py [-h] [-g PATH] [-t VER] [-V] [-f PATH] [--type TYPE] [--exclude-gamedata] [-c PATH] [-v]
 
-X-ray .ltx file parser. Out format: matplotlib graphs embedded in html as images
+Infographics brochure maker for X-ray gamedata files; out format: .html file
+
+Note:
+It is not necessary to extract .db/.xdb files to gamedata path. This utility can read all game files from .db/.xdb files !
 
 options:
   -h, --help            show this help message and exit
+  -g PATH, --gamepath PATH
+                        game root path (with .db/.xdb files); default: current path
+  -t VER, --version VER
+                        .db/.xdb files version; usually 2947ru/2947ww for SoC, xdb for CS and CP; one of: 11xx, 2215, 2945, 2947ru, 2947ww, xdb
+  -V                    show version
   -f PATH, --gamedata PATH
-                        gamedata directory path
-  -l LANG, --localization LANG
-                        localization language (see gamedata/configs/text path): rus (default), cz, hg, pol
-  --head TEXT           head text
-  -s STYLE, --style STYLE
-                        style: l - light, d - dark (default)
-  -t TYPE, --type TYPE  type: a - analyse (default), b - brochure
+                        gamedata directory path; default: gamedata
+  --type TYPE           out type: a - analyse, b - brochure (default)
+  --exclude-gamedata    exclude files from gamedata sub-path;
+                        used to get original game (.db/.xdb files only) infographics; default: false
+  -c PATH, --config PATH
+                        config file path; used for brochure; default: brochure.ini
+  -v                    verbose mode: 0..; examples: -v, -vv
 
-Examples: ./graph_tool.py -tb -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" --head "Clear Sky" > "ClearSky_brochure.htm"
+Examples:
+
+Note:
+You should implement "brochure.ini" file in game folder (where .db/.xdb files).
+
+For example, "brochure.ini" for SoC (download Stalkercover.jpg from wiki to game folder):
+[global]
+caption = SoC
+author = GSC Game World
+localization = rus
+style = dark
+[head]
+title = S.T.A.L.K.E.R.: Тень Чернобыля
+pictures = Stalkercover.jpg
+
+Run from game path (where .db/.xdb files):
+./graph_tool.py -t 2947ru > "SoC.htm"
+
+Run outside of game path:
+./graph_tool.py -g .../S.T.A.L.K.E.R. -t 2947ru > "SoC.htm"
+
+For game developers may be helpful to get an analyse output type of .html page (--type a):
+./graph_tool.py -g .../S.T.A.L.K.E.R. -t 2947ru --type a > "SoC.analyse.htm"
 ```
 
-Example to generate mod brochure **.html** file:
-```sh
-python graph_tool.py -tb -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky_real_weapons_mod/gamedata/" --head "Clear Sky + SGM 3.10 + Real Weapons" > "Clear Sky + SGM 3.10 + Real Weapons.html"
-```
 See brochure example: [Clear Sky + SGM 3.10 + Real Weapons.html](https://html-preview.github.io/?url=https://github.com/stalker-tools/real_weapons_mod_clear_sky/blob/main/media/Clear%20Sky%20%2B%20SGM%203.10%20%2B%20Real%20Weapons.html)
-
-Example to generate mod analysis **.html** file:
-```sh
-python graph_tool.py -ta -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky_real_weapons_mod/gamedata/" --head "Clear Sky + SGM 3.10 + Real Weapons" > "Clear Sky + SGM 3.10 + Real Weapons - analysis.html"
-```
 
 ---
 ---
