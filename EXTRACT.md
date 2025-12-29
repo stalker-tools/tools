@@ -5,6 +5,8 @@
 As .db/.xdb files is container with filesystem, export process include definition of latest version of extracted file.
 This utility works with **latest** files version only. For low-level access to .db/.xdb files use `DBReader.py` command-line utility, see [3. Low-level .db/.xdb files information](#3-low-level-dbxdb-files-information).
 
+### Command-line interface brief
+
 Command-line interface of export utility consists of common part and sub-commands:
 - common part:
   - game root path (_-g \<PATH\>_), default: current path
@@ -24,6 +26,8 @@ Export do not overwrite files by default. Use (_-r_) option of export sub-comman
 Export order of gamedata files is sorted and grouped by .db/.xdb file name.
 
 ### 1.1 Common use
+
+Note: extract tool **_paths.py_** has standalone version: **_db-extract_**. Please, replace _paths.py_  by _db-extract_ in examples.
 
 #### 1.1.1 Extract <ins>all</ins> files to _gamedata_ sub-folder:
 ```sh
