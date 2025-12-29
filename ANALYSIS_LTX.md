@@ -13,13 +13,13 @@ Command-line tools is 100% python, so it has wide usage as cross-platform.
 
   This utility can be handle to _gamempay designers_.
 
-* [profiles_tool.py](#profiles_toolpy-help) for **table**-based view of game profiles (Actor and NPC) with dialogs with localization and has profile-specific filters capabilities. Out formats: html, html with dot digraphs embedded in html as svg, csv table.
+* [profiles_tool.py or stalker-profiles](#profiles_toolpy-help) for **table**-based view of game profiles (Actor and NPC) with dialogs with localization and has profile-specific filters capabilities. Out formats: html (brochure), html + dialogs digraphs embedded in html as svg, csv table.
 
   You can open _.html_ file in _any browser_ and search text for NPC names, bio or dialog phrases, `give_info/has_info` variables and `precondition/action` script functions names.
 
   This utility can be handle to _game dialog designers_ and _game testers_.
 
-* [task_tool.py](#task_toolpy-help) for **table**-based view of game tasks with localization. Out formats: html table, csv table.
+* [task_tool.py or stalker-tasks](#task_toolpy-help) for **table**-based view of game tasks with localization. Out formats: html table, csv table.
 
   You can open _.cvs_ file in LibreOffice Calc or _.html_ file in _any browser_ and search text for Actor tasks and rewards.
 
@@ -178,19 +178,31 @@ See brochure example: [Clear Sky + SGM 3.10 + Real Weapons.html](https://html-pr
 ---
 ---
 #### **profiles_tool.py** help:
+Standalone: stalker-profiles
 ```sh
 python profiles_tool.py -h
-usage: profiles_tool.py [-h] [-v] -f PATH [-l LANG] [-e ENGINE] [-s STYLE] [-o OUT_FORMAT] [--sort-field NAME] [--head TEXT]
+usage: profiles_tool.py [-h] [-g PATH] [-t VER] [-V] [-f PATH] [--exclude-gamedata] [-v] [-l LANG] [-e ENGINE] [-s STYLE] [-o OUT_FORMAT] [--sort-field NAME] [--head TEXT]
 
-X-ray dialog xml file parser. Dialogs xml file names reads from system.ltx file.
-Out format: html with dialog phrases digraphs embedded as images.
+X-ray characters profile xml file parser. Extended output: profile and dialogs.
+For out formats see -o option; -s for color style.
 Use different layout engines: https://www.graphviz.org/docs/layouts/
+
+Note:
+It is not necessary to extract .db/.xdb files to gamedata path. This utility can read all game files from .db/.xdb files !
+Utility still not optimized, please, be patient.
 
 options:
   -h, --help            show this help message and exit
-  -v                    increase information verbosity: show phrase id
+  -g PATH, --gamepath PATH
+                        game root path (with .db/.xdb files); default: current path
+  -t VER, --version VER
+                        .db/.xdb files version; usually 2947ru/2947ww for SoC, xdb for CS and CP; one of: 11xx, 2215, 2945, 2947ru, 2947ww, xdb
+  -V                    show version
   -f PATH, --gamedata PATH
-                        gamedata directory path
+                        gamedata directory path; default: gamedata
+  --exclude-gamedata    exclude files from gamedata sub-path;
+                        used to get original game (.db/.xdb files only) infographics; default: false
+  -v                    increase information verbosity: show phrase id
   -l LANG, --localization LANG
                         localization language (see gamedata/configs/text path): rus (default), cz, hg, pol
   -e ENGINE, --engine ENGINE
@@ -198,15 +210,15 @@ options:
   -s STYLE, --style STYLE
                         style: l - light, d - dark (default)
   -o OUT_FORMAT, --output-format OUT_FORMAT
-                        output format: h - html table (default), d - html table + svg dialogs, c - csv table
-  --sort-field NAME     sort field name: id (default), name, class, community, reputation, bio
+                        output format: h - html table (default), d - html table + svg dialogs, c - csv table, b - brochure
+  --sort-field NAME     sort field name: id, name (default), class, community, reputation, bio
   --head TEXT           head text for html output
 
 Examples:
-profiles_tool.py -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" --head "Clear Sky 1.5.10 profiles" > "profiles.html"
-profiles_tool.py -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" -od -sl > "profiles with dialogs light theme.html"
-profiles_tool.py -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" --sort-field name --head "Clear Sky 1.5.10 profiles" > "profiles.html"
-profiles_tool.py -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" --sort-field name -oc" > "profiles.csv"
+profiles_tool.py -g ".../S.T.A.L.K.E.R" -t 2947ru --head "Clear Sky 1.5.10 profiles" > "CS.profiles.html"
+profiles_tool.py -g ".../S.T.A.L.K.E.R" -t 2947ru -od -sl > "CS.profiles with dialogs light theme.html"
+profiles_tool.py -g ".../S.T.A.L.K.E.R" -t 2947ru --sort-field name --head "Clear Sky 1.5.10 profiles" > "CS.profiles.html"
+profiles_tool.py -g ".../S.T.A.L.K.E.R" -t 2947ru --sort-field name -oc" > "CS.profiles.csv"
 ```
 
 Example of profiles table for Clear Sky Sigerous Mod [profiles - Sigerous Mod.csv](https://github.com/stalker-tools/real_weapons_mod_clear_sky/blob/main/media/profiles%20-%20Sigerous%20Mod.csv)
@@ -214,18 +226,29 @@ Example of profiles table for Clear Sky Sigerous Mod [profiles - Sigerous Mod.cs
 ---
 ---
 #### **task_tool.py** help:
+Standalone: stalker-tasks
 ```sh
 python task_tool.py -h
-usage: task_tool.py [-h] [-v] -f PATH [-l LANG] [-o OUT_FORMAT] [--sort-field NAME] [--head TEXT]
+usage: stalker-tasks [-h] [-g PATH] [-t VER] [-V] [-f PATH] [--exclude-gamedata] [-v] [-l LANG] [-o OUT_FORMAT] [--sort-field NAME] [--head TEXT]
 
 X-ray task_manager.ltx file parser.
-Out format: table.
+Out formats: html table, csv table.
+
+Note:
+It is not necessary to extract .db/.xdb files to gamedata path. This utility can read all game files from .db/.xdb files !
 
 options:
   -h, --help            show this help message and exit
-  -v                    increase information verbosity: show phrase id
+  -g PATH, --gamepath PATH
+                        game root path (with .db/.xdb files); default: current path
+  -t VER, --version VER
+                        .db/.xdb files version; usually 2947ru/2947ww for SoC, xdb for CS and CP; one of: 11xx, 2215, 2945, 2947ru, 2947ww, xdb
+  -V                    show version
   -f PATH, --gamedata PATH
-                        gamedata directory path
+                        gamedata directory path; default: gamedata
+  --exclude-gamedata    exclude files from gamedata sub-path;
+                        used to get original game (.db/.xdb files only) infographics; default: false
+  -v                    increase information verbosity: show phrase id
   -l LANG, --localization LANG
                         localization language (see gamedata/configs/text path): rus (default), cz, hg, pol
   -o OUT_FORMAT, --output-format OUT_FORMAT
@@ -234,9 +257,9 @@ options:
   --head TEXT           head text for html output
 
 Examples:
-task_tool.py -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" --head "Clear Sky 1.5.10 tasks" > "tasks.html"
-task_tool.py -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" --sort-field name --head "Clear Sky 1.5.10 tasks" > "tasks.html"
-task_tool.py -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" --sort-field name -oc" > "tasks.csv"
+task_tool.py -g ".../S.T.A.L.K.E.R" -t 2947ru --head "Clear Sky 1.5.10 tasks" > "tasks.html"
+task_tool.py -g ".../S.T.A.L.K.E.R" -t 2947ru --sort-field name --head "Clear Sky 1.5.10 tasks" > "tasks.html"
+task_tool.py -g ".../S.T.A.L.K.E.R" -t 2947ru --sort-field name -oc" > "tasks.csv"
 ```
 
 Example of profiles table for Clear Sky Sigerous Mod [tasks - Sigerous Mod.csv](https://github.com/stalker-tools/real_weapons_mod_clear_sky/blob/main/media/tasks%20-%20Sigerous%20Mod.csv)

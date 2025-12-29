@@ -38,6 +38,10 @@ Tools usage falls into two category:
     example: [Clear Sky + SGM 3.10 + Real Weapons](https://html-preview.github.io/?url=https://github.com/stalker-tools/real_weapons_mod_clear_sky/blob/main/media/Clear%20Sky%20%2B%20SGM%203.10%20%2B%20Real%20Weapons.html)
   - stalker-dialogs<br/>
     example: [CS: Join dialog to "Duty"](https://github.com/stalker-tools/real_weapons_mod_clear_sky/blob/main/media/agr_leader_join_duty.png?raw=true).
+  - stalker-profiles<br/>
+    examples: [SoC: profiles](https://github.com/stalker-tools/real_weapons_mod_clear_sky/blob/main/media/SoC.profiles.brochure.png?raw=true), [SoC: escape location: stalker-guide](https://github.com/stalker-tools/real_weapons_mod_clear_sky/blob/main/media/SoC.profiles.dialogs.png?raw=true).
+  - stalker-tasks<br/>
+    example: [tasks - Sigerous Mod.csv](https://github.com/stalker-tools/real_weapons_mod_clear_sky/blob/main/media/tasks%20-%20Sigerous%20Mod.csv)
 
 ### Main features
 
@@ -46,12 +50,16 @@ Tools usage falls into two category:
   - .db/.xdb files;
   - config files: .ltx sections, .xml localization and game.graph;
   - saving the game .sav and fsgame.ltx.
-- Analysis tools with visualize game actors profiles, dialogue, tasks:
+- Analysis tools with visualize game files:
   - dialogue tool; out format: html with dialog phrases digraphs that embedded as svg or images.
 In case of svg - dialogue phrases is text searchable: just open .html and use text search.
 Use different layout engines, see: [graphviz layouts](https://www.graphviz.org/docs/layouts/).<br/>
 See dialogs digraphs (.png) example: [CS: Join dialog to "Duty"](https://github.com/stalker-tools/real_weapons_mod_clear_sky/blob/main/media/agr_leader_join_duty.png?raw=true).<br/>
-See installation for standalon utility: [2.2.5 stalker-dialogs instructions](#225-stalker-dialogs-instructions)
+See installation for standalon utility: [2.2.5 stalker-dialogs instructions](#225-stalker-dialogs-stalker-profiles-instructions)
+  - characters profiles tool; out formats: html (brochure), html + dialogs digraphs embedded in html as svg, csv table.<br/>
+See profiles (.png) examples: [SoC: profiles](https://github.com/stalker-tools/real_weapons_mod_clear_sky/blob/main/media/SoC.profiles.brochure.png?raw=true), [SoC: escape location: stalker-guide](https://github.com/stalker-tools/real_weapons_mod_clear_sky/blob/main/media/SoC.profiles.dialogs.png?raw=true).
+  - actor tasks tool; out format: table.<br/>
+See tasks example: [tasks - Sigerous Mod.csv](https://github.com/stalker-tools/real_weapons_mod_clear_sky/blob/main/media/tasks%20-%20Sigerous%20Mod.csv)
 - Tools to extract UI .dds icons sets.
 - Tools for automatic brochure generation with rich infographics of game actors, suits, ammo, artifacts, food.
   - It can greatly helps gamers to involve into game action and choose gameplay.
@@ -164,6 +172,8 @@ pip3 install -r requirements.txt
 
 #### 2.2.3 db-extract instructions
 
+Also for stalker-tasks.
+
 Download latest version: [db-extract](https://github.com/stalker-tools/tools/releases/latest).
 Please, read release notes for using instructions.
 
@@ -189,9 +199,9 @@ Install packages for [2.2.3 db-extract instructions](#223-db-extract-instruction
   - for system Python: `apt install python3-plotly python3-pillow`
 - Run: `+x ./stalker-brochure`
 
-#### 2.2.5 stalker-dialogs instructions
+#### 2.2.5 stalker-dialogs, stalker-profiles instructions
 
-Download latest version: [stalker-dialogs](https://github.com/stalker-tools/tools/releases/latest).
+Download latest version: [stalker-dialogs, stalker-profiles](https://github.com/stalker-tools/tools/releases/latest).
 Please, read release notes for using instructions.
 
 Ubuntu 24:
@@ -202,3 +212,4 @@ Install packages for [2.2.4 stalker-brochure instructions](#224-stalker-brochure
   - for Python venv: `python3 -m pip install pydot`
   - for system Python: `apt install python3-plotly pydot`
 - Run: `+x ./stalker-dialogs`
+- Run: `+x ./stalker-profiles`

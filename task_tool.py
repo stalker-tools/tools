@@ -4,26 +4,26 @@
 # Author: Stalker tools, 2023-2024
 
 from sys import stderr
-from os.path import join, basename
-from glob import glob
+from os.path import basename
+# tools imports
+from version import PUBLIC_VERSION, PUBLIC_DATETIME
+from paths import Paths, Config as PathsConfig, DbFileVersion, DEFAULT_GAMEDATA_PATH
 from ltx_tool import parse_ltx_file, LtxKind
-from xml_tool import xml_preprocessor, get_child_element_values
-from xml.dom.minidom import Element
-from xml_tool import add_localization_dict_from_localization_xml_file
+from localization import Localization
 
 
-def get_tasks_ltx_file_path(configs_path: str) -> str | None:
+def get_tasks_ltx_file_path(paths: Paths) -> str | None:
 	'returns path to task_manager.ltx file'
 	# try find tasks .ltx file
-	if (task_manager_file_path := glob(join(configs_path, '**', 'task_manager.ltx'), recursive=True)):
-		return task_manager_file_path[0]
+	for ff in paths.find('*task_manager.ltx'):
+		return ff
 	return None
 
-def get_tasks_and_add_localization(localization_dict: dict[str, str], configs_path: str, localization_text_path: str, verbose = True) -> dict[str, dict[str, object]] | None:
-	if (ltx_file_path := get_tasks_ltx_file_path(configs_path)):
+def get_tasks_and_add_localization(paths: Paths, verbose = True) -> dict[str, dict[str, object]] | None:
+	if (ltx_file_path := get_tasks_ltx_file_path(paths)):
 		sections, section = {}, {}
 		prev_section_name = None
-		for x in parse_ltx_file(ltx_file_path, follow_includes=True):
+		for x in parse_ltx_file(ltx_file_path, follow_includes=True, open_fn=paths.open):
 			match x:
 				case (LtxKind.NEW_SECTION, section_name, section_parents):
 					if section_name in sections:
@@ -38,43 +38,56 @@ def get_tasks_and_add_localization(localization_dict: dict[str, str], configs_pa
 			sections[prev_section_name] = section
 
 		# add localization # find quest xml localization files
-		for localization_xml_file_path in glob(join(localization_text_path, 'st_quest*.xml')):
-			add_localization_dict_from_localization_xml_file(localization_dict, configs_path, localization_xml_file_path, verbose)
+		# for localization_xml_file_path in glob(join(localization_text_path, 'st_quest*.xml')):
+		# 	add_localization_dict_from_localization_xml_file(localization_dict, configs_path, localization_xml_file_path, verbose)
 
 		return sections
 	return None
 
 
 if __name__ == '__main__':
-	import argparse
 	from sys import argv, exit
+	import argparse
+	from pathlib import Path
 
 	def main():
 
 		def parse_args():
 			parser = argparse.ArgumentParser(
-				description='X-ray task_manager.ltx file parser.\nOut format: table.',
+				description='''X-ray task_manager.ltx file parser.
+Out formats: html table, csv table.
+
+Note:
+It is not necessary to extract .db/.xdb files to gamedata path. This utility can read all game files from .db/.xdb files !
+''',
 				epilog=f'''Examples:
-{basename(argv[0])} -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" --head "Clear Sky 1.5.10 tasks" > "tasks.html"
-{basename(argv[0])} -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" --sort-field name --head "Clear Sky 1.5.10 tasks" > "tasks.html"
-{basename(argv[0])} -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" --sort-field name -oc" > "tasks.csv"''',
+{basename(argv[0])} -g ".../S.T.A.L.K.E.R" -t 2947ru --head "Clear Sky 1.5.10 tasks" > "tasks.html"
+{basename(argv[0])} -g ".../S.T.A.L.K.E.R" -t 2947ru --sort-field name --head "Clear Sky 1.5.10 tasks" > "tasks.html"
+{basename(argv[0])} -g ".../S.T.A.L.K.E.R" -t 2947ru --sort-field name -oc" > "tasks.csv"''',
 				formatter_class=argparse.RawTextHelpFormatter
 			)
+			parser.add_argument('-g', '--gamepath', metavar='PATH', help='game root path (with .db/.xdb files); default: current path')
+			parser.add_argument('-t', '--version', metavar='VER', choices=DbFileVersion.get_versions_names(),
+				help=f'.db/.xdb files version; usually 2947ru/2947ww for SoC, xdb for CS and CP; one of: {", ".join(DbFileVersion.get_versions_names())}')
+			parser.add_argument('-V', action='version', version=f'{PUBLIC_VERSION} {PUBLIC_DATETIME}', help='show version')
+			parser.add_argument('-f', '--gamedata', metavar='PATH', default=DEFAULT_GAMEDATA_PATH,
+				help=f'gamedata directory path; default: {DEFAULT_GAMEDATA_PATH}')
+			parser.add_argument('--exclude-gamedata', action='store_true', help='''exclude files from gamedata sub-path;
+used to get original game (.db/.xdb files only) infographics; default: false
+''')
 			parser.add_argument('-v', action='store_true', help='increase information verbosity: show phrase id')
-			parser.add_argument('-f', '--gamedata', metavar='PATH', required=True, help='gamedata directory path')
 			parser.add_argument('-l', '--localization', metavar='LANG', default='rus', help='localization language (see gamedata/configs/text path): rus (default), cz, hg, pol')
 			parser.add_argument('-o', '--output-format', metavar='OUT_FORMAT', default='h', help='output format: h - html table (default), c - csv table')
 			parser.add_argument('--sort-field', metavar='NAME', default='name', help='sort field name: name (default)')
 			parser.add_argument('--head', metavar='TEXT', default='S.T.A.L.K.E.R.', help='head text for html output')
 			return parser.parse_args()
 
-		args = parse_args()
-
 		def analyse(gamedata_path: str):
 
-			configs_path = join(gamedata_path, 'configs')
-			localization_text_path = join(configs_path, 'text', args.localization)
-			localization_dict: dict[str, str] = {}  # localization string: id, text
+			paths = Paths(gamedata_path)
+			loc = Localization(paths, verbose=verbose)
+			# localization_text_path = join(configs_path, 'text', args.localization)
+			# localization_dict: dict[str, str] = {}  # localization string: id, text
 
 			if args.output_format != 'c':
 				print(f'<html>\n<head><title>{args.head}</title></head>')
@@ -82,7 +95,7 @@ if __name__ == '__main__':
 				print(f'<h1>{args.head}</h1><hr/>')
 				STYLE_TEXT_LEFT = 'style="text-align: left;"'
 
-			tasks_sections_dict = get_tasks_and_add_localization(localization_dict, configs_path, localization_text_path, args.output_format != 'c')
+			tasks_sections_dict = get_tasks_and_add_localization(paths, args.output_format != 'c')
 
 			def get_task_value(task: dict[str, object], value_name: str) -> str | None:
 				if value_name in task:
@@ -104,7 +117,7 @@ if __name__ == '__main__':
 				if (value := get_task_value(task, value_name)):
 					if value_name in LOCALIZED_TASK_VALUE_NAMES:
 						# try get localization
-						if (localized_value := localization_dict.get(value)):
+						if (localized_value := loc.string_table.get(value)):
 							return localized_value
 						print(f'localization not found: {value}', file=stderr)
 					return value
@@ -169,7 +182,21 @@ if __name__ == '__main__':
 				print('</tbody></table>')
 				print('</body>\n</html>')
 
-		analyse(args.gamedata)
+
+		args = parse_args()
+		verbose = args.v
+
+		gamepath = Path(args.gamepath) if args.gamepath else Path()
+		paths_config = None
+		if gamepath:
+			if not args.version:
+				raise ValueError(f'Argument --version or -t is missing; see help: {argv[0]} -h')
+			paths_config = PathsConfig(
+				gamepath.absolute(), args.version,
+				args.gamedata,
+				verbose=verbose,
+				exclude_gamedata=args.exclude_gamedata)
+		analyse(paths_config)
 
 	try:
 		main()

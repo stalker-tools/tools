@@ -10,17 +10,18 @@ from xml.dom.minidom import parseString
 from xml_tool import xml_preprocessor, get_child_element_values
 from xml.dom.minidom import Element
 # stalker-tools import
+from version import PUBLIC_VERSION, PUBLIC_DATETIME
 from dialog_tool import get_dialogs_and_add_localization, create_dialog_graph, get_svg, GraphEngineNotSupported, SvgException
 from icon_tools import UiNpcUnique, UiIconstotal, get_image_as_html_img
-from paths import Paths
+from paths import Paths, Config as PathsConfig, DbFileVersion, DEFAULT_GAMEDATA_PATH
 from localization import Localization
 
 
-def get_profiles(system_ltx_file_path: str) -> tuple[list[str], list[str]] | tuple[None, None]:
+def get_profiles(system_ltx_file_path: str, open_fn=open) -> tuple[list[str], list[str]] | tuple[None, None]:
 	'returns files and specific_characters_files .xml from system.ltx includes: [profiles] files, specific_characters_files'
 	files = specific_characters_files = None
 	try:
-		for x in parse_ltx_file(system_ltx_file_path, follow_includes=True):
+		for x in parse_ltx_file(system_ltx_file_path, follow_includes=True, open_fn=open_fn):
 			match x:
 				case (LtxKind.LET, _, 'profiles', 'files', files):
 					if files and specific_characters_files:
@@ -33,7 +34,7 @@ def get_profiles(system_ltx_file_path: str) -> tuple[list[str], list[str]] | tup
 
 def get_profiles_and_add_localization(paths: Paths, loc: Localization, verbose = False) -> dict[str, Element] | None:
 	'return list[id, XML element]'
-	files, specific_characters_files = get_profiles(paths.system_ltx)
+	files, specific_characters_files = get_profiles(paths.system_ltx, paths.open)
 	if not files:
 		return None
 	if verbose:
@@ -50,7 +51,7 @@ def get_profiles_and_add_localization(paths: Paths, loc: Localization, verbose =
 	for specific_characters_file in specific_characters_files:
 		xml_file_path = join(paths.configs, 'gameplay', f'{specific_characters_file}.xml')
 		try:
-			buff = xml_preprocessor(xml_file_path, paths.configs, failed_include_file_paths=failed_include_file_paths)
+			buff = xml_preprocessor(xml_file_path, paths.configs, failed_include_file_paths=failed_include_file_paths, open_fn=paths.open)
 		except FileNotFoundError:
 			print(f'profile file not found: {xml_file_path}', file=stderr)
 			continue
@@ -63,32 +64,64 @@ def get_profiles_and_add_localization(paths: Paths, loc: Localization, verbose =
 
 
 if __name__ == '__main__':
-	import argparse
 	from sys import argv, exit
+	import argparse
+	from pathlib import Path
 
 	def main():
 
 		def parse_args():
 			parser = argparse.ArgumentParser(
-				description='X-ray dialog xml file parser. Dialogs xml file names reads from system.ltx file.\nOut format: html with dialog phrases digraphs embedded as images.\nUse different layout engines: https://www.graphviz.org/docs/layouts/',
+				description='''X-ray characters profile xml file parser. Extended output: profile and dialogs.
+For out formats see -o option; -s for color style.
+Use different layout engines: https://www.graphviz.org/docs/layouts/
+
+Note:
+It is not necessary to extract .db/.xdb files to gamedata path. This utility can read all game files from .db/.xdb files !
+Utility still not optimized, please, be patient.
+''',
 				epilog=f'''Examples:
-{basename(argv[0])} -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" --head "Clear Sky 1.5.10 profiles" > "profiles.html"
-{basename(argv[0])} -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" -od -sl > "profiles with dialogs light theme.html"
-{basename(argv[0])} -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" --sort-field name --head "Clear Sky 1.5.10 profiles" > "profiles.html"
-{basename(argv[0])} -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" --sort-field name -oc" > "profiles.csv"''',
+{basename(argv[0])} -g ".../S.T.A.L.K.E.R" -t 2947ru --head "Clear Sky 1.5.10 profiles" > "CS.profiles.html"
+{basename(argv[0])} -g ".../S.T.A.L.K.E.R" -t 2947ru -od -sl > "CS.profiles with dialogs light theme.html"
+{basename(argv[0])} -g ".../S.T.A.L.K.E.R" -t 2947ru --sort-field name --head "Clear Sky 1.5.10 profiles" > "CS.profiles.html"
+{basename(argv[0])} -g ".../S.T.A.L.K.E.R" -t 2947ru --sort-field name -oc" > "CS.profiles.csv"
+''',
 				formatter_class=argparse.RawTextHelpFormatter
 			)
+			parser.add_argument('-g', '--gamepath', metavar='PATH', help='game root path (with .db/.xdb files); default: current path')
+			parser.add_argument('-t', '--version', metavar='VER', choices=DbFileVersion.get_versions_names(),
+				help=f'.db/.xdb files version; usually 2947ru/2947ww for SoC, xdb for CS and CP; one of: {", ".join(DbFileVersion.get_versions_names())}')
+			parser.add_argument('-V', action='version', version=f'{PUBLIC_VERSION} {PUBLIC_DATETIME}', help='show version')
+			parser.add_argument('-f', '--gamedata', metavar='PATH', default=DEFAULT_GAMEDATA_PATH,
+				help=f'gamedata directory path; default: {DEFAULT_GAMEDATA_PATH}')
+			parser.add_argument('--exclude-gamedata', action='store_true', help='''exclude files from gamedata sub-path;
+used to get original game (.db/.xdb files only) infographics; default: false
+''')
 			parser.add_argument('-v', action='store_true', help='increase information verbosity: show phrase id')
-			parser.add_argument('-f', '--gamedata', metavar='PATH', required=True, help='gamedata directory path')
-			parser.add_argument('-l', '--localization', metavar='LANG', default='rus', help='localization language (see gamedata/configs/text path): rus (default), cz, hg, pol')
+			parser.add_argument('-l', '--localization', metavar='LANG', default='rus',
+				help='localization language (see gamedata/configs/text path): rus (default), cz, hg, pol')
 			parser.add_argument('-e', '--engine', metavar='ENGINE', default='dot', help='dot layout engine: circo, dot (default), neato')
 			parser.add_argument('-s', '--style', metavar='STYLE', default='dark', help='style: l - light, d - dark (default)')
-			parser.add_argument('-o', '--output-format', metavar='OUT_FORMAT', default='h', help='output format: h - html table (default), d - html table + svg dialogs, c - csv table, b - brochure')
-			parser.add_argument('--sort-field', metavar='NAME', default='name', choices=('id', 'name', 'class', 'community', 'reputation', 'bio'), help='sort field name: id, name (default), class, community, reputation, bio')
+			parser.add_argument('-o', '--output-format', metavar='OUT_FORMAT', default='h',
+				help='output format: h - html table (default), d - html table + svg dialogs, c - csv table, b - brochure')
+			parser.add_argument('--sort-field', metavar='NAME', default='name', choices=('id', 'name', 'class', 'community', 'reputation', 'bio'),
+				help='sort field name: id, name (default), class, community, reputation, bio')
 			parser.add_argument('--head', metavar='TEXT', default='S.T.A.L.K.E.R.', help='head text for html output')
 			return parser.parse_args()
 
 		args = parse_args()
+		verbose = args.v
+
+		gamepath = Path(args.gamepath) if args.gamepath else Path()
+		paths_config = None
+		if gamepath:
+			if not args.version:
+				raise ValueError(f'Argument --version or -t is missing; see help: {argv[0]} -h')
+			paths_config = PathsConfig(
+				gamepath.absolute(), args.version,
+				args.gamedata,
+				verbose=verbose,
+				exclude_gamedata=args.exclude_gamedata)
 
 		def _get_element_values(loc: Localization | None, element: Element, element_name: str) -> str | int:
 			if element_name == 'id':
@@ -120,7 +153,7 @@ if __name__ == '__main__':
 		def analyse(gamedata_path: str):
 
 			paths = Paths(gamedata_path)
-			loc = Localization(paths)
+			loc = Localization(paths, verbose=verbose)
 
 			match args.style.lower():
 				case 'l':
@@ -183,8 +216,8 @@ if __name__ == '__main__':
 							return f'{id}<br/>{get_image_as_html_img(image)}'
 					return id
 
-				ui_npc_unique = UiNpcUnique(gamedata_path) if args.output_format != 'c' else None
-				ui_iconstotal = UiIconstotal(gamedata_path) if args.output_format != 'c' else None
+				ui_npc_unique = UiNpcUnique(paths) if args.output_format != 'c' else None
+				ui_iconstotal = UiIconstotal(paths) if args.output_format != 'c' else None
 
 				for index, specific_character in enumerate(sorted(specific_characters_dict.values(), key=lambda x:
 						_get_element_values_sort(loc, x, args.sort_field))):
@@ -218,6 +251,7 @@ if __name__ == '__main__':
 				print('</body>\n</html>')
 
 		def brochure(gamedata_path: str, k_width = 1):
+
 			paths = Paths(gamedata_path)
 			loc = Localization(paths)
 			specific_characters_dict = get_profiles_and_add_localization(paths, loc)
@@ -242,8 +276,8 @@ if __name__ == '__main__':
 </style>
 </head><body>''')
 
-			ui_npc_unique = UiNpcUnique(gamedata_path) if args.output_format != 'c' else None
-			ui_iconstotal = UiIconstotal(gamedata_path) if args.output_format != 'c' else None
+			ui_npc_unique = UiNpcUnique(paths) if args.output_format != 'c' else None
+			ui_iconstotal = UiIconstotal(paths) if args.output_format != 'c' else None
 			print(f'<div class="main">')
 			if specific_characters_dict:
 				index = 1
@@ -258,9 +292,9 @@ if __name__ == '__main__':
 			print('</body></html>')
 
 		if args.output_format == 'b':
-			brochure(args.gamedata)
+			brochure(paths_config if paths_config else args.gamedata)
 		else:
-			analyse(args.gamedata)
+			analyse(paths_config if paths_config else args.gamedata)
 
 	try:
 		main()

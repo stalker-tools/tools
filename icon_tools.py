@@ -49,7 +49,8 @@ class IconsEquipment:
 class IconsXmlDds:
 	'Pair of .xml texture tags and .dds texture files'
 
-	def __init__(self, xml_file_path: str, dds_file_path: str) -> None:
+	def __init__(self, paths: Paths, xml_file_path: str, dds_file_path: str) -> None:
+		self.paths = paths
 		self.xml_file_path = xml_file_path
 		self.dds_file_path = dds_file_path
 		self._read_xml()
@@ -57,11 +58,13 @@ class IconsXmlDds:
 
 	def _read_xml(self):
 		'load .xml with texture tags in self'
-		self.xml = parse(self.xml_file_path)
+		with self.paths.open(self.xml_file_path, 'rb') as f:
+			self.xml = parse(f)
 
 	def _read_dds(self):
 		'load .dds to image in self'
-		self.image = image_open(self.dds_file_path)
+		with self.paths.open(self.dds_file_path, 'rb') as f:
+			self.image = image_open(f)
 
 	def iter_textures(self) -> Iterator[tuple[str, Element]]:
 		'iter textures: (id, Element)'
@@ -89,15 +92,13 @@ class IconsXmlDds:
 
 
 class UiNpcUnique(IconsXmlDds):
-	def __init__(self, gamedata_path: str) -> None:
-		paths = Paths(gamedata_path)
-		super().__init__(paths.ui_textures_descr('ui_npc_unique'), paths.ui_textures('ui_npc_unique'))
+	def __init__(self, paths: Paths) -> None:
+		super().__init__(paths, paths.ui_textures_descr('ui_npc_unique'), paths.ui_textures('ui_npc_unique'))
 
 
 class UiIconstotal(IconsXmlDds):
-	def __init__(self, gamedata_path: str) -> None:
-		paths = Paths(gamedata_path)
-		super().__init__(paths.ui_textures_descr('ui_iconstotal'), paths.ui_textures('ui_iconstotal'))
+	def __init__(self, paths: Paths) -> None:
+		super().__init__(paths, paths.ui_textures_descr('ui_iconstotal'), paths.ui_textures('ui_iconstotal'))
 
 
 if __name__ == '__main__':

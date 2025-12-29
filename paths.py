@@ -12,6 +12,7 @@ from pathlib import Path
 from contextlib import contextmanager
 from codecs import getreader, StreamReader
 from io import UnsupportedOperation
+from fnmatch import fnmatch
 # tools imports
 from version import PUBLIC_VERSION, PUBLIC_DATETIME
 from LayeredFileSystem import LayeredFileSystem, PathType, LayerBase, FileIoBase
@@ -114,11 +115,11 @@ class Paths:
 
 		# configs sub-path is version-dependent: .ltx files, gameplay/UI/dialogs .xml files
 		if self.exists('config', False):
-			self.configs = 'config'
+			self.configs = 'config'  # SoC
 		elif self.exists('configs', False):
 			self.configs = 'configs'
 		else:
-			raise FileExistsError(f'Stalker configs path not exisists: {self.gamedata}')
+			raise FileNotFoundError(f'Stalker configs path not found: {self.gamedata}')
 
 	def __str__(self) -> str:
 		return f'Paths({self.gamedata})'
@@ -190,7 +191,7 @@ class Paths:
 				del text_reader
 				del f
 		else:
-			raise FileExistsError(f'File not exists: {path}')
+			raise FileNotFoundError(f'File not found: {path}')
 
 	# Well-known paths
 
@@ -210,6 +211,12 @@ class Paths:
 		return join(self.configs, 'game.ltx')
 
 	# helper functions
+
+	def find(self, pattern: str) -> Iterator[str]:
+		'iters gamedata files paths according to Unix shell-style wildcards: *, ?, [seq], [!seq]'
+		for ff, _ in self.gamedata_db_files.items():
+			if fnmatch(ff, pattern):
+				yield ff
 
 	@classmethod
 	def join(cls, *paths: Iterable[str]) -> str:
@@ -233,11 +240,13 @@ class Paths:
 
 	def ui_textures_descr(self, common_name: str) -> str:
 		'return UI textures .xml file path: <gamedata path>/configs/ui/textures_descr/.xml'
+		if self.configs == 'config':
+			return join(self.configs, 'ui', f'{common_name}.xml')
 		return join(self.configs, 'ui', 'textures_descr', f'{common_name}.xml')
 
 	def ui_textures(self, common_name: str) -> str:
 		'return UI textures .dds file path: <gamedata path>/textures/ui/.dds'
-		return join(self.gamedata, 'textures', 'ui', f'{common_name}.dds')
+		return join('textures', 'ui', f'{common_name}.dds')
 
 
 # Layers for LayeredFileSystem
@@ -300,7 +309,7 @@ class DbFileIo(FileIoBase):
 
 
 class DbGamedataFs(LayerBase):
-	'.db/.xdb files filesystem; used for read latest files fersion from .db/.xdb files'
+	'.db/.xdb files filesystem; used for read latest gamedata files fersion from .db/.xdb files'
 
 
 	class DbFilesIsReadOnlyFs(Exception): pass

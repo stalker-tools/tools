@@ -605,10 +605,10 @@ Run from game path (where .db/.xdb files):
 {argv[0]} -t 2947ru > "SoC.htm"
 
 Run outside of game path:
-{argv[0]} -g .../S.T.A.L.K.E.R. -t 2947ru > "SoC.htm"
+{argv[0]} -g ".../S.T.A.L.K.E.R" -t 2947ru > "SoC.htm"
 
 For game developers may be helpful to get an analyse output type of .html page (--type a):
-{argv[0]} -g .../S.T.A.L.K.E.R. -t 2947ru --type a > "SoC.analyse.htm"
+{argv[0]} -g ".../S.T.A.L.K.E.R" -t 2947ru --type a > "SoC.analyse.htm"
 ''',
 				formatter_class=argparse.RawTextHelpFormatter
 			)
