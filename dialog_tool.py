@@ -253,7 +253,11 @@ if __name__ == '__main__':
 				description='''X-ray dialog xml file parser. Dialogs xml file names reads from system.ltx file.
 Out format: html with dialog phrases digraphs embedded as svg or images.
 In case of svg - dialogue phrases is text searchable: just open .html and use text search.
-Use different layout engines, see: https://www.graphviz.org/docs/layouts/''',
+Use different layout engines, see: https://www.graphviz.org/docs/layouts/
+
+Note:
+It is not necessary to extract .db/.xdb files to gamedata path. This utility can read all game files from .db/.xdb files !
+''',
 				epilog=f'''Examples:
 {basename(argv[0])} -g ".../S.T.A.L.K.E.R" -t 2947ru --head "Clear Sky 1.5.10 dialogs" > "dialogs.html"
 {basename(argv[0])} -g ".../S.T.A.L.K.E.R" -t 2947ru -sl > "dialogs light theme.html"

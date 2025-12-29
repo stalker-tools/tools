@@ -250,6 +250,9 @@ Out format: html with dialog phrases digraphs embedded as svg or images.
 In case of svg - dialogue phrases is text searchable: just open .html and use text search.
 Use different layout engines, see: https://www.graphviz.org/docs/layouts/
 
+Note:
+It is not necessary to extract .db/.xdb files to gamedata path. This utility can read all game files from .db/.xdb files !
+
 options:
   -h, --help            show this help message and exit
   -g PATH, --gamepath PATH
