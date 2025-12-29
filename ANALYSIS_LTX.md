@@ -167,10 +167,10 @@ Run from game path (where .db/.xdb files):
 ./graph_tool.py -t 2947ru > "SoC.htm"
 
 Run outside of game path:
-./graph_tool.py -g .../S.T.A.L.K.E.R. -t 2947ru > "SoC.htm"
+./graph_tool.py -g ".../S.T.A.L.K.E.R" -t 2947ru > "SoC.htm"
 
 For game developers may be helpful to get an analyse output type of .html page (--type a):
-./graph_tool.py -g .../S.T.A.L.K.E.R. -t 2947ru --type a > "SoC.analyse.htm"
+./graph_tool.py -g ".../S.T.A.L.K.E.R" -t 2947ru --type a > "SoC.analyse.htm"
 ```
 
 See brochure example: [Clear Sky + SGM 3.10 + Real Weapons.html](https://html-preview.github.io/?url=https://github.com/stalker-tools/real_weapons_mod_clear_sky/blob/main/media/Clear%20Sky%20%2B%20SGM%203.10%20%2B%20Real%20Weapons.html)
