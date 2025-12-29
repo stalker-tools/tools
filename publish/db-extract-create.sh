@@ -1,12 +1,7 @@
 
-ZIPPED_PY_NAME=db-extract
-MAIN_FILE="paths.py"
-COPY_FILES="LzHuf.py DBReader.py LayeredFileSystem.py SequensorReader.py Scrambler.py version.py"
+export ZIPPED_PY_NAME=db-extract
+export MAIN_FILE="paths.py"
+export COPY_FILES="LzHuf.py DBReader.py LayeredFileSystem.py SequensorReader.py Scrambler.py version.py"
 
 PUBLISH_PATH=./publish
-
-TEMP_DIR_PATH="$PUBLISH_PATH/standalon.out"
-echo "Create temp dir: $TEMP_DIR_PATH"
-mkdir "$TEMP_DIR_PATH"
-
-$PUBLISH_PATH/py_pack -v -fu "$TEMP_DIR_PATH/$ZIPPED_PY_NAME" -m $MAIN_FILE -s $COPY_FILES -c "Stalker tools .db/.xdb $ZIPPED_PY_NAME $(date -R)"
+"$PUBLISH_PATH/zippapp-create.sh"

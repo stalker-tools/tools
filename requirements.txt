@@ -2,3 +2,4 @@ python-lzo
 plotly
 kaleido
 Pillow
+pydot

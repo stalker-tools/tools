@@ -8,8 +8,12 @@ echo "Create/update version.py"
 $PUBLISH_PATH/version-update.py
 echo
 
-echo "Create db-extract"
-$PUBLISH_PATH/db-extract-create.sh
+echo "Create standalone apps: Python zipapps"
 
-echo "Create stalker-brochure"
-$PUBLISH_PATH/stalker-brochure-create.sh
+STANDALONE_APPS="db-extract stalker-brochure stalker-dialogs"
+
+for STANDALONE_APP in $STANDALONE_APPS; do
+	echo
+	echo "Create $STANDALONE_APP"
+	$PUBLISH_PATH/$STANDALONE_APP-create.sh
+done

@@ -21,13 +21,33 @@ The software consists of two parts:
 
 Odyssey/Stalker Xray tools is a cross-platform Python-based tools.
 
-Main feature:
+### Little intro
+
+Tools usage falls into two category:
+- **Git repository usage**<br/>
+  Clone all Python sources and use all functionality - command-line utilities and Python-way API (import statement).
+
+- **Standalone tools**<br/>
+  Python Zip Applications: one file ready-to-use for one main function.<br/>
+  Just open [releases](https://github.com/stalker-tools/tools/releases/latest) page and download files.<br/>
+  Note: You still need [install](#2-installation-1) Python and dependencies. And You still can use Python-way API import statement to use modules from Python Zip Applications.
+
+  List of standalone tools:
+  - db-extract
+  - stalker-brochure
+  - stalker-dialogs
+
+### Main features
+
 - Direct working with packed .db/.xdb files without needs for gamedata extraction.
 - Python-way API support:
   - .db/.xdb files;
   - config files: .ltx sections, .xml localization and game.graph;
   - saving the game .sav and fsgame.ltx.
-- Analysis tools with visualize game actors profiles, dialogue, tasks.
+- Analysis tools with visualize game actors profiles, dialogue, tasks:
+  - dialogue tool; out format: html with dialog phrases digraphs that embedded as svg or images.
+In case of svg - dialogue phrases is text searchable: just open .html and use text search.
+Use different layout engines, see: [graphviz layouts](https://www.graphviz.org/docs/layouts/).
 - Tools to extract UI .dds icons sets.
 - Tools for automatic brochure generation with rich infographics of game actors, suits, ammo, artifacts, food.
   - It can greatly helps gamers to involve into game action and choose gameplay.
@@ -43,14 +63,11 @@ Take a fact that tools is in developing process. And API may be changed.
 At all, using scenarios involves two ways:
 
 - Standalone command-line utility - ready-to-use for game enthusiasts. See: installation [2.2.3 db-extract instructions](#223-db-extract-instructions)
-
 - Python-way API to access game resources as flexible as python can - for developers.
 
 
-Command-line tool to extract _.db, .xdb, .xrp, .xp_ files. See help: `paths.py -h` and it sub-command `paths.py e -h`.
-
-Of course there is low-level command-line tool for analysis of .db/.xdb files content - game files/folders structure. See help: `DBReader.py -h` and it sub-commands.
-
+Command-line tool to extract _.db, .xdb, .xrp, .xp_ files. See help: `paths.py -h` and it sub-command `paths.py e -h`. Standalone tool: `db-extract`.<br/>
+Of course there is _low-level_ command-line tool for analysis of .db/.xdb files content - game files/folders structure. See help: `DBReader.py -h` and it sub-commands.<br/>
 This tool allows to game developers working with gamedata without nessesarity extracting of .db/.xdb files: 
 Python-way API - just import `XRReader` class from `DBReader.py`. See [DBReader.py:main()](https://github.com/stalker-tools/tools/blob/0b7f1c134f875a457119ae87c7187c0d3708e0a6/DBReader.py#L262) function code for low-level usage examples.
 
@@ -68,11 +85,11 @@ And Xray gameplay files:
 - root config fsgame.ltx
 - saving the game .sav save
 
-Most useful utility for mod autor/publisher is `graph_tool.py`. Just see generated `.html` brochure example: [Clear Sky + SGM 3.10 + Real Weapons.html](https://html-preview.github.io/?url=https://github.com/stalker-tools/real_weapons_mod_clear_sky/blob/main/media/Clear%20Sky%20%2B%20SGM%203.10%20%2B%20Real%20Weapons.html)
-
+Most useful utility for mod autor/publisher is `graph_tool.py`, standalone tool: `stalker-brochure`.<br/>
+Just see generated _.html_ brochure example: [Clear Sky + SGM 3.10 + Real Weapons.html](https://html-preview.github.io/?url=https://github.com/stalker-tools/real_weapons_mod_clear_sky/blob/main/media/Clear%20Sky%20%2B%20SGM%203.10%20%2B%20Real%20Weapons.html)<br/>
 This brochure genarated by this line:
 ```sh
-python graph_tool.py -tb -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky_real_weapons_mod/gamedata/" --head "Clear Sky + SGM 3.10 + Real Weapons" > "Clear Sky + SGM 3.10 + Real Weapons.html"
+python graph_tool.py -g ".../S.T.A.L.K.E.R" -t 2947ru > "Clear Sky + SGM 3.10 + Real Weapons.html"
 ```
 
 See help: [3.2 .ltx files analysis tool](ANALYSIS_LTX.md).
@@ -102,8 +119,8 @@ Tested on Firefox and Chrome on Ubuntu and Android.
 | ![Python](https://www.python.org/static/img/python-logo.png) | python-lzo |
 
 ### Analysis dependencies:
- Graphviz | plotly + kaleido | Pillow |
-|---------|--------|--------|
+ Graphviz + pydot | plotly + kaleido | Pillow |
+|-----------------|------------------|--------|
 | ![Graphviz](https://graphviz.org/Resources/app.png) | ![plotly](https://plotly.github.io/documentation/all_static/images/graphing_library.svg) | ![Pillow](https://pillow.readthedocs.io/en/stable/_static/pillow-logo-dark-text.png) |
 
 ### 2.1 Windows instructions
@@ -167,3 +184,17 @@ Install packages for [2.2.3 db-extract instructions](#223-db-extract-instruction
   - for Python venv: `python3 -m pip install plotly pillow`
   - for system Python: `apt install python3-plotly python3-pillow`
 - Run: `+x ./stalker-brochure`
+
+#### 2.2.5 stalker-dialogs instructions
+
+Download latest version: [stalker-dialogs](https://github.com/stalker-tools/tools/releases/latest).
+Please, read release notes for using instructions.
+
+Ubuntu 24:
+
+Install packages for [2.2.4 stalker-brochure instructions](#224-stalker-brochure-instructions)
+
+- Install Python packages:
+  - for Python venv: `python3 -m pip install pydot`
+  - for system Python: `apt install python3-plotly pydot`
+- Run: `+x ./stalker-dialogs`

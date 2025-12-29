@@ -12,9 +12,10 @@ import pydot
 from xml.dom.minidom import Element
 from xml.parsers.expat import ExpatError
 # stalker-tools import
+from version import PUBLIC_VERSION, PUBLIC_DATETIME
 from ltx_tool import parse_ltx_file, LtxKind, get_filters_re_compiled, is_filters_re_match
 from xml_tool import iter_child_elements, get_child_by_id, get_child_element_values, xml_parse
-from paths import Paths
+from paths import Paths, Config as PathsConfig, DbFileVersion, DEFAULT_GAMEDATA_PATH
 from localization import Localization
 
 
@@ -65,11 +66,11 @@ class SvgException(Exception):
 	pass
 
 
-def get_dialogs(system_ltx_file_path: str) -> list[str] | None:
+def get_dialogs(system_ltx_file_path: str, open_fn = open) -> list[str] | None:
 	'returns dialogs and additional localization .xml from system.ltx includes: [string_table] files'
 	dialogs = None
 	try:
-		for x in parse_ltx_file(system_ltx_file_path, follow_includes=True):
+		for x in parse_ltx_file(system_ltx_file_path, follow_includes=True, open_fn=open_fn):
 			match x:
 				case (LtxKind.LET, _, 'dialogs', 'files', dialogs):
 					return dialogs				
@@ -85,7 +86,7 @@ def get_dialogs_and_add_localization(paths: Paths, loc: Localization, verbose = 
 
 		def get_localization_xml(dialog_xml_file_path: str) -> Element | None:
 			try:
-				return xml_parse(dialog_xml_file_path).getElementsByTagName('string_table')[0]
+				return xml_parse(dialog_xml_file_path, open_fn=paths.open).getElementsByTagName('string_table')[0]
 			except ExpatError as e:
 				print(f'XML file parse error: {dialog_xml_file_path} {e}', file=stderr)
 				return None
@@ -93,7 +94,7 @@ def get_dialogs_and_add_localization(paths: Paths, loc: Localization, verbose = 
 				return None
 
 		def find_in_file(file_path: str, text: bytes) -> bool:
-			with open(file_path, 'rb') as f:
+			with paths.open(file_path, 'rb') as f:
 				for line in f.readlines():
 					if text in line:
 						return True
@@ -102,7 +103,7 @@ def get_dialogs_and_add_localization(paths: Paths, loc: Localization, verbose = 
 		# add dialog to dialogs dict from dialogs .xml file
 		try:
 			test_dialog_id = None  # first dialog id from dialog .xml file
-			for dialog in xml_parse(dialog_xml_file_path).getElementsByTagName('game_dialogs')[0].getElementsByTagName('dialog'):
+			for dialog in xml_parse(dialog_xml_file_path, open_fn=paths.open).getElementsByTagName('game_dialogs')[0].getElementsByTagName('dialog'):
 				if (dialog_id := dialog.getAttribute('id')):
 					dialogs_dict[dialog_id] = dialog
 					if not test_dialog_id:
@@ -133,7 +134,7 @@ def get_dialogs_and_add_localization(paths: Paths, loc: Localization, verbose = 
 				except:
 					pass
 
-	dialogs = get_dialogs(paths.system_ltx)
+	dialogs = get_dialogs(paths.system_ltx, open_fn=paths.open)
 	dialogs_dict = {}
 	for dialog in dialogs:
 		add_localization_for_dialog_file(join(paths.configs, 'gameplay', f'{dialog}.xml'), join(loc.localization_text_path, f'st_{dialog}.xml'))
@@ -241,14 +242,18 @@ def get_svg(graph) -> str:
 
 
 if __name__ == '__main__':
-	import argparse
 	from sys import argv, exit
+	import argparse
+	from pathlib import Path
 
 	def main():
 
 		def parse_args():
 			parser = argparse.ArgumentParser(
-				description='X-ray dialog xml file parser. Dialogs xml file names reads from system.ltx file.\nOut format: html with dialog phrases digraphs embedded as images.\nUse different layout engines: https://www.graphviz.org/docs/layouts/',
+				description='''X-ray dialog xml file parser. Dialogs xml file names reads from system.ltx file.
+Out format: html with dialog phrases digraphs embedded as svg or images.
+In case of svg - dialogue phrases is text searchable: just open .html and use text search.
+Use different layout engines, see: https://www.graphviz.org/docs/layouts/''',
 				epilog=f'''Examples:
 {basename(argv[0])} -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" --head "Clear Sky 1.5.10 dialogs" > "dialogs.html"
 {basename(argv[0])} -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" -sl > "dialogs light theme.html"
@@ -257,20 +262,44 @@ if __name__ == '__main__':
 {basename(argv[0])} -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" -a "*not_in_dolg" "agru_open_story_door" --head "Clear Sky 1.5.10 dialogs" > "dialogs variable and function names filtered.html"''',
 				formatter_class=argparse.RawTextHelpFormatter
 			)
-			parser.add_argument('-v', action='store_true', help='increase information verbosity: show phrase id')
-			parser.add_argument('-f', '--gamedata', metavar='PATH', required=True, help='gamedata directory path')
-			parser.add_argument('-l', '--localization', metavar='LANG', default='rus', help='localization language (see gamedata/configs/text path): rus (default), cz, hg, pol')
+			parser.add_argument('-g', '--gamepath', metavar='PATH', help='game root path (with .db/.xdb files); default: current path')
+			parser.add_argument('-t', '--version', metavar='VER', choices=DbFileVersion.get_versions_names(),
+				help=f'.db/.xdb files version; usually 2947ru/2947ww for SoC, xdb for CS and CP; one of: {", ".join(DbFileVersion.get_versions_names())}')
+			parser.add_argument('--exclude-gamedata', action='store_true', help='''exclude files from gamedata sub-path;
+used to get original game (.db/.xdb files only) infographics; default: false
+''')
+			parser.add_argument('-V', action='version', version=f'{PUBLIC_VERSION} {PUBLIC_DATETIME}', help='show version')
+			parser.add_argument('-f', '--gamedata', metavar='PATH', default=DEFAULT_GAMEDATA_PATH,
+				help=f'gamedata directory path; default: {DEFAULT_GAMEDATA_PATH}')
+			parser.add_argument('-l', '--localization', metavar='LANG', default='rus',
+				help='localization language (see gamedata/configs/text path): rus (default), cz, hg, pol')
 			parser.add_argument('-d', '--dialog-files', metavar='DIALOG_FILE', nargs='+', help='filter: dialog file names; see system.ltx [dialogs]')
-			parser.add_argument('-i', '--dialog-ids', metavar='IDS', nargs='+', help='filter: dialogs ids; regexp, escaped symbols: ^$()[]?!; see configs/gameplay/dialog*.xml')
-			parser.add_argument('-p', '--phrases', metavar='TEXT', nargs='+', help='filter: phrase text; regexp, escaped symbols: ^$()[]?!; see configs/gameplay/dialog*.xml')
-			parser.add_argument('-a', '--automation', metavar='NAMES', nargs='+', help='filter of names: variables, script functions; regexp, escaped symbols: ^$()[]?!')
+			parser.add_argument('-i', '--dialog-ids', metavar='IDS', nargs='+',
+				help='filter: dialogs ids; regexp, escaped symbols: ^$()[]?!; see configs/gameplay/dialog*.xml')
+			parser.add_argument('-p', '--phrases', metavar='TEXT', nargs='+',
+				help='filter: phrase text; regexp, escaped symbols: ^$()[]?!; see configs/gameplay/dialog*.xml')
+			parser.add_argument('-a', '--automation', metavar='NAMES', nargs='+',
+				help='filter of names: variables, script functions; regexp, escaped symbols: ^$()[]?!')
 			parser.add_argument('-e', '--engine', metavar='ENGINE', default='dot', help='dot layout engine: circo, dot (default), neato')
 			parser.add_argument('-s', '--style', metavar='STYLE', default='dark', help='style: l - light, d - dark (default)')
-			parser.add_argument('-g', '--graph-format', metavar='IMG_FORMAT', default='s', help='digraph image format: s - svg (default), p - png')
+			parser.add_argument('--graph-format', metavar='IMG_FORMAT', default='s', help='digraph image format: s - svg (default), p - png')
 			parser.add_argument('--head', metavar='TEXT', default='S.T.A.L.K.E.R.', help='head text for html output')
+			parser.add_argument('-v', action='count', default=0, help='verbose mode: 0..; shows phrase id; examples: -v, -vv')
 			return parser.parse_args()
 
 		args = parse_args()
+		verbose = args.v
+
+		gamepath = Path(args.gamepath) if args.gamepath else Path()
+		paths_config = None
+		if gamepath:
+			if not args.version:
+				raise ValueError(f'Argument --version or -t is missing; see help: {argv[0]} -h')
+			paths_config = PathsConfig(
+				gamepath.absolute(), args.version,
+				args.gamedata,
+				verbose=verbose,
+				exclude_gamedata=args.exclude_gamedata)
 
 		def get_graph_as_html_img(graph) -> str:
 
@@ -287,7 +316,7 @@ if __name__ == '__main__':
 					raise SvgException
 			return '<img src="data:;base64,{}"/>'.format(b64encode(get_dot_as_image(graph)).decode())
 
-		def analyse(gamedata_path: str):
+		def analyse(paths: Paths):
 
 			def build_dialog_tree(dialog_xml_file_pah: str, text_xml_file_path: str):
 				'''
@@ -399,7 +428,7 @@ if __name__ == '__main__':
 					return graph if is_matched else None
 
 				def find_in_file(file_path: str, text: bytes) -> bool:
-					with open(file_path, 'rb') as f:
+					with paths.open(file_path, 'rb') as f:
 						for line in f.readlines():
 							if text in line:
 								return True
@@ -407,7 +436,7 @@ if __name__ == '__main__':
 
 				def get_localization_xml(text_xml_file_path: str) -> Element | None:
 					try:
-						return xml_parse(text_xml_file_path).getElementsByTagName('string_table')[0]
+						return xml_parse(text_xml_file_path, open_fn=paths.open).getElementsByTagName('string_table')[0]
 					except ExpatError as e:
 						print(f'XML file parse error: {text_xml_file_path} {e}', file=stderr)
 						return None
@@ -418,10 +447,10 @@ if __name__ == '__main__':
 					nonlocal print_xml_file_header
 					if print_xml_file_header:
 						print_xml_file_header = False
-						xml_file_name = dialog_xml_file_pah[len(gamedata_path) + (0 if gamedata_path[-1] == sep else 1):]
+						xml_file_name = dialog_xml_file_pah[len(str(paths.path)) + (0 if str(paths.path)[-1] == sep else 1):]
 						print(f'<h2 id="{xml_file_name}">{xml_file_name}<h2><hr/>')
 						if not string_table_list:
-							print(f'<p><code>No localization found. Expected: {text_xml_file_path[len(gamedata_path) + (0 if gamedata_path[-1] == sep else 1):]}</code></p>')
+							print(f'<p><code>No localization found. Expected: {text_xml_file_path[len(str(paths.path)) + (0 if str(paths.path)[-1] == sep else 1):]}</code></p>')
 					print(f'<h3 id="{dialog_id}">{dialogs_index + 1}	{dialog_id}<h3>')
 					# print dialog xml elements
 					for element in sorted(iter_child_elements(dialog), key=lambda element: element.nodeName):
@@ -432,7 +461,7 @@ if __name__ == '__main__':
 							pass
 
 				try:
-					game_dialogs_list = xml_parse(dialog_xml_file_pah).getElementsByTagName('game_dialogs')
+					game_dialogs_list = xml_parse(dialog_xml_file_pah, open_fn=paths.open).getElementsByTagName('game_dialogs')
 				except ExpatError as e:
 					print(f'XML file parse error: {dialog_xml_file_pah} {e}', file=stderr)
 					game_dialogs_list = None
@@ -463,7 +492,7 @@ if __name__ == '__main__':
 													if find_in_file(file_path, dialog_id.encode()):
 														# localization xml file found
 														string_table_list = get_localization_xml(file_path)
-														print(f'<p>Localization: {file_path[len(gamedata_path) + 1:]}</p>')
+														print(f'<p>Localization: {file_path[len(str(paths.path)) + 1:]}</p>')
 														break
 											except:
 												pass
@@ -476,10 +505,9 @@ if __name__ == '__main__':
 									print(get_graph_as_html_img(graph))
 									# print(graph.create_dot().decode())
 
-			paths = Paths(gamedata_path)
 			configs_path, system_ltx_file_path = paths.configs, paths.system_ltx
 			localization_text_path = join(configs_path, 'text', args.localization)
-			dialogs = get_dialogs(system_ltx_file_path)
+			dialogs = get_dialogs(system_ltx_file_path, open_fn=paths.open)
 			loc = Localization(paths)
 
 			dialog_ids_patterns = get_filters_re_compiled(args.dialog_ids)
@@ -524,7 +552,8 @@ if __name__ == '__main__':
 				build_dialog_tree(join(configs_path, 'gameplay', f'{dialog}.xml'), join(localization_text_path, f'st_{dialog}.xml'))
 			print('</body>\n</html>')
 
-		analyse(args.gamedata)
+		paths = Paths(paths_config)
+		analyse(paths)
 
 	try:
 		main()
