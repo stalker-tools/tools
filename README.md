@@ -42,6 +42,7 @@ Tools usage falls into two category:
     examples: [SoC: profiles](https://github.com/stalker-tools/real_weapons_mod_clear_sky/blob/main/media/SoC.profiles.brochure.png?raw=true), [SoC: escape location: stalker-guide](https://github.com/stalker-tools/real_weapons_mod_clear_sky/blob/main/media/SoC.profiles.dialogs.png?raw=true).
   - stalker-tasks<br/>
     example: [tasks - Sigerous Mod.csv](https://github.com/stalker-tools/real_weapons_mod_clear_sky/blob/main/media/tasks%20-%20Sigerous%20Mod.csv)
+  - stalker-maps<br/>
 
 ### Main features
 
@@ -60,6 +61,7 @@ See installation for standalon utility: [2.2.5 stalker-dialogs instructions](#22
 See profiles (.png) examples: [SoC: profiles](https://github.com/stalker-tools/real_weapons_mod_clear_sky/blob/main/media/SoC.profiles.brochure.png?raw=true), [SoC: escape location: stalker-guide](https://github.com/stalker-tools/real_weapons_mod_clear_sky/blob/main/media/SoC.profiles.dialogs.png?raw=true).
   - actor tasks tool; out format: table.<br/>
 See tasks example: [tasks - Sigerous Mod.csv](https://github.com/stalker-tools/real_weapons_mod_clear_sky/blob/main/media/tasks%20-%20Sigerous%20Mod.csv)
+  - maps tool; out format: html with embedded images.
 - Tools to extract UI .dds icons sets.
 - Tools for automatic brochure generation with rich infographics of game actors, suits, ammo, artifacts, food.
   - It can greatly helps gamers to involve into game action and choose gameplay.
@@ -172,7 +174,7 @@ pip3 install -r requirements.txt
 
 #### 2.2.3 db-extract instructions
 
-Also for stalker-tasks.
+Also for **stalker-tasks**.
 
 Download latest version: [db-extract](https://github.com/stalker-tools/tools/releases/latest).
 Please, read release notes for using instructions.
@@ -186,6 +188,8 @@ Ubuntu 24:
 - Run: `+x ./db-extract`
 
 #### 2.2.4 stalker-brochure instructions
+
+Also for **stalker-maps**.
 
 Download latest version: [stalker-brochure](https://github.com/stalker-tools/tools/releases/latest).
 Please, read release notes for using instructions.

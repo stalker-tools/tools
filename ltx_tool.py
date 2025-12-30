@@ -41,6 +41,12 @@ class Ltx:
 		def __init__(self, ltx: 'Ltx', name: str, section: dict) -> None:
 			self.name, self.ltx, self.section = name, ltx, section
 
+		def __str__(self) -> str:
+			ret = f'[{self.name}] ; {{{self.ltx.ltx_file_path}}}'
+			for name in self.iter_names(True):
+				ret += f'\n\t{name}={self.get(name)}'
+			return ret
+
 		def get(self, value_name: str, default_value: object | None = None) -> object | None:
 			'gets value of section or parent sections'
 			return self._get_value(self.ltx.sections, self.section, value_name, default_value)

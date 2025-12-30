@@ -115,6 +115,18 @@ class Localization:
 
 		return False
 
+	def get(self, id: str, case_insensitive=False) -> str | None:
+		'returns localized str by id'
+		if self.string_table:
+			if (buff := self.string_table.get(id)):
+				return buff
+			if case_insensitive:
+				id = id.lower()
+				for k, buff in self.string_table.items():
+					if k.lower() == id:
+						return buff
+		return None
+
 
 if __name__ == '__main__':
 	import argparse

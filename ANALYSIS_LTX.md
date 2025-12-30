@@ -30,7 +30,9 @@ Command-line tools is 100% python, so it has wide usage as cross-platform.
   So you can open _.html_ file in _any browser_ and search text for phrases, `give_info/has_info` variables and `precondition/action` script functions names. And you can filter by xml dialog files, phrases and variables/script names (see [help](#dialog_toolpy-help)).
 
   This utility can be handle to _game dialog designers_ and _game testers_.
-  
+
+* [maps_tool.py or stalker-maps](#maps_toolpy-help) for **image**-based view of game maps with localization. Out format: maps images embedded in html.
+
 * [tree_tool.py](#tree_toolpy-help) for **graph**-based view and has .ltx-specific import tree representation capabilities. Out format: [graphviz dot](https://www.graphviz.org/) and dot embedded in html as image. See available dot [layouts](https://www.graphviz.org/docs/layouts/).
 
   This utility can be handle to _system game designers_.
@@ -322,6 +324,42 @@ dialog_tool.py -g ".../S.T.A.L.K.E.R" -t 2947ru -a "*not_in_dolg" "agru_open_sto
 Example of dialog digraphs for Clear Sky:
 * Join dialog to "Duty" ![Image](https://github.com/stalker-tools/real_weapons_mod_clear_sky/blob/main/media/agr_leader_join_duty.png?raw=true)
 * Join dialog to "Freedom" ![Image](https://github.com/stalker-tools/real_weapons_mod_clear_sky/blob/main/media/val_freedom_leader_join_main.png?raw=true)
+
+---
+---
+#### **maps_tool.py** help:
+Standalone: stalker-maps
+```sh
+python maps_tool.py -h
+usage: maps_tool.py [-h] [-g PATH] [-t VER] [--exclude-gamedata] [-V] [-f PATH] [-l LANG] [-s STYLE] [--head TEXT] [-v]
+
+X-ray maps .ltx file parser.
+Out format: html with maps images embedded.
+
+Note:
+It is not necessary to extract .db/.xdb files to gamedata path. This utility can read all game files from .db/.xdb files !
+
+options:
+  -h, --help            show this help message and exit
+  -g PATH, --gamepath PATH
+                        game root path (with .db/.xdb files); default: current path
+  -t VER, --version VER
+                        .db/.xdb files version; usually 2947ru/2947ww for SoC, xdb for CS and CP; one of: 11xx, 2215, 2945, 2947ru, 2947ww, xdb
+  --exclude-gamedata    exclude files from gamedata sub-path;
+                        used to get original game (.db/.xdb files only) infographics; default: false
+  -V                    show version
+  -f PATH, --gamedata PATH
+                        gamedata directory path; default: gamedata
+  -l LANG, --localization LANG
+                        localization language (see gamedata/configs/text path): rus (default), cz, hg, pol
+  -s STYLE, --style STYLE
+                        style: l - light, d - dark (default)
+  --head TEXT           head text for html output
+  -v                    verbose mode: 0..; dump .ltx sections; example: -v
+
+Examples:
+maps_tool.py -g ".../S.T.A.L.K.E.R" -t 2947ru --head "SoC" > "SoC.maps.html"
+```
 
 ---
 ---

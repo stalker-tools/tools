@@ -10,7 +10,7 @@ echo
 
 echo "Create standalone apps: Python zipapps"
 
-STANDALONE_APPS="db-extract stalker-brochure stalker-dialogs stalker-profiles stalker-tasks"
+STANDALONE_APPS="db-extract stalker-brochure stalker-dialogs stalker-profiles stalker-tasks stalker-maps"
 
 for STANDALONE_APP in $STANDALONE_APPS; do
 	echo

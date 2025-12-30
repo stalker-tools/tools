@@ -173,6 +173,8 @@ class Paths:
 	@contextmanager
 	def open(self, path: str, mode: str = 'r') -> Generator[FileIoBase | StreamReader, None, None]:
 		# print(f'OPEN {mode=} {path=}')
+		if path is None:
+			raise ValueError('opne path is None')
 		if self.config.verbose > 2:
 			print(f'Open {path=} {mode=}')
 		if (f := self.layered_fs.open(path, mode)):

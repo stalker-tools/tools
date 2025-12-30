@@ -11,9 +11,10 @@ from PIL.Image import open as image_open, Image
 from fsgame import parse as fsgame_parse
 from GameConfig import GameConfig, Ltx
 from GameGraph import GameGraph
-from maps import Maps
+from maps_tool import Maps
 from icon_tools import IconsEquipment
 from save_tool import Save
+from paths import Paths
 
 
 DEFAULT_TITLE = 'Stalker'
@@ -59,6 +60,7 @@ class Game:
 			self.debug = debug
 			# check game path
 			self.game_path = self._check_path(game_path, 'Game', Game.GamePathNotValidError, Game.GamePathNotExistsError)
+			self.paths = Paths(self.game_path)
 			# load configs
 			self._read_odyssey_config(odyssey_config_file_name)  # load odyssey config
 			self._ini_python()
@@ -126,7 +128,7 @@ class Game:
 			'loads game maps from .ltx file'
 			if self.debug:
 				print('Load game maps .ltx')
-			self.maps = Maps(self.gamedata_path)
+			self.maps = Maps(self.paths)
 			if self.debug:
 				# print maps names
 				for i, name in enumerate(self.iter_map_names()):
