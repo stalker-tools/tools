@@ -14,6 +14,25 @@ from icon_tools import get_image_as_html_img
 
 class Maps:
 
+
+	class Map:
+		'helper class (wrapper) for map'
+		__slots__ = ('maps', 'section')
+		def __init__(self, maps: 'Maps', section: Ltx.Section):
+			self.maps = maps
+			self.section = section
+		@property
+		def name(self) -> str:
+			return self.section.name
+		@property
+		def localized_name(self) -> str:
+			if (ret := self.maps.get_localized_name(self.section)):
+				return ret  # localized name
+			return self.name  # not localized name
+		@property
+		def image(self) -> Image | None:
+			return self.maps.get_image(self.section)
+
 	def __init__(self, paths: Paths, loc: Localization | None = None) -> None:
 		self.paths = paths
 		self.global_map: Ltx.Section | None = None
@@ -53,6 +72,13 @@ class Maps:
 						break  # all maps sections loaded
 		if maps:
 			self.maps = tuple(maps)
+
+	def iter_maps(self) -> Iterator[Map]:
+		for ltx in self.iter_maps_sections():
+			yield self.Map(self, ltx)
+
+	def get_map(self, map_name: str) -> Map:
+		return self.Map(self, self.get_map_section(map_name))
 
 	def iter_maps_sections(self) -> Iterator[Ltx.Section]:
 		if self.global_map:
@@ -137,10 +163,7 @@ used to get original game (.db/.xdb files only) infographics; default: false
 
 
 
-		def analyse(paths: Paths):
-			loc = Localization(paths)
-			maps = Maps(paths, loc)
-
+		def analyse(paths_config: PathsConfig):
 			# define style for html
 			match args.style.lower():
 				case 'l':
@@ -153,29 +176,44 @@ used to get original game (.db/.xdb files only) infographics; default: false
 			print(f'<body style="background-color:{style.page_bgcolor};color:{style.color};">')
 			print(f'<h1>{args.head}</h1><hr/>')
 
+			# Paths load log
 			if verbose:
-				print('<h2>Maps .ltx:<pre>')
+				print('<h2>Paths log:</h2><pre>')
+			paths = Paths(paths_config)
+			if verbose:
+				print('</pre>')
+
+			# Localization load log
+			if verbose:
+				print('<h2>Localization log:</h2><pre>')
+			loc = Localization(paths, paths.config.verbose)
+			maps = Maps(paths, loc)
+			if verbose:
+				print('</pre>')
+
+			# dump maps .ltx
+			if verbose:
+				print('<h2>Maps .ltx:</h2><pre>')
 				for ltx_section in maps.iter_maps_sections():
 					print(str(ltx_section))
 					print(maps.get_image_file_path(ltx_section))
-				print('</pre></h2>')
+				print('</pre><hr/>')
 
+			# Table of contents
 			print('<h2>Table of contents</h2>')
 			for i, ltx_section in enumerate(maps.iter_maps_sections()):
 				print(f'<h3><a href="#{ltx_section.name}">{i+1} {maps.get_localized_name(ltx_section)}</a></h3>')
 
 			# show maps names and images
 			print('<hr/><h2>Maps</h2')
-			for i, ltx_section in enumerate(maps.iter_maps_sections()):
-				print(f'<h3><a name="{ltx_section.name}"></a>{i+1} {maps.get_localized_name(ltx_section)}<p>')
-				if (map_texture_filepath := maps.get_image_file_path(ltx_section)):
-					if verbose:
-						print(f'<pre>{map_texture_filepath}</pre>')
-					if (map_image := maps.get_image(ltx_section)):
-						print(get_image_as_html_img(map_image))
+			for i, map in enumerate(maps.iter_maps()):
+				print(f'<h3>{i+1} {map.name+" / " if verbose else ""}<a name="{map.name}"></a>{map.localized_name}<p>')
+				if verbose and (map_texture_filepath := maps.get_image_file_path(map.section)):
+					print(f'<pre>{map_texture_filepath}</pre>')
+				if (image := map.image):
+					print(get_image_as_html_img(image))
 				else:
 					print('NO IMAGE')
-				print('</p></h3>')
 
 			# close html body
 			print('</body>\n</html>')
@@ -194,9 +232,7 @@ used to get original game (.db/.xdb files only) infographics; default: false
 				verbose=verbose,
 				exclude_gamedata=args.exclude_gamedata)
 
-		paths = Paths(paths_config)
-
-		analyse(paths)
+		analyse(paths_config)
 
 	try:
 		main()
