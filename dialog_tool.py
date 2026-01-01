@@ -12,7 +12,9 @@ import pydot
 from xml.dom.minidom import Element
 from xml.parsers.expat import ExpatError
 # stalker-tools import
-from version import PUBLIC_VERSION, PUBLIC_DATETIME
+try:
+	from version import PUBLIC_VERSION, PUBLIC_DATETIME
+except ModuleNotFoundError: PUBLIC_VERSION, PUBLIC_DATETIME = '', ''
 from ltx_tool import parse_ltx_file, LtxKind, get_filters_re_compiled, is_filters_re_match
 from xml_tool import iter_child_elements, get_child_by_id, get_child_element_values, xml_parse
 from paths import Paths, Config as PathsConfig, DbFileVersion, DEFAULT_GAMEDATA_PATH

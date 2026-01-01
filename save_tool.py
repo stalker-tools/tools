@@ -11,9 +11,6 @@ from ChunkReader import ChunkReader
 from SequensorReader import SequensorReader, OutOfBoundException
 
 
-save_file_path = '/home/vika/.wine/drive_c/Program Files (x86)/GSC World Publishing/S.T.A.L.K.E.R/_data/savedgames/1.sav'
-
-
 class Save:
 	'reads .sav files'
 

@@ -3,13 +3,55 @@
 # Author: Stalker tools, 2023-2024
 
 from collections.abc import Iterator
+from typing import Iterator, NamedTuple, Self
 from PIL.Image import open as image_open, Image
 # stalker-tools import
-from version import PUBLIC_VERSION, PUBLIC_DATETIME
+try:
+	from version import PUBLIC_VERSION, PUBLIC_DATETIME
+except ModuleNotFoundError: PUBLIC_VERSION, PUBLIC_DATETIME = '', ''
 from paths import Paths, Config as PathsConfig, DbFileVersion, DEFAULT_GAMEDATA_PATH
 from ltx_tool import Ltx
 from localization import Localization
 from icon_tools import get_image_as_html_img
+
+
+class Pos2d(NamedTuple):
+	'X-ray 2D Point'
+	x: float
+	y: float
+
+
+class Pos3d(NamedTuple):
+	'X-ray 3D Point'
+	x: float
+	y: float
+	z: float
+
+	@property
+	def pos2d(self) -> Pos2d:
+		return Pos2d(self.x, self.z)
+
+
+class Rect(NamedTuple):
+	'X-ray Map 2D Rect'
+	x: float
+	y: float
+	width: float
+	heigth: float
+
+	@classmethod
+	def from_two_points(cls, x1: float | str, y1: float | str, x2: float | str, y2: float | str) -> Self:
+		'returns Rect from points: left top and right down'
+		x1, y1 = float(x1), float(y1)
+		x2, y2 = float(x2), float(y2)
+		return Rect(x1, y1, x2 - x1, y2 - y1)
+
+
+class Point(NamedTuple):
+	'image point'
+	x: int
+	y: int
+
 
 
 class Maps:
@@ -17,21 +59,44 @@ class Maps:
 
 	class Map:
 		'helper class (wrapper) for map'
-		__slots__ = ('maps', 'section')
+		__slots__ = ('maps', 'section', '_image_size')
+
 		def __init__(self, maps: 'Maps', section: Ltx.Section):
 			self.maps = maps
 			self.section = section
+			self._image_size: Point | None = None
+
 		@property
 		def name(self) -> str:
 			return self.section.name
+
 		@property
 		def localized_name(self) -> str:
 			if (ret := self.maps.get_localized_name(self.section)):
 				return ret  # localized name
 			return self.name  # not localized name
+
 		@property
 		def image(self) -> Image | None:
-			return self.maps.get_image(self.section)
+			if (image := self.maps.get_image(self.section)):
+				if not self._image_size:
+					self._image_size = Point(*image.size)
+				return image
+
+		@property
+		def rect(self) -> Rect | None:
+			'returns map (level) coordinates rect'
+			if (bound_rect := self.section.get('bound_rect')):
+				return Rect.from_two_points(*bound_rect)
+			return None
+
+		def coord_to_image_point(self, pos: Pos2d) -> Point:
+			if not self._image_size:
+				self.image
+			if (rect := self.rect) and (size := self._image_size):
+				dx, dy = rect.width / size.x, rect.heigth / size.y
+				return Point((pos.x - rect.x) / dx, size.y - (pos.y - rect.y) / dy)
+
 
 	def __init__(self, paths: Paths, loc: Localization | None = None) -> None:
 		self.paths = paths
@@ -77,8 +142,10 @@ class Maps:
 		for ltx in self.iter_maps_sections():
 			yield self.Map(self, ltx)
 
-	def get_map(self, map_name: str) -> Map:
-		return self.Map(self, self.get_map_section(map_name))
+	def get_map(self, map_name: str) -> Map | None:
+		if (ltx := self.get_map_section(map_name)):
+			return self.Map(self, ltx)
+		return None
 
 	def iter_maps_sections(self) -> Iterator[Ltx.Section]:
 		if self.global_map:
@@ -134,6 +201,8 @@ It is not necessary to extract .db/.xdb files to gamedata path. This utility can
 				formatter_class=argparse.RawTextHelpFormatter
 			)
 			parser.add_argument('-g', '--gamepath', metavar='PATH', help='game root path (with .db/.xdb files); default: current path')
+			parser.add_argument('--exclude-db-files', metavar='FILE_NAME|PATTERN', nargs='+',
+				help='game path that contains .db/.xdb files and optional gamedata folder; Unix shell-style wildcards: *, ?, [seq], [!seq]')
 			parser.add_argument('-t', '--version', metavar='VER', choices=DbFileVersion.get_versions_names(),
 				help=f'.db/.xdb files version; usually 2947ru/2947ww for SoC, xdb for CS and CP; one of: {", ".join(DbFileVersion.get_versions_names())}')
 			parser.add_argument('--exclude-gamedata', action='store_true', help='''exclude files from gamedata sub-path;
@@ -201,8 +270,8 @@ used to get original game (.db/.xdb files only) infographics; default: false
 
 			# Table of contents
 			print('<h2>Table of contents</h2>')
-			for i, ltx_section in enumerate(maps.iter_maps_sections()):
-				print(f'<h3><a href="#{ltx_section.name}">{i+1} {maps.get_localized_name(ltx_section)}</a></h3>')
+			for i, map in enumerate(maps.iter_maps()):
+				print(f'<h3><a href="#{map.name}">{i+1} {map.localized_name}</a></h3>')
 
 			# show maps names and images
 			print('<hr/><h2>Maps</h2')
@@ -229,6 +298,7 @@ used to get original game (.db/.xdb files only) infographics; default: false
 			paths_config = PathsConfig(
 				gamepath.absolute().resolve(), args.version,
 				args.gamedata,
+				exclude_db_files=args.exclude_db_files,
 				verbose=verbose,
 				exclude_gamedata=args.exclude_gamedata)
 

@@ -10,7 +10,9 @@ from xml.dom.minidom import parseString
 from xml_tool import xml_preprocessor, get_child_element_values
 from xml.dom.minidom import Element
 # stalker-tools import
-from version import PUBLIC_VERSION, PUBLIC_DATETIME
+try:
+	from version import PUBLIC_VERSION, PUBLIC_DATETIME
+except ModuleNotFoundError: PUBLIC_VERSION, PUBLIC_DATETIME = '', ''
 from dialog_tool import get_dialogs_and_add_localization, create_dialog_graph, get_svg, GraphEngineNotSupported, SvgException
 from icon_tools import UiNpcUnique, UiIconstotal, get_image_as_html_img
 from paths import Paths, Config as PathsConfig, DbFileVersion, DEFAULT_GAMEDATA_PATH

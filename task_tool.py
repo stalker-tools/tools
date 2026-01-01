@@ -6,7 +6,9 @@
 from sys import stderr
 from os.path import basename
 # tools imports
-from version import PUBLIC_VERSION, PUBLIC_DATETIME
+try:
+	from version import PUBLIC_VERSION, PUBLIC_DATETIME
+except ModuleNotFoundError: PUBLIC_VERSION, PUBLIC_DATETIME = '', ''
 from paths import Paths, Config as PathsConfig, DbFileVersion, DEFAULT_GAMEDATA_PATH
 from ltx_tool import parse_ltx_file, LtxKind
 from localization import Localization

@@ -14,7 +14,9 @@ from codecs import getreader, StreamReader
 from io import UnsupportedOperation
 from fnmatch import fnmatch
 # tools imports
-from version import PUBLIC_VERSION, PUBLIC_DATETIME
+try:
+	from version import PUBLIC_VERSION, PUBLIC_DATETIME
+except ModuleNotFoundError: PUBLIC_VERSION, PUBLIC_DATETIME = '', ''
 from LayeredFileSystem import LayeredFileSystem, PathType, LayerBase, FileIoBase
 from DBReader import XRReader, DbFileVersion, ChunkTypes, WrongDbFormat, UnspecifiedDbFormat
 
@@ -55,6 +57,8 @@ class Config:
 		self.exclude_db_files = exclude_db_files
 		self.verbose = verbose
 		self.is_gamedata_exclude = exclude_gamedata
+	def __repr__(self):
+		return f'game_path="{self.game_path}" gamedata_path="{self.gamedata_path}" version={self.version} exclude_db_files={self.exclude_db_files} is_gamedata_exclude={self.is_gamedata_exclude}'
 
 
 class Paths:

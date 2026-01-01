@@ -10,7 +10,9 @@ import plotly.graph_objects as go
 import plotly.io as pio
 from PIL.Image import open as image_open
 # stalker-tools import
-from version import PUBLIC_VERSION, PUBLIC_DATETIME
+try:
+	from version import PUBLIC_VERSION, PUBLIC_DATETIME
+except ModuleNotFoundError: PUBLIC_VERSION, PUBLIC_DATETIME = '', ''
 from ltx_tool import Ltx
 from paths import Config as PathsConfig, DbFileVersion, DEFAULT_GAMEDATA_PATH
 from GameConfig import GameConfig

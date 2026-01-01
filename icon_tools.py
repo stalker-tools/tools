@@ -14,7 +14,9 @@ from io import BytesIO
 from base64 import b64encode
 from PIL.Image import open as image_open, Image
 # tools imports
-from version import PUBLIC_VERSION, PUBLIC_DATETIME
+try:
+	from version import PUBLIC_VERSION, PUBLIC_DATETIME
+except ModuleNotFoundError: PUBLIC_VERSION, PUBLIC_DATETIME = '', ''
 from paths import Paths, Config as PathsConfig, DbFileVersion
 
 
