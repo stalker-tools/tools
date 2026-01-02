@@ -81,12 +81,13 @@ class Ltx:
 						yield name
 
 
-	def __init__(self, ltx_file_path: str, follow_includes = True, open_fn = open) -> None:
+	def __init__(self, ltx_file_path: str, follow_includes = True, open_fn = open, verbose = 0) -> None:
 		self.ltx_file_path = ltx_file_path
 		self.line_number = None  # included .ltx line number
 		self.open_fn = open_fn  # open function; used to files open: either .db/.xdb or OS filesystem
 		self.ltxs: list[Ltx] = []
 		self.sections: dict[str, Ltx.Section] = {}
+		self.verbose = verbose
 		self._load_tree()
 		# self.ltxs: list[Ltx] = self._get_ltxs(ltx_file_path, follow_includes)
 
@@ -94,12 +95,14 @@ class Ltx:
 		'return list of included Ltx'
 		sections, section = {}, {}
 		prev_section_name = None
+		if self.verbose > 1:
+			print(f'{self.ltx_file_path}')
 		for x in parse_ltx_file(self.ltx_file_path, False, open_fn=self.open_fn):
 			match x:
 				case (LtxKind.INCLUDE, line_number, included_ltx_file_path):
 					if follow_includes:
 						try:
-							ltx = Ltx(join(dirname(self.ltx_file_path), included_ltx_file_path), True, open_fn=self.open_fn)
+							ltx = Ltx(join(dirname(self.ltx_file_path), included_ltx_file_path), True, open_fn=self.open_fn, verbose=self.verbose)
 							ltx.line_number = line_number
 							self.ltxs.append(ltx)
 						except LtxFileNotFoundException:
@@ -144,10 +147,13 @@ class Ltx:
 			return sections
 		return None
 
-	def iter_sections(self) -> Iterator['Ltx.Section']:
+	def iter_sections(self, included = True) -> Iterator['Ltx.Section']:
+		# iter sections
 		if self.sections:
 			for section_name, section_dict in self.sections.items():
 				yield self.Section(self, section_name, section_dict)
+		# iter included .ltx sections
+		if included:
 			for ltx in self.ltxs:
 				yield from ltx.iter_sections()
 

@@ -84,7 +84,8 @@ class Localization:
 				if self.add_localization_xml(_xml):
 					self.string_table_files_found.append(file_path)
 		except Exception as e:
-			print(f'Localization .xml file parse error: {file_path} {e}', file=stderr)
+			if self.verbose:
+				print(f'Localization .xml file parse error: {file_path} {e}', file=stderr)
 
 	def try_find_and_add(self, id: str, file_name_filter = 'st_dialog*.xml') -> bool:
 		# try find not well-known .xml localization files

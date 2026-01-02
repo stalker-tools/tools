@@ -3,7 +3,7 @@
 # Includes .ltx and .xml localization files
 # Author: Stalker tools, 2023-2024
 
-from collections.abc import Iterator
+from collections.abc import Iterator, Iterable
 from os.path import join
 # tools imports
 from paths import Paths, Config as PathsConfig
@@ -18,10 +18,13 @@ class SectionsBase:
 		self.paths = paths
 		self.localization: Localization = localization
 		self.sections: list[Ltx.Section] = []  # item-type specific sections list
+		self.is_loaded = False
 
 	def load_section(self, section: Ltx.Section) -> bool:
 		'load section (add to sections list) according to item-type specific filter'
 		return False
+
+	def load_localization(self): pass  # for inherited class
 
 	def load_localization(self, xml_file_name: str | None = None):
 		'load well known .xml localization files from configs/<localization text path>/xml_file_name'
@@ -36,6 +39,14 @@ class SectionsBase:
 				if (buff := self.localization.string_table.get(inv_name_short)):
 					inv_name_short = buff
 				yield section.name, inv_name_short, value
+
+
+class SectionsRoot:
+	'.ltx files root'
+
+	def __init__(self, root_ltx_file_path: str, sections: Iterable[SectionsBase]):
+		self.root_ltx_file_path: str = root_ltx_file_path
+		self.sections: Iterable[SectionsBase] = sections
 
 
 class Ammo(SectionsBase):
@@ -57,6 +68,42 @@ class Weapons(SectionsBase):
 
 	def load_section(self, section: Ltx.Section) -> bool:
 		if (section.get('weapon_class') or section.get('ammo_class')) and not section.name.endswith(('_up', '_up2', '_minigame')):
+			self.sections.append(section)
+			return True
+		return False
+
+
+class Detectors(SectionsBase):
+
+	def load_section(self, section: Ltx.Section) -> bool:
+		if section.get('class') == 'D_SIMDET':
+			self.sections.append(section)
+			return True
+		return False
+
+
+class Torchs(SectionsBase):
+
+	def load_section(self, section: Ltx.Section) -> bool:
+		if section.get('class') == 'TORCH_S':
+			self.sections.append(section)
+			return True
+		return False
+
+
+class Binocles(SectionsBase):
+
+	def load_section(self, section: Ltx.Section) -> bool:
+		if section.get('class') == 'WP_BINOC':
+			self.sections.append(section)
+			return True
+		return False
+
+
+class Pda(SectionsBase):
+
+	def load_section(self, section: Ltx.Section) -> bool:
+		if section.get('class') == 'D_PDA':
 			self.sections.append(section)
 			return True
 		return False
@@ -119,13 +166,37 @@ class Artefact(SectionsBase):
 		return False
 
 
+class Maps(SectionsBase):
+	'Maps (levels): global and levels'
+
+	def __init__(self, *args, **kwargs):
+		super().__init__(*args, **kwargs)
+		self.global_map: Ltx.Section | None = None
+		self._maps_names: list[str]  = []
+		self.maps: list[Ltx.Section] = []
+
+	def load_localization(self):
+		super().load_localization('string_table_general.xml')
+
+	def load_section(self, section: Ltx.Section) -> bool:
+		if section.name.lower() in self._maps_names:
+			self.maps.append(section)
+		else:
+			match section.name:
+				case 'level_maps_single':
+					self._maps_names = tuple(x.lower() for x in section.section.keys() if x)
+				case 'global_map':
+					self.global_map = section
+		return self.global_map and len(self.maps) == len(self._maps_names)
+
+
 class GameConfig:
 	'''
 	main class for Stalker Xray game config files
 	includes .ltx and .xml localization files
 	'''
 
-	def __init__(self, config_or_gamedata_path: PathsConfig | str, localization: str, verbose = True) -> None:
+	def __init__(self, config_or_gamedata_path: PathsConfig | str, localization: str, verbose = 0) -> None:
 		'localization - gamedata/configs/text/<localization>'
 		# set game paths
 		self.verbose = verbose
@@ -134,15 +205,26 @@ class GameConfig:
 		# init item-type specific lists
 		self.ammo = Ammo(self.paths, self.localization)
 		self.weapons = Weapons(self.paths, self.localization)
+		self.detectors = Detectors(self.paths, self.localization)
+		self.torchs = Torchs(self.paths, self.localization)
+		self.binocles = Binocles(self.paths, self.localization)
+		self.pda = Pda(self.paths, self.localization)
 		self.outfits = Outfits(self.paths, self.localization)
 		self.damages = Damages(self.paths, self.localization)
 		self.food = Food(self.paths, self.localization)
 		self.medkit = Medkit(self.paths, self.localization)
 		self.artefact = Artefact(self.paths, self.localization)
-		self._items = (self.ammo, self.weapons, self.outfits, self.damages, self.food, self.medkit, self.artefact)
-		self.load_ltx_sections(self._items)
+		self.maps = Maps(self.paths, self.localization)
+		# load .ltx files from root .ltx file
+		self.sections_roots: list[SectionsRoot] = []  # .ltx roots files
+		self.sections_roots.append(SectionsRoot(self.paths.system_ltx, (
+			self.ammo, self.weapons, self.detectors, self.torchs, self.binocles, self.pda,
+			self.outfits, self.damages, self.food, self.medkit, self.artefact)))
+		self.sections_roots.append(SectionsRoot(join(self.paths.configs, 'game.ltx'), (self.maps,)))
+		for sections_root in self.sections_roots:
+			self._load_ltx_sections(sections_root)
 
-	def load_ltx_sections(self, section_bases: list[SectionsBase]):
+	def _load_ltx_sections(self, sections_root: SectionsRoot):
 
 		def load_localization():
 			'loads system.ltx depended .xml localization files'
@@ -151,13 +233,20 @@ class GameConfig:
 				for file in ((files,) if type(files) is str else files):
 					self.localization.add_localization_xml_file(join(self.localization.localization_text_path, file + '.xml'))
 
-		for section_base in section_bases:
+		# try load well-known localization .xml
+		for section_base in sections_root.sections:
 			section_base.load_localization()
 
-		ltx = Ltx(self.paths.system_ltx, open_fn=self.paths.open)
+		# load root .ltx
+		if self.verbose:
+			print(f'Load root Ltx: {sections_root.root_ltx_file_path}')
+		# load sections from root .ltx
+		ltx = Ltx(sections_root.root_ltx_file_path, open_fn=self.paths.open, verbose=self.verbose)
 		for section in ltx.iter_sections():
-			for section_base in section_bases:
+			# load from .ltx for not loaded yet sections
+			for section_base in (x for x in sections_root.sections if not x.is_loaded):  # not loaded sections
 				if section_base.load_section(section):
+					section_base.is_loaded = True
 					continue
 
 		load_localization()
@@ -168,16 +257,17 @@ class GameConfig:
 		return Ltx(ltx_path, False, open_fn=self.paths.open)
 
 	@staticmethod
-	def _iter(section_base) -> Iterator[Ltx.Section]:
+	def _iter(section_base: SectionsBase) -> Iterator[Ltx.Section]:
 		'iterate for all sections'
 		if section_base and section_base.sections:
 			for section in section_base.sections:
 				yield section
 
 	def iter(self) -> Iterator[Ltx.Section]:
-		'iterate for all known sections: ammo, weapons e.t.c.'
-		for item in self._items:
-			yield from self._iter(item)
+		'iterate for all known (loaded) .ltx sections: ammo, weapons e.t.c.'
+		for sections_root in self.sections_roots:
+			for item in sections_root.sections:
+				yield from self._iter(item)
 
 	def ammo_iter(self) -> Iterator[Ltx.Section]:
 		'iterate for ammunition sections'

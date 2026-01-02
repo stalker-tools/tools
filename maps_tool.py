@@ -10,6 +10,7 @@ try:
 	from version import PUBLIC_VERSION, PUBLIC_DATETIME
 except ModuleNotFoundError: PUBLIC_VERSION, PUBLIC_DATETIME = '', ''
 from paths import Paths, Config as PathsConfig, DbFileVersion, DEFAULT_GAMEDATA_PATH
+from GameConfig import GameConfig
 from ltx_tool import Ltx
 from localization import Localization
 from icon_tools import get_image_as_html_img
@@ -98,8 +99,13 @@ class Maps:
 				return Point((pos.x - rect.x) / dx, size.y - (pos.y - rect.y) / dy)
 
 
-	def __init__(self, paths: Paths, loc: Localization | None = None) -> None:
-		self.paths = paths
+	def __init__(self, paths_or_game_config: Paths | GameConfig, loc: Localization | None = None) -> None:
+		self.paths = self.game_config = None
+		if isinstance(paths_or_game_config, GameConfig):
+			self.game_config = paths_or_game_config
+			self.paths = self.game_config.paths
+		else:
+			self.paths = paths_or_game_config
 		self.global_map: Ltx.Section | None = None
 		self.maps: tuple[Ltx.Section] | None = None
 		self.loc = loc
@@ -119,24 +125,29 @@ class Maps:
 		self.maps = self.global_map = None
 		maps_names = None
 		maps: list[Ltx.Section] = []
-		# load global map and maps names sections
-		for section in _iter_sections(Ltx(self.paths.game_ltx, open_fn=self.paths.open)):
-			match section.name:
-				case 'level_maps_single':
-					maps_names = tuple(map(str.lower, section.iter_names()))
-				case 'global_map':
-					self.global_map = section
-			if maps_names and self.global_map:
-				break
-		# load maps sections
-		if maps_names:
+		# load global map
+		if self.game_config:
+			self.global_map = self.game_config.maps.global_map
+			self.maps = self.game_config.maps.maps
+		else:
+			# load global map and maps names sections
 			for section in _iter_sections(Ltx(self.paths.game_ltx, open_fn=self.paths.open)):
-				if section.name.lower() in maps_names:
-					maps.append(section)
-					if len(maps) == len(maps_names):
-						break  # all maps sections loaded
-		if maps:
-			self.maps = tuple(maps)
+				match section.name:
+					case 'level_maps_single':
+						maps_names = tuple(map(str.lower, section.iter_names()))
+					case 'global_map':
+						self.global_map = section
+				if maps_names and self.global_map:
+					break
+			# load maps sections
+			if maps_names:
+				for section in _iter_sections(Ltx(self.paths.game_ltx, open_fn=self.paths.open)):
+					if section.name.lower() in maps_names:
+						maps.append(section)
+						if len(maps) == len(maps_names):
+							break  # all maps sections loaded
+			if maps:
+				self.maps = tuple(maps)
 
 	def iter_maps(self) -> Iterator[Map]:
 		for ltx in self.iter_maps_sections():

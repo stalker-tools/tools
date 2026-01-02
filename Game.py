@@ -8,7 +8,7 @@ from pathlib import Path
 from itertools import islice
 from PIL import ImageDraw
 from PIL.Image import open as image_open, Image
-# tools imports
+# stalker-tools import
 from fsgame import parse as fsgame_parse
 from GameConfig import GameConfig, Ltx
 from GameGraph import GameGraph
@@ -184,6 +184,8 @@ class Game:
 			self.file_path: Path | None = self.game.get_save_file_path(self.name)
 			if self.file_path is None:
 				raise Game.SaveFileNotFoundError()
+			# cache
+			self._icons: IconsEquipment | None = None
 
 		@property
 		def screenshot_image(self) -> Image | None:
@@ -194,7 +196,7 @@ class Game:
 		@property
 		def map(self) -> Maps.Map | None:
 			'returns Map class for map (level) name (from Game Graph)'
-			if (save_file_path := self.game.get_save_file_path(self.name)):
+			if (save_file_path := self.file_path):
 				if (actor := next(self.game.iter_save_actor_objects(save_file_path, True))):
 					if (graph_id := actor.get('graph_id')) is not None:
 						if (level_name := self.game.get_map_name_by_graph(graph_id)):
@@ -222,10 +224,13 @@ class Game:
 
 		def iter_actor_objects(self) -> 'Iterator[Game.Save.Object]':
 			'iterates .sav file for belongs to actor objects'
-			icons = IconsEquipment(self.game.config.paths)
+			if not self._icons:
+				self._icons = IconsEquipment(self.game.config.paths)
+			icons = self._icons
 			for raw_object in self.iter_actor_objects_raw():
-				if raw_object.get('name') != 'actor' and (section := self.game.get_section(raw_object.get('name'))):
-					yield self.Object(self, icons, raw_object, section)
+				if raw_object.get('name') != 'actor':
+					if (section := self.game.get_section(raw_object.get('name'))):
+						yield self.Object(self, icons, raw_object, section)
 
 		@property
 		def actor_object_raw(self) -> dict[str, any]:
@@ -238,6 +243,10 @@ class Game:
 		if not self.fsgame_file_path.is_absolute():
 			self.fsgame_file_path = self.config.paths.path / self.fsgame_file_path
 		self._read_fsgame()
+		# cache
+		self._maps: Maps | None = None
+		self._graph: GameGraph | None = None
+		self._save: Save | None = None
 
 	def _read_fsgame(self) -> None:
 		'reads fsgame.ltx file'
@@ -273,7 +282,10 @@ class Game:
 	@property
 	def maps(self) -> Maps:
 		'returns maps holder class'
-		return Maps(self.config.paths, self.config.localization)
+		if self._maps:
+			return self._maps
+		self._maps = Maps(self.config, self.config.localization)
+		return self._maps
 
 	def get_map_name_by_graph(self, vertex_id: int | None) -> str | None:
 		'''returns map (level) name by graph vertex index
@@ -297,9 +309,12 @@ class Game:
 	def get_section(self, name: str | None) -> Ltx.Section | None:
 		'returns .ltx file section by name'
 		if name:
-			for section in self.iter_sections():
+			# for section in self.iter_sections():
+			for section in self.config.iter():
 				if section.name == name:
 					return section
+			if self.config.verbose > 1:
+				print(f'NOT FOUND .ltx section: {name}')
 		return None
 
 	def localize(self, id: str, html_format = False, localized_only = False) -> str | None:
@@ -310,7 +325,10 @@ class Game:
 
 	@property
 	def graph(self) -> GameGraph:
-		return GameGraph(self.gamegraph_file_path)
+		if self._graph:
+			return self._graph
+		self._graph = GameGraph(self.config.paths)
+		return self._graph
 
 	# .sav files API
 
@@ -318,10 +336,11 @@ class Game:
 		for path in Path(self.savings_path).glob('*.sav'):
 			yield path.stem
 
-	@classmethod
-	def iter_save_actor_objects(cls, save_file_path: str, actor_only = False) -> Iterator[dict]:
+	def iter_save_actor_objects(self, save_file_path: str, actor_only = False) -> Iterator[dict]:
 		'iterates .sav file for actor object or belongs to actor objects'
-		gs = Save(save_file_path)
+		if not self._save:
+			self._save = Save(save_file_path)
+		gs = self._save
 		for chunk in gs.iter_chunks():
 			if chunk.type == Save.ChunkTypes.OBJECT:
 				for data in chunk.iter_data():

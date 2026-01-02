@@ -216,6 +216,11 @@ class Paths:
 		'returns game.ltx file path'
 		return join(self.configs, 'game.ltx')
 
+	@property
+	def game_graph(self) -> str:
+		'returns game.graph file path'
+		return 'game.graph'
+
 	# helper functions
 
 	def find(self, pattern: str) -> Iterator[str]:

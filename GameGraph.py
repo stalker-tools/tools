@@ -5,8 +5,9 @@
 
 from typing import Iterator
 from itertools import islice
-# tools imports
+# stalker-tools import
 from SequensorReader import SequensorReader, OutOfBoundException
+from paths import Paths
 
 
 class GameGraph:
@@ -17,11 +18,11 @@ class GameGraph:
 	GUID_TYPE = bytes
 
 
-	def __init__(self, file_path: str):
-		self.file_path = file_path
+	def __init__(self, paths: Paths):
+		self.paths = paths
 		self._vertex_offset: int | None = None
 		self.buff = None
-		with open(self.file_path, 'rb') as f:
+		with self.paths.open(self.paths.game_graph, 'rb') as f:
 			self.buff = f.read()
 			sr = SequensorReader(self.buff)
 			self.version, self.vertex_count, self.edge_count, self.level_point_count = sr.read('BHII')
