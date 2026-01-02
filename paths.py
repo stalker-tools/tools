@@ -13,6 +13,7 @@ from contextlib import contextmanager
 from codecs import getreader, StreamReader
 from io import UnsupportedOperation
 from fnmatch import fnmatch
+from pickle import load as pickle_load, dump as pickle_dump
 # tools imports
 try:
 	from version import PUBLIC_VERSION, PUBLIC_DATETIME
@@ -105,7 +106,6 @@ class Paths:
 				print(f'game path:     {self.path.absolute()}')
 				print(f'gamedata path: {self.gamedata.absolute()}')
 
-
 		# init layered file system for gamedata files: .db/.xdb files, OS gamedata path
 		# layers order is matter: first - OS gamedata path, then - .db/.xdb files
 		fs_layers = []
@@ -140,6 +140,9 @@ class Paths:
 		returns dict {gamedata path/file name: .db/.xdb file name}
 		'''
 
+		def get_cache_file_path() -> Path:
+			return Path(config.game_path) / 'gamedata.cache'
+
 		def iter_db_files() -> Iterator[Path]:
 			'iters .db/.xdb files in game path'
 
@@ -160,6 +163,17 @@ class Paths:
 				if not is_db_file_skipped(f.name):
 					yield f
 
+		if get_cache_file_path().exists():
+			# load from cache
+			if config.verbose:
+				print(f'Load .db/.xdb from cache: {get_cache_file_path()}')
+			with open(get_cache_file_path(), 'rb') as f_cache:
+				try:
+					config_cached, files_cached = pickle_load(f_cache)
+					if config.exclude_db_files == config_cached.exclude_db_files:
+						return files_cached
+				except (TypeError, EOFError): pass
+
 		# get latest gamedata files version # read all .db/.xdb files and fill dict {file: .db/.xdb file}
 		files: dict[str, str] = {}  # gamedata file path: .db file name
 		for i, f in enumerate(iter_db_files()):
@@ -169,6 +183,11 @@ class Paths:
 			for ff in db_reader.iter_files():
 				files[ff.name] = f.name
 		files = dict(sorted(files.items(), key=lambda x: x[0]))  # sort by gamedata file path
+
+		# update cache
+		with open(get_cache_file_path(), 'wb') as f_cache:
+			pickle_dump((config, files), f_cache)
+
 		return files
 
 	def exists(self, path: str, file_wanted: bool = True) -> PathType:

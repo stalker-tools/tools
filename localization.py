@@ -7,6 +7,7 @@ from sys import stderr
 from os.path import basename, join
 from glob import glob
 from xml.dom.minidom import Document
+from pickle import load as pickle_load, dump as pickle_dump
 # stalker-tools import
 from ltx_tool import parse_ltx_file, LtxKind
 from paths import Paths
@@ -16,11 +17,25 @@ from xml_tool import xml_parse, get_child_element_values
 class Localization:
 	'Localization strings by id. See dict string_table'
 
-	def __init__(self, paths: Paths, verbose = 0) -> None:
+	def __init__(self, paths: Paths, verbose = 0, cache_file_path: str | None = None) -> None:
 		self.verbose = verbose
+		self.is_from_cache = False
 		self.paths = paths
 		if self.verbose:
 			print(f'Gamedata path: "{self.paths}"')
+
+		# load from cache
+		if cache_file_path:
+			try:
+				with open(cache_file_path, 'rb') as f_cache:
+					self.string_table_files, self.language, self.localization_text_path, self.string_table, self.string_table_files_found \
+						= pickle_load(f_cache)
+					self.is_from_cache = True
+					if self.verbose:
+						print(f'Load localization from cache: {cache_file_path}')
+					return
+			except FileNotFoundError: pass
+
 		# find .ltx section string_table and define localization language and string_table .xml files names
 		self.string_table_files, self.language = None, None  # config data
 		self._load_string_table_ltx_section()
@@ -29,6 +44,15 @@ class Localization:
 		self.string_table: dict[str, str] = {}  # localized strings: id, string
 		self.string_table_files_found: list[str] = []  # found localization files paths
 		self._load_string_tables()
+
+	def save_cache(self, cache_file_path: str):
+		if not self.is_from_cache:
+			if self.verbose:
+				print(f'Save localization to cache: {cache_file_path}')
+			with open(cache_file_path, 'wb') as f_cache:
+				pickle_dump(
+					(self.string_table_files, self.language, self.localization_text_path, self.string_table, self.string_table_files_found),
+					f_cache)
 
 	def _load_string_table_ltx_section(self):
 		'load localization parameters from .ltx string_table section included from system.ltx'

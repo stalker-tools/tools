@@ -122,7 +122,7 @@ class Game:
 			'reads fsgame.ltx file'
 			fsgame_file_path = self.game_path.joinpath(fsgame_file_name)
 			if self.debug:
-				print(f'Read fsgame.ltx file: {fsgame_file_path}')
+				print(f'Load fsgame.ltx file: {fsgame_file_path}')
 			try:
 				self.fsgame = fsgame_parse(fsgame_file_path)
 			except FileNotFoundError as e:
@@ -251,7 +251,7 @@ class Game:
 	def _read_fsgame(self) -> None:
 		'reads fsgame.ltx file'
 		if self.config.verbose:
-			print(f'Read fsgame.ltx file: {self.fsgame_file_path}')
+			print(f'Load fsgame.ltx file: {self.fsgame_file_path}')
 		try:
 			self.fsgame = fsgame_parse(self.fsgame_file_path)
 		except FileNotFoundError as e:
@@ -313,7 +313,7 @@ class Game:
 			for section in self.config.iter():
 				if section.name == name:
 					return section
-			if self.config.verbose > 1:
+			if self.config.verbose:
 				print(f'NOT FOUND .ltx section: {name}')
 		return None
 
@@ -440,7 +440,7 @@ Examples:
 			game = create_game()
 			save = game.get_save(save_name)
 			if verbose:
-				print(f'Save file: {save.file_path.absolute()}')
+				print(f'Load .sav file: {save.file_path.absolute()}')
 				print('Actor objects:')
 				for i, actor_object_raw in enumerate(save.iter_actor_objects_raw()):
 					print(i+1, actor_object_raw)

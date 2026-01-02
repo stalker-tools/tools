@@ -5,7 +5,9 @@
 
 from collections.abc import Iterator, Iterable
 from os.path import join
-# tools imports
+from pickle import load as pickle_load, dump as pickle_dump
+from pathlib import Path
+# stalker-tools import
 from paths import Paths, Config as PathsConfig
 from localization import Localization
 from ltx_tool import Ltx
@@ -14,9 +16,7 @@ from ltx_tool import Ltx
 class SectionsBase:
 	'base class for item-type specific .ltx sections; successor examples: ammo, weapons e.t.c.'
 
-	def __init__(self, paths: Paths, localization: Localization) -> None:
-		self.paths = paths
-		self.localization: Localization = localization
+	def __init__(self) -> None:
 		self.sections: list[Ltx.Section] = []  # item-type specific sections list
 		self.is_loaded = False
 
@@ -24,7 +24,7 @@ class SectionsBase:
 		'load section (add to sections list) according to item-type specific filter'
 		return False
 
-	def load_localization(self): pass  # for inherited class
+	def get_localization_files_names(self) -> Iterable[str]: pass  # for inherited class
 
 	def load_localization(self, xml_file_name: str | None = None):
 		'load well known .xml localization files from configs/<localization text path>/xml_file_name'
@@ -51,8 +51,8 @@ class SectionsRoot:
 
 class Ammo(SectionsBase):
 
-	def load_localization(self):
-		super().load_localization('st_items_weapons.xml')
+	def get_localization_files_names(self) -> Iterable[str]:
+		return ('st_items_weapons.xml',)
 
 	def load_section(self, section: Ltx.Section) -> bool:
 		if section.get('class') == 'AMMO':
@@ -63,8 +63,8 @@ class Ammo(SectionsBase):
 
 class Weapons(SectionsBase):
 
-	def load_localization(self):
-		super().load_localization('st_items_weapons.xml')
+	def get_localization_files_names(self) -> Iterable[str]:
+		return ('st_items_weapons.xml',)
 
 	def load_section(self, section: Ltx.Section) -> bool:
 		if (section.get('weapon_class') or section.get('ammo_class')) and not section.name.endswith(('_up', '_up2', '_minigame')):
@@ -111,8 +111,8 @@ class Pda(SectionsBase):
 
 class Outfits(SectionsBase):
 
-	def load_localization(self):
-		super().load_localization('st_items_outfit.xml')
+	def get_localization_files_names(self) -> Iterable[str]:
+		return ('st_items_outfit.xml',)
 
 	def load_section(self, section: Ltx.Section) -> bool:
 		if section.get('class') == 'E_STLK':
@@ -132,8 +132,8 @@ class Damages(SectionsBase):
 
 class Food(SectionsBase):
 
-	def load_localization(self):
-		super().load_localization('st_items_equipment.xml')
+	def get_localization_files_names(self) -> Iterable[str]:
+		return ('st_items_equipment.xml',)
 
 	def load_section(self, section: Ltx.Section) -> bool:
 		if section.get('class') in ('II_FOOD', 'II_BOTTL'):
@@ -144,8 +144,8 @@ class Food(SectionsBase):
 
 class Medkit(SectionsBase):
 
-	def load_localization(self):
-		super().load_localization('st_items_equipment.xml')
+	def get_localization_files_names(self) -> Iterable[str]:
+		return ('st_items_equipment.xml',)
 
 	def load_section(self, section: Ltx.Section) -> bool:
 		if section.get('class') in ('II_ANTIR', 'II_MEDKI', 'II_BANDG'):
@@ -156,8 +156,8 @@ class Medkit(SectionsBase):
 
 class Artefact(SectionsBase):
 
-	def load_localization(self):
-		super().load_localization('st_items_artefacts.xml')
+	def get_localization_files_names(self) -> Iterable[str]:
+		return ('st_items_artefacts.xml',)
 
 	def load_section(self, section: Ltx.Section) -> bool:
 		if section.get('class') == 'ARTEFACT':
@@ -175,8 +175,8 @@ class Maps(SectionsBase):
 		self._maps_names: list[str]  = []
 		self.maps: list[Ltx.Section] = []
 
-	def load_localization(self):
-		super().load_localization('string_table_general.xml')
+	def get_localization_files_names(self) -> Iterable[str]:
+		return ('string_table_general.xml',)
 
 	def load_section(self, section: Ltx.Section) -> bool:
 		if section.name.lower() in self._maps_names:
@@ -201,20 +201,20 @@ class GameConfig:
 		# set game paths
 		self.verbose = verbose
 		self.paths = Paths(config_or_gamedata_path)
-		self.localization = Localization(self.paths)
+		self.localization = Localization(self.paths, verbose, cache_file_path=self.paths.path / 'localization.cache')
 		# init item-type specific lists
-		self.ammo = Ammo(self.paths, self.localization)
-		self.weapons = Weapons(self.paths, self.localization)
-		self.detectors = Detectors(self.paths, self.localization)
-		self.torchs = Torchs(self.paths, self.localization)
-		self.binocles = Binocles(self.paths, self.localization)
-		self.pda = Pda(self.paths, self.localization)
-		self.outfits = Outfits(self.paths, self.localization)
-		self.damages = Damages(self.paths, self.localization)
-		self.food = Food(self.paths, self.localization)
-		self.medkit = Medkit(self.paths, self.localization)
-		self.artefact = Artefact(self.paths, self.localization)
-		self.maps = Maps(self.paths, self.localization)
+		self.ammo = Ammo()
+		self.weapons = Weapons()
+		self.detectors = Detectors()
+		self.torchs = Torchs()
+		self.binocles = Binocles()
+		self.pda = Pda()
+		self.outfits = Outfits()
+		self.damages = Damages()
+		self.food = Food()
+		self.medkit = Medkit()
+		self.artefact = Artefact()
+		self.maps = Maps()
 		# load .ltx files from root .ltx file
 		self.sections_roots: list[SectionsRoot] = []  # .ltx roots files
 		self.sections_roots.append(SectionsRoot(self.paths.system_ltx, (
@@ -223,6 +223,7 @@ class GameConfig:
 		self.sections_roots.append(SectionsRoot(join(self.paths.configs, 'game.ltx'), (self.maps,)))
 		for sections_root in self.sections_roots:
 			self._load_ltx_sections(sections_root)
+		self.localization.save_cache(cache_file_path=self.paths.path / 'localization.cache')
 
 	def _load_ltx_sections(self, sections_root: SectionsRoot):
 
@@ -233,13 +234,26 @@ class GameConfig:
 				for file in ((files,) if type(files) is str else files):
 					self.localization.add_localization_xml_file(join(self.localization.localization_text_path, file + '.xml'))
 
+		def get_cache_file_path() -> Path:
+			return Path(self.paths.path) / (sections_root.root_ltx_file_path.replace('\\', '_').replace('/', '_') + '.cache')
+
+		# load from cache
+		if get_cache_file_path().exists():
+			if self.verbose:
+				print(f'Load root .ltx {sections_root.root_ltx_file_path} from cache: {get_cache_file_path()}')
+			with open(get_cache_file_path(), 'rb') as f_cache:
+				sections_root.sections = pickle_load(f_cache)
+				return
+
 		# try load well-known localization .xml
 		for section_base in sections_root.sections:
-			section_base.load_localization()
+			if (loc_fnames := section_base.get_localization_files_names()):
+				for loc_fname in loc_fnames:
+					self.localization.add_localization_xml_file(join(self.localization.localization_text_path, loc_fname))
 
 		# load root .ltx
 		if self.verbose:
-			print(f'Load root Ltx: {sections_root.root_ltx_file_path}')
+			print(f'Load root .ltx: {sections_root.root_ltx_file_path}')
 		# load sections from root .ltx
 		ltx = Ltx(sections_root.root_ltx_file_path, open_fn=self.paths.open, verbose=self.verbose)
 		for section in ltx.iter_sections():
@@ -250,6 +264,10 @@ class GameConfig:
 					continue
 
 		load_localization()
+
+		# update cache
+		with open(get_cache_file_path(), 'wb') as f_cache:
+			pickle_dump(sections_root.sections, f_cache)
 
 	def get_actor_outfit(self) -> Ltx | None:
 		ltx_path = join(self.paths.gamedata, 'configs/misc/outfit.ltx')
