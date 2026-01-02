@@ -224,7 +224,7 @@ class GameConfig:
 		self.sections_roots.append(SectionsRoot(join(self.paths.configs, 'game.ltx'), (self.maps,)))
 		for sections_root in self.sections_roots:
 			self._load_ltx_sections(sections_root)
-		self.localization.save_cache(			cache_path)
+		self.localization.save_cache(cache_path)
 
 	def _load_ltx_sections(self, sections_root: SectionsRoot):
 
@@ -264,7 +264,7 @@ class GameConfig:
 		ltx = Ltx(sections_root.root_ltx_file_path, open_fn=self.paths.open, verbose=self.verbose)
 		for section in ltx.iter_sections():
 			# load from .ltx for not loaded yet sections
-			for section_base in (x for x in sections_root.sections if not x.is_loaded):  # not loaded sections
+			for section_base in sections_root.sections:  # not loaded sections
 				if section_base.load_section(section):
 					section_base.is_loaded = True
 					continue

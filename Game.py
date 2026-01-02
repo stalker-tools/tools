@@ -6,7 +6,7 @@ from typing import Iterator, NamedTuple, Self
 from configparser import ConfigParser
 from pathlib import Path
 from itertools import islice
-from PIL import ImageDraw
+from PIL import ImageDraw, ImageColor
 from PIL.Image import open as image_open, Image
 # stalker-tools import
 from fsgame import parse as fsgame_parse
@@ -190,7 +190,9 @@ class Game:
 		@property
 		def screenshot_image(self) -> Image | None:
 			if (save_file_path := self.file_path):
-				return image_open(save_file_path.with_suffix('.dds'))
+				try:
+					return image_open(save_file_path.with_suffix('.dds'))
+				except FileNotFoundError: pass
 			return None
 
 		@property
@@ -461,8 +463,15 @@ Examples:
 					if verbose:
 						print(f'<pre>{rect}</pre>')
 					draw = ImageDraw.Draw(image)
-					draw.circle(map.coord_to_image_point(Pos3d(*pos).pos2d), 5, fill='yellow', outline='brown')
+					draw.circle(map.coord_to_image_point(Pos3d(*pos).pos2d), 5, fill=(*ImageColor.getrgb('yellow'), 130), outline='brown')
 				print(get_image_as_html_img(image))
+
+				if (actor_object_raw := save.actor_object_raw):
+					print('<h3>Actor:</h3>')
+					if (health := actor_object_raw.get('health')) is not None:
+						print(f'<h4>health: {health}</h4>')
+					if (radiation := actor_object_raw.get('radiation')) is not None:
+						print(f'<h4>radiation: {radiation}</h4>')
 
 				print('<h3>Stuff:</h3>')
 				print('<p>')

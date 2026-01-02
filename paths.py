@@ -144,7 +144,7 @@ class Paths:
 		'''
 
 		def get_cache_file_path() -> Path:
-			return Path(config.game_path) / 'cache' / 'gamedata.cache'
+			return Path(config.game_path) / 'cache' / 'gamedata.db.cache'
 
 		def iter_db_files() -> Iterator[Path]:
 			'iters .db/.xdb files in game path'

@@ -101,7 +101,7 @@ def get_table(game, iter_sections: Iterator[Ltx.Section], exclude_prefixes: list
 
 	def iter_sections_for_sorting() -> Iterator[tuple[Ltx.Section, str]]:
 		for section in iter_sections():
-			if (sorted_text := game.localize(section.get('inv_name_short')) if localized_only else section.name):
+			if (sorted_text := game.localize(section.get('inv_name_short') or section.get('inv_name')) if localized_only else section.name):
 				yield section, sorted_text.replace(',', '.').replace('х', 'x')
 
 	sections: list[tuple[Ltx.Section, str, str]] = []  # list of tuple: (section, localized inv_name_short, localized inv_name)
@@ -109,7 +109,7 @@ def get_table(game, iter_sections: Iterator[Ltx.Section], exclude_prefixes: list
 	for section, _ in sorted(((section, sorted_text) for section, sorted_text in iter_sections_for_sorting()), key=lambda x: x[1]):
 		if exclude_prefixes and any(section.name.startswith(x) for x in exclude_prefixes):
 			continue
-		if (inv_name_short := game.localize(section.get('inv_name_short'), localized_only=localized_only)):
+		if (inv_name_short := game.localize(section.get('inv_name_short') or section.get('inv_name'), localized_only=localized_only)):
 			inv_name = game.localize(section.get('inv_name'), localized_only=localized_only)
 			sections.append((section, inv_name_short, inv_name))
 	return sections

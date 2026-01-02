@@ -5,6 +5,7 @@
 
 from typing import Iterator, Callable
 from enum import Enum
+from datetime import datetime
 import lzo
 # tools imports
 from ChunkReader import ChunkReader
@@ -46,7 +47,64 @@ class Save:
 
 		def iter_data(self) -> Iterator[dict[str, str]]:
 			if self.size == 16:
-				yield dict(zip(('time_id', 'time_factor', 'normal_time_factor'), self.sr.read('Qff')))
+				buff = dict(zip(('time_id', 'time_factor', 'normal_time_factor'), self.sr.read('Qff')))
+				buff['time'] = self.to_time(buff['time_id']).isoformat()
+				yield buff
+
+		@staticmethod
+		def to_time(time: int) -> datetime:
+			'converts from game time'
+			ms = time % 1000; time //= 1000
+			s = time % 60; time //= 60
+			minutes = time % 60; time //= 60
+			h = time % 24; time //= 24
+			p0 = time // (400 * 365 + 100 - 4 + 1)
+			time -= p0 * (400 * 365 + 100 - 4 + 1)
+			p1 = time // (100 * 365 + 25 - 1)
+			time -= p1 * (100 * 365 + 25 - 1)
+			p2 = time // (4 * 365 + 1)
+			time -= p2 * (4 * 365 + 1)
+			p3 = min(time // 365, 3)
+			time -= p3 * 365
+			years = 400 * p0 + 100 * p1 + 4 * p2 + p3 + 1
+			time += 1
+			extra_day_count = 1 if ((years % 400 == 0) | ((years % 4 == 0) & (years % 100 != 0))) else 0
+			months = 1
+			if time > 31:
+				months += 1
+				time -= 31
+				if time > 28 + extra_day_count:
+					months += 1
+					time -= 28 + extra_day_count
+					if time > 31:
+						months += 1
+						time -= 31
+						if time > 30:
+							months += 1
+							time -= 30
+							if time > 31:
+								months += 1
+								time -= 31
+								if time > 30:
+									months += 1
+									time -= 30
+									if time > 31:
+										months += 1
+										time -= 31
+										if time > 31:
+											months += 1
+											time -= 31
+											if time > 30:
+												months += 1
+												time -= 30
+												if time > 31:
+													months += 1
+													time -= 31
+													if time > 30:
+														months += 1
+														time -= 30
+			days = time
+			return datetime(years, months, days, h, minutes, s, ms)
 
 
 	class SpawnChunk(Chunk):
