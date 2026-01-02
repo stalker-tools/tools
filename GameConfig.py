@@ -201,7 +201,8 @@ class GameConfig:
 		# set game paths
 		self.verbose = verbose
 		self.paths = Paths(config_or_gamedata_path)
-		self.localization = Localization(self.paths, verbose, cache_file_path=self.paths.path / 'localization.cache')
+		cache_path = self.paths.cache_path / 'localization.cache'
+		self.localization = Localization(self.paths, verbose, cache_file_path=cache_path)
 		# init item-type specific lists
 		self.ammo = Ammo()
 		self.weapons = Weapons()
@@ -223,7 +224,7 @@ class GameConfig:
 		self.sections_roots.append(SectionsRoot(join(self.paths.configs, 'game.ltx'), (self.maps,)))
 		for sections_root in self.sections_roots:
 			self._load_ltx_sections(sections_root)
-		self.localization.save_cache(cache_file_path=self.paths.path / 'localization.cache')
+		self.localization.save_cache(			cache_path)
 
 	def _load_ltx_sections(self, sections_root: SectionsRoot):
 
@@ -235,14 +236,19 @@ class GameConfig:
 					self.localization.add_localization_xml_file(join(self.localization.localization_text_path, file + '.xml'))
 
 		def get_cache_file_path() -> Path:
-			return Path(self.paths.path) / (sections_root.root_ltx_file_path.replace('\\', '_').replace('/', '_') + '.cache')
+			return Path(self.paths.cache_path) / (sections_root.root_ltx_file_path.replace('\\', '_').replace('/', '_') + '.cache')
 
 		# load from cache
 		if get_cache_file_path().exists():
 			if self.verbose:
 				print(f'Load root .ltx {sections_root.root_ltx_file_path} from cache: {get_cache_file_path()}')
 			with open(get_cache_file_path(), 'rb') as f_cache:
-				sections_root.sections = pickle_load(f_cache)
+				# sections_root.sections = pickle_load(f_cache)
+				sections = pickle_load(f_cache)
+				# copy properties from cache to SectionsBase inherited classes
+				for i, s in enumerate(sections):
+					for aname in (x for x in s.__dir__() if not x.startswith('_') and not hasattr(getattr(s, x), '__self__')):
+						setattr(sections_root.sections[i], aname, getattr(s, aname))
 				return
 
 		# try load well-known localization .xml

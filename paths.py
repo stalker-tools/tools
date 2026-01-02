@@ -80,6 +80,9 @@ class Paths:
 			self.config = gamedata_path
 			# define well-known root sub-paths
 			self.path = Path(self.config.game_path).resolve()  # root game path: .db/.xdb files and optionally gamedata folder
+			self.cache_path = self.path / 'cache'
+			if self.path.exists() and not self.cache_path.exists():
+				self.cache_path.mkdir(parents=True)
 			# resolve gamedata path: it can be absolute or relative to game root
 			self.gamedata = Path(self.config.gamedata_path)
 			if not self.gamedata.is_absolute():  # is gamedata relative to game root path
@@ -141,7 +144,7 @@ class Paths:
 		'''
 
 		def get_cache_file_path() -> Path:
-			return Path(config.game_path) / 'gamedata.cache'
+			return Path(config.game_path) / 'cache' / 'gamedata.cache'
 
 		def iter_db_files() -> Iterator[Path]:
 			'iters .db/.xdb files in game path'
