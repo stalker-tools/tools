@@ -9,7 +9,7 @@ from typing import Iterator, NamedTuple
 from configparser import ConfigParser
 from pathlib import Path
 from itertools import islice
-from PIL import ImageDraw, ImageColor
+from PIL import ImageDraw, ImageColor, ImageFont
 from PIL.Image import open as image_open, Image
 # stalker-tools import
 try:
@@ -21,7 +21,7 @@ from GameGraph import GameGraph
 from maps_tool import Maps, Pos3d
 from icon_tools import IconsEquipment, UiNpcUnique, UiIconstotal, get_image_as_html_img
 from save_tool import Save
-from paths import Config as PathsConfig, DbFileVersion, DEFAULT_GAMEDATA_PATH
+from paths import Paths, Config as PathsConfig, DbFileVersion, DEFAULT_GAMEDATA_PATH
 from DBReader import UnspecifiedDbFormat
 from ltx_tool import Ltx
 
@@ -142,6 +142,7 @@ class Game:
 			self.file_path: Path | None = self.game.get_save_file_path(self.name)
 			if self.file_path is None:
 				raise Game.SavFileNotFoundError()
+			self._save: Save | None = None  # cache
 
 		@property
 		def screenshot_image(self) -> Image | None:
@@ -167,8 +168,9 @@ class Game:
 			'''iterates .sav file for actor object or belongs to actor objects
 			actor_only - True: actor object; False: actor and belongs to actor objects
 			'''
-			gs = Save(self.file_path)  # Game Save
-			for chunk in gs.iter_chunks():
+			if not self._save:
+				self._save = Save(self.file_path)  # Game Save
+			for chunk in self._save.iter_chunks():
 				if chunk.type == Save.ChunkTypes.OBJECT:
 					for data in chunk.iter_data():
 						if data.get('id') == 0:
@@ -403,7 +405,14 @@ Examples:
 			outline: tuple[int] = (*ImageColor.getrgb('yellow'), 120)
 
 
-		def point(game: Game, section_name: str, name: str) -> MapPoint:
+		class TextPoint(NamedTuple):
+			text: str = '🗶'
+			size: int = 48
+			color: tuple[int] = (*ImageColor.getrgb('yellow'), 120)
+			font: str = Paths.convert_path_to_os('web/Symbola.ttf')
+
+
+		def point_format(game: Game, section_name: str, name: str) -> MapPoint:
 			if (buff := game.config.odyssey_config.get(section_name, name)):
 				buff = buff.split(',', maxsplit=4)
 				if len(buff) == 4:
@@ -411,7 +420,6 @@ Examples:
 						return MapPoint(int(buff[0]), int(buff[1]), parse_color(buff[2]), parse_color(buff[3]))
 					except ValueError: pass
 					print(f'Wrong Map Point format: {", ".join(buff)}')
-					return MapPoint()
 			return MapPoint()
 
 		def parse_color(buff: str, default: str = 'yellow') -> str:
@@ -433,6 +441,17 @@ Examples:
 			except ValueError:
 				print(f'Wrong color format for {DEFAULT_ODYSSEY_CONFIG_FILE_NAME} [{section_name}]{color_name}: {color}')
 				return default
+
+		def text_format(game: Game, section_name: str, name: str) -> TextPoint:
+			if (buff := game.config.odyssey_config.get(section_name, name)):
+				buff = buff.split(',', maxsplit=3)
+				try:
+					match len(buff):
+						case 3: return TextPoint(buff[0], int(buff[1]), parse_color(buff[2]))
+						case 4: return TextPoint(buff[0], int(buff[1]), parse_color(buff[2]), Paths.convert_path_to_os(buff[3]))
+				except ValueError: pass
+				print(f'Wrong Text Point format: {", ".join(buff)}')
+			return TextPoint()
 
 		def create_game() -> Game:
 			paths = PathsConfig(args.gamepath, args.version, args.gamedata, exclude_db_files=args.exclude_db_files, verbose=verbose)
@@ -475,30 +494,33 @@ Examples:
 					if verbose:
 						print(f'<pre>{rect}</pre>')
 					draw = ImageDraw.Draw(image)
-					actor_point = point(game, 'maps.actor', 'point')
-					draw.circle(map.coord_to_image_point(Pos3d(*pos).pos2d),
-				 		actor_point.radius, fill=actor_point.color, outline=actor_point.outline, width=actor_point.width)
+					actor_text = text_format(game, 'maps.actor', 'text')
+					draw.text(map.coord_to_image_point(Pos3d(*pos).pos2d), actor_text.text, actor_text.color, align='center', anchor='mm',
+			   			font=ImageFont.truetype(actor_text.font, actor_text.size))
+					# actor_point = point_format(game, 'maps.actor', 'point')
+					# draw.circle(map.coord_to_image_point(Pos3d(*pos).pos2d),
+				 	# 	actor_point.radius, fill=actor_point.color, outline=actor_point.outline, width=actor_point.width)
 				print(get_image_as_html_img(image))
 
-				# actor condition
-				if (actor_object_raw := save.actor_object_raw):
-					print('<h3>Actor:</h3>')
-					if (health := actor_object_raw.get('health')) is not None:
-						print(f'<h4>health: {health:.1f}</h4>')
-					if (radiation := actor_object_raw.get('radiation')) is not None:
-						print(f'<h4>radiation: {radiation:.1f}</h4>')
+			# actor condition
+			if (actor_object_raw := save.actor_object_raw):
+				print('<h3>Actor:</h3>')
+				if (health := actor_object_raw.get('health')) is not None:
+					print(f'<h4>health: {health:.1f}</h4>')
+				if (radiation := actor_object_raw.get('radiation')) is not None:
+					print(f'<h4>radiation: {radiation:.1f}</h4>')
 
-				# actor stuff
-				print('<h3>Stuff:</h3>')
-				print('<p>')
-				for obj in save.iter_actor_objects():
-					if verbose > 1:
-						print(f'<pre>{obj.section.name}</pre>')
-					print(get_image_as_html_img(obj.image))
-				print('</p>')
+			# actor stuff
+			print('<h3>Stuff:</h3>')
+			print('<p>')
+			for obj in save.iter_actor_objects():
+				if verbose > 1:
+					print(f'<pre>{obj.section.name}</pre>')
+				print(get_image_as_html_img(obj.image))
+			print('</p>')
 
-				if verbose:
-					print('</pre><hr/>')
+			if verbose:
+				print('</pre><hr/>')
 				
 			# close html body
 			print('</body>\n</html>')

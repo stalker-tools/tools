@@ -1,5 +1,5 @@
 
-# Stalker Xray game map (level) files tool
+# Stalker X-ray game map (level) files tool
 # Author: Stalker tools, 2023-2026
 
 from collections.abc import Iterator
@@ -173,8 +173,9 @@ class Maps:
 				yield section
 
 	def get_map_section(self, map_name: str) -> Ltx.Section | None:
+		map_name = map_name.lower()
 		'returns map .ltx file section'
-		if (section := next((x for x in self.iter_maps_sections() if x.name == map_name), None)):
+		if (section := next((x for x in self.iter_maps_sections() if x.name.lower() == map_name), None)):
 			return section
 		return None
 
