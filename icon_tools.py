@@ -1,11 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Stalker Xray game icons files tool
-# Author: Stalker tools, 2023-2024
-#
-# Python usage example:
-# icons = IconsEquipment(gamedata_path)
-# icons.get_image(inv_grid_x, inv_grid_y, inv_grid_width, inv_grid_height)  # values inv_grid_* from .ltx section
+# Stalker X-ray game icons files tool
+# Author: Stalker tools, 2023-2026
 
 from collections.abc import Iterator
 from os.path import join
@@ -94,11 +90,15 @@ class IconsXmlDds:
 
 
 class UiNpcUnique(IconsXmlDds):
+	'NPC icons'
+
 	def __init__(self, paths: Paths) -> None:
 		super().__init__(paths, paths.ui_textures_descr('ui_npc_unique'), paths.ui_textures('ui_npc_unique'))
 
 
 class UiIconstotal(IconsXmlDds):
+	'Misc icons: tasks, some characters'
+
 	def __init__(self, paths: Paths) -> None:
 		super().__init__(paths, paths.ui_textures_descr('ui_iconstotal'), paths.ui_textures('ui_iconstotal'))
 

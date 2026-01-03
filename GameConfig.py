@@ -1,7 +1,7 @@
 
 # Main class for Stalker Xray game config files
 # Includes .ltx and .xml localization files
-# Author: Stalker tools, 2023-2024
+# Author: Stalker tools, 2023-2026
 
 from collections.abc import Iterator, Iterable
 from os.path import join
@@ -56,6 +56,15 @@ class Ammo(SectionsBase):
 
 	def load_section(self, section: Ltx.Section) -> bool:
 		if section.get('class') == 'AMMO':
+			self.sections.append(section)
+			return True
+		return False
+
+
+class Grenade(SectionsBase):
+
+	def load_section(self, section: Ltx.Section) -> bool:
+		if (sname := section.get('class')) and sname.startswith('G_'):
 			self.sections.append(section)
 			return True
 		return False
@@ -205,6 +214,7 @@ class GameConfig:
 		self.localization = Localization(self.paths, verbose, cache_file_path=cache_path)
 		# init item-type specific lists
 		self.ammo = Ammo()
+		self.grenade = Grenade()
 		self.weapons = Weapons()
 		self.detectors = Detectors()
 		self.torchs = Torchs()
@@ -219,7 +229,7 @@ class GameConfig:
 		# load .ltx files from root .ltx file
 		self.sections_roots: list[SectionsRoot] = []  # .ltx roots files
 		self.sections_roots.append(SectionsRoot(self.paths.system_ltx, (
-			self.ammo, self.weapons, self.detectors, self.torchs, self.binocles, self.pda,
+			self.ammo, self.grenade, self.weapons, self.detectors, self.torchs, self.binocles, self.pda,
 			self.outfits, self.damages, self.food, self.medkit, self.artefact)))
 		self.sections_roots.append(SectionsRoot(join(self.paths.configs, 'game.ltx'), (self.maps,)))
 		for sections_root in self.sections_roots:
@@ -293,6 +303,14 @@ class GameConfig:
 			for item in sections_root.sections:
 				yield from self._iter(item)
 
+	def find(self, section_name: str, case_insensitive = True) -> Ltx.Section | None:
+		'returns section; searchs from cached system.ltx file and all included .ltx files'
+		if case_insensitive:
+			section_name = section_name.lower()
+		for section in self.iter():
+			if (section.name.lower() if case_insensitive else section.name) == section_name:
+				return section
+
 	def ammo_iter(self) -> Iterator[Ltx.Section]:
 		'iterate for ammunition sections'
 		yield from self._iter(self.ammo)
@@ -321,8 +339,14 @@ class GameConfig:
 		yield from self._iter(self.artefact)
 
 	def localize(self, id: str, html_format = False, localized_only = False) -> str | None:
+		'''returns localized text by id with different formats since localized text may have formatting
+		id - localized text id
+		html_format - convert returned text to html code
+		localized_only - returns None (instead id) if localized text not found
+		'''
 
 		def process_tags(text: str) -> str:
+			'returns html code according localized text formatting'
 			COLOR_TAG = '%c['
 			COLOR_TAG_DEFAULT = '%c[default]'
 			ret = text.replace('\\n', '<br/>')
@@ -347,3 +371,13 @@ class GameConfig:
 	def has_localize(self, id: str) -> bool:
 		'returns True if id is .xml localized entry'
 		return id in self.localization.string_table
+
+	def find_section_system_ltx(self, section_name: str, case_insensitive = True) -> Ltx.Section | None:
+		'returns section; searchs from system.ltx file and all included .ltx files'
+		ltx = Ltx(self.paths.system_ltx, True, open_fn=self.paths.open, verbose=self.verbose)
+		if case_insensitive:
+			section_name = section_name.lower()
+		for section in ltx.iter_sections():
+			if (section.name.lower() if case_insensitive else section.name) == section_name:
+				return section
+		return None

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 # Stalker Xray game .sav file tool
-# Author: Stalker tools, 2023-2024
+# Author: Stalker tools, 2023-2026
 
 from typing import Iterator, Callable
 from enum import Enum
@@ -430,11 +430,15 @@ if __name__ == '__main__':
 	import argparse
 
 	def main():
-		global game_path, title
 
 		def parse_args():
 			parser = argparse.ArgumentParser(
-				description='Game web server',
+				description='''X-ray game .sav file tool.
+Out format: html with embedded images.
+
+Note:
+It is not necessary to extract .db/.xdb files to gamedata path. This utility can read all game files from .db/.xdb files !
+''',
 				epilog=f'Examples: {argv[0]} -f savedgames/all.sav',
 			)
 			parser.add_argument('-f', metavar='PATH', required=True, help='Game save .sav file path; example: savedgames/all.sav')

@@ -1,6 +1,6 @@
 
 # Stalker Xray game map (level) files tool
-# Author: Stalker tools, 2023-2024
+# Author: Stalker tools, 2023-2026
 
 from collections.abc import Iterator
 from typing import Iterator, NamedTuple, Self
@@ -69,16 +69,19 @@ class Maps:
 
 		@property
 		def name(self) -> str:
+			'returns map (level) name'
 			return self.section.name
 
 		@property
 		def localized_name(self) -> str:
+			'returns map (level) localized name'
 			if (ret := self.maps.get_localized_name(self.section)):
 				return ret  # localized name
 			return self.name  # not localized name
 
 		@property
 		def image(self) -> Image | None:
+			'returns image of map (level)'
 			if (image := self.maps.get_image(self.section)):
 				if not self._image_size:
 					self._image_size = Point(*image.size)
@@ -86,12 +89,13 @@ class Maps:
 
 		@property
 		def rect(self) -> Rect | None:
-			'returns map (level) coordinates rect'
+			'returns map (level) coordinates rect (x, y, width, height) m'
 			if (bound_rect := self.section.get('bound_rect')):
 				return Rect.from_two_points(*bound_rect)
 			return None
 
 		def coord_to_image_point(self, pos: Pos2d) -> Point:
+			'returns image position (x, y) pixels from map (level) coordinates (x, y) m'
 			if not self._image_size:
 				self.image
 			if (rect := self.rect) and (size := self._image_size):
@@ -100,15 +104,18 @@ class Maps:
 
 
 	def __init__(self, paths_or_game_config: Paths | GameConfig, loc: Localization | None = None) -> None:
+		'if paths_or_game_config is GameConfig then loc not used'
+
 		self.paths = self.game_config = None
 		if isinstance(paths_or_game_config, GameConfig):
 			self.game_config = paths_or_game_config
 			self.paths = self.game_config.paths
+			self.loc = self.game_config.localization
 		else:
 			self.paths = paths_or_game_config
+			self.loc = loc
 		self.global_map: Ltx.Section | None = None
 		self.maps: tuple[Ltx.Section] | None = None
-		self.loc = loc
 		self._load_maps()
 
 	def _load_maps(self) -> tuple[str] | None:

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Author: Stalker tools, 2023-2024
+# Author: Stalker tools, 2023-2026
 
 from collections.abc import Iterator
 from typing import NamedTuple, Literal, Self
@@ -122,6 +122,8 @@ def print_graphs(sections: list[tuple[Ltx.Section, str, str]], graphs_params: li
 
 	def get_colors(names: tuple[str]) -> tuple[str]:
 		cycle_colors = pio.templates[pio.templates.default].layout.colorway
+		if not cycle_colors:
+			cycle_colors = (0x1f77b4, 0xff7f0e, 0x2ca02c, 0xd62728, 0x9467bd, 0x8c564b, 0xe377c2, 0x7f7f7f, 0xbcbd22, 0x17becf)
 		cycle_colors_index = 0
 		ret = []
 		for i, name in enumerate(names):
@@ -156,7 +158,7 @@ def print_graphs(sections: list[tuple[Ltx.Section, str, str]], graphs_params: li
 
 	print(fig.to_image('svg').decode())
 
-def analyse(gamedata: str | GameConfig, head: str, localization: None | str = None, style: None | Literal['d', 'dark'] = None):
+def analyse(gamedata: PathsConfig | str, config: BrochureConfig, verbose = 0):
 
 	def get_value(text: str, type_=float) -> 'type_ | None':
 		try:
@@ -204,15 +206,15 @@ def analyse(gamedata: str | GameConfig, head: str, localization: None | str = No
 			GraphParams('chemical_burn_protection', '(more is stronger)'),
 			GraphParams('telepatic_protection', '(more is stronger)'),
 			)
-		print_graphs(sections, graphs, width_k=1.05, style=style)
+		print_graphs(sections, graphs, width_k=1.05, style=config.style)
 
 	def print_damages_html(value_name='hit_fraction', title='NPC stalkers vulnerability', xlabel='(less is stronger)'):
 		# collect all damages and its .ltx sections
-		sections = sorted(((section, '') for section in game.damages_iter()), key=lambda x: x[0].name)
+		sections = sorted(((section, '', '') for section in game.damages_iter()), key=lambda x: x[0].name)
 		graphs = (
 			GraphParams('hit_fraction', '(less is stronger)'),
 			)
-		print_graphs(sections, graphs, 1, style=style)
+		print_graphs(sections, graphs, 1, style=config.style)
 
 	def print_amunition_html():
 		sections = get_table(game, game.ammo_iter)  # collect all ammo and its .ltx sections
@@ -226,7 +228,7 @@ def analyse(gamedata: str | GameConfig, head: str, localization: None | str = No
 			GraphParams('k_disp', '(more is less accurately)'),
 			GraphParams('k_air_resistance', '(more is more resistance)'),
 			)
-		print_graphs(sections, graphs, 1, style=style)
+		print_graphs(sections, graphs, 1, style=config.style)
 
 	def print_weapons_html(ef_weapon_type: str):
 
@@ -251,7 +253,7 @@ def analyse(gamedata: str | GameConfig, head: str, localization: None | str = No
 			GraphParams('misfire_condition_k', '(less is more reliable)'),
 			GraphParams('misfire_probability', '(less is more reliable)', True),
 			)
-		print_graphs(sections, graphs, 1, 1.1, style=style)
+		print_graphs(sections, graphs, 1, 1.1, style=config.style)
 
 	def print_food_html():
 		sections = get_table(game, game.food_iter)  # collect all food and its .ltx sections
@@ -264,7 +266,7 @@ def analyse(gamedata: str | GameConfig, head: str, localization: None | str = No
 			GraphParams('eat_alcohol', ''),
 			GraphParams('satiety_slake_factor', ''),
 			)
-		print_graphs(sections, graphs, style=style)
+		print_graphs(sections, graphs, style=config.style)
 
 	def print_medkit_html():
 		SGM_EXCLUDE_PREFIXES = ('medal_', 'dv_', 'outfit_upgrade_', 'repair_', 'skill_', 'personal_rukzak', 'sleeping_bag')
@@ -278,7 +280,7 @@ def analyse(gamedata: str | GameConfig, head: str, localization: None | str = No
 			GraphParams('eat_alcohol', ''),
 			GraphParams('satiety_slake_factor', ''),
 			)
-		print_graphs(sections, graphs, style=style)
+		print_graphs(sections, graphs, style=config.style)
 
 	def print_artefact_html():
 		sections = get_table(game, game.artefact_iter)  # collect all artefact and its .ltx sections
@@ -293,18 +295,25 @@ def analyse(gamedata: str | GameConfig, head: str, localization: None | str = No
 			GraphParams('additional_inventory_weight', ''),
 			GraphParams('additional_inventory_weight2', ''),
 			)
-		print_graphs(sections, graphs, 1, 1.15, style=style)
+		print_graphs(sections, graphs, 1, 1.15, style=config.style)
 
-	print(f'<html><head><title>{head}</title></head>')
+	print(f'<html><head><title>{config.caption}</title></head>')
 	print(f'<body>')
-	print(f'<h1>{head}<h1><hr/>')
+	print(f'<h1>{config.head}<h1><hr/>')
 
+	if verbose:
+		print('<h2>Log:</h2><pre>')
 	game = gamedata
-	game = GameConfig(gamedata, localization)
+	game = GameConfig(gamedata, config.localization, verbose)
 	icons = IconsEquipment(game.paths)
-	match style:
+	if verbose:
+		print('</pre>')
+
+	match config.style:
 		case 'd' | 'dark':
 			pio.templates.default = 'plotly_dark'
+		case _:
+			pio.templates.default = config.style
 
 	print('<h2>Content</h2>')
 	print('<p><a href="#1">1 Actor outfits</a></p>')
@@ -528,6 +537,8 @@ background: url("data:image/svg+xml,%3Csvg viewBox='0 0 20 300' xmlns='http://ww
 	match config.style:
 		case 'd' | 'dark':
 			pio.templates.default = 'plotly_dark'
+		case _:
+			pio.templates.default = config.style
 
 	print('<h2>Содержание</h2>')
 	print('<p><a href="#1">1 Защитные костюмы</a></p>')
@@ -583,7 +594,8 @@ if __name__ == '__main__':
 
 		def parse_args():
 			parser = argparse.ArgumentParser(
-				description='''Infographics brochure maker for X-ray gamedata files; out format: .html file
+				description='''Infographics brochure maker for X-ray gamedata files.
+Out format: html with embedded images.
 
 Note:
 It is not necessary to extract .db/.xdb files to gamedata path. This utility can read all game files from .db/.xdb files !
@@ -598,7 +610,9 @@ For example, "brochure.ini" for SoC (download Stalkercover.jpg from wiki to game
 caption = SoC
 author = GSC Game World
 localization = rus
-style = dark
+style = seaborn
+; see: https://plotly.com/python/templates/
+; try: ggplot2, seaborn, simple_white, plotly, plotly_white, plotly_dark
 [head]
 title = S.T.A.L.K.E.R.: Тень Чернобыля
 pictures = Stalkercover.jpg
@@ -643,20 +657,21 @@ used to get original game (.db/.xdb files only) infographics; default: false
 				verbose=verbose,
 				exclude_gamedata=args.exclude_gamedata)
 
+		config_path = Path(args.config)
+		if not config_path.is_absolute():
+			config_path = gamepath / config_path
+		if not gamepath.exists():
+			raise ValueError(f'Game path not found: {args.gamepath}')
+		if not config_path.exists():
+			raise ValueError(f'Config file not found: {config_path}')
+		config = BrochureConfig.from_file(config_path.absolute().resolve())
+
 		match args.type:
 			case 'b':
 				# read config
-				config_path = Path(args.config)
-				if not config_path.is_absolute():
-					config_path = gamepath / config_path
-				if not gamepath.exists():
-					raise ValueError(f'Game path not found: {args.gamepath}')
-				if not config_path.exists():
-					raise ValueError(f'Config file not found: {config_path}')
-				config = BrochureConfig.from_file(config_path.absolute().resolve())
 				brochure(paths_config if paths_config else args.gamedata, config)
 			case _:
-				analyse(paths_config if paths_config else args.gamedata, args.head, args.localization)
+				analyse(paths_config if paths_config else args.gamedata, config)
 
 	try:
 		main()
