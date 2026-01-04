@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-# Stalker Xray game .ltx configuration files tool
-# Author: Stalker tools, 2023-2024
+# Stalker X-ray game .ltx configuration files tool
+# Author: Stalker tools, 2023-2026
 
 from collections.abc import Iterator
 from sys import stderr
@@ -37,6 +37,8 @@ class Ltx:
 
 	class Section:
 		'Ltx file section'
+
+		__slots__ = ('name', 'ltx', 'section')
 		
 		def __init__(self, ltx: 'Ltx', name: str, section: dict) -> None:
 			self.name, self.ltx, self.section = name, ltx, section

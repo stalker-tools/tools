@@ -6,7 +6,7 @@
 # Author: Stalker tools, 2023-2026
 
 from typing import Iterator, NamedTuple
-from configparser import ConfigParser
+from configparser import ConfigParser, NoOptionError, NoSectionError
 from pathlib import Path
 from itertools import islice
 from PIL import ImageDraw, ImageColor, ImageFont
@@ -104,14 +104,22 @@ class Game:
 	class Save:
 		'Save .sav file'
 
+		__slots__ = ('game', 'name', 'file_path', '_save')
 
 		class Object:
 			'Save .sav file object from ObjectChunk'
+
+			__slots__ = ('save', 'raw_object', 'section')
 
 			def __init__(self, save: 'Game.Save', raw_object: dict[str, any], section: Ltx.Section):
 				self.save = save
 				self.raw_object = raw_object
 				self.section = section
+
+			@property
+			def elapsed(self) -> int | None:
+				'used for ammo'
+				return self.raw_object.get('elapsed')
 
 			@property
 			def image(self) -> Image | None:
@@ -329,6 +337,87 @@ class Game:
 		return None
 
 
+class MapImageSettings:
+	'reads map (level) image settings from Odyssey Config: odyssey.ini'
+
+	DEFAULT_COLOR = 'yellow'
+
+	# .ini section/option names
+	ACTOR_POINT_SECTION = 'maps.actor'
+	ACTOR_POINT_OPTION = 'point'
+	ACTOR_TEXT_OPTION = 'text'
+
+	@classmethod
+	def get_actor_point(cls, game: Game) -> 'Point | None':
+		try:
+			return cls.Point.from_config(game, cls.ACTOR_POINT_SECTION, cls.ACTOR_POINT_OPTION)
+		except (NoSectionError, NoOptionError): return None
+
+	@classmethod
+	def get_actor_text(cls, game: Game) -> 'Point | None':
+		try:
+			return cls.TextPoint.from_config(game, cls.ACTOR_POINT_SECTION, cls.ACTOR_TEXT_OPTION)
+		except (NoSectionError, NoOptionError): return None
+
+	@classmethod
+	def parse_color(cls, buff: str, default: str = DEFAULT_COLOR) -> str:
+		try:
+			buff = buff.strip().split(' ', maxsplit=4)
+			match len(buff):
+				case 1:	return ImageColor.getrgb(buff)  # named color
+				case 2: return (*ImageColor.getrgb(buff[0]), int(buff[1]))  # named color with alpha
+				case 3 | 4: return tuple(map(int, buff))  # RGB/RGBA
+			raise ValueError()
+		except ValueError:
+			print(f'Wrong color format: {buff}')
+			return default
+
+	@classmethod
+	def get_color(cls, game: Game, section_name: str, color_name: str, default: str = DEFAULT_COLOR) -> str:
+		return cls.parse_color(game.config.odyssey_config.get(section_name, color_name), default)
+
+
+	class Point(NamedTuple):
+		radius: int = 5
+		width: int = 1
+		color: tuple[int] = (*ImageColor.getrgb('yellow'), 120)
+		outline: tuple[int] = (*ImageColor.getrgb('yellow'), 120)
+
+		@classmethod
+		def from_config(cls, game: Game, section_name: str, name: str) -> 'Point':
+			if (buff := game.config.odyssey_config.get(section_name, name)):
+				buff = buff.split(',', maxsplit=4)
+				if len(buff) == 4:
+					try:
+						return cls(int(buff[0]), int(buff[1]),
+							MapImageSettings.parse_color(buff[2]), MapImageSettings.parse_color(buff[3]))
+					except ValueError: pass
+					print(f'Wrong Map Point format: {", ".join(buff)}')
+			return cls()
+
+
+	class TextPoint(NamedTuple):
+		text: str = '🗶'
+		size: int = 48
+		color: tuple[int] = (*ImageColor.getrgb('yellow'), 120)
+		font: str = Paths.convert_path_to_os('web/Symbola.ttf')
+
+		@classmethod
+		def from_config(cls, game: Game, section_name: str, name: str) -> 'TextPoint':
+			if (buff := game.config.odyssey_config.get(section_name, name)):
+				buff = buff.split(',', maxsplit=3)
+				try:
+					match len(buff):
+						# "", size, color
+						case 3: return cls(buff[0], int(buff[1]), MapImageSettings.parse_color(buff[2]))
+						# "", size, color, font file path
+						case 4: return cls(buff[0], int(buff[1]), MapImageSettings.parse_color(buff[2]),
+							Paths.convert_path_to_os(buff[3]))
+				except ValueError: pass
+				print(f'Wrong Text Point format: {", ".join(buff)}')
+			return cls()
+
+
 if __name__ == '__main__':
 	from sys import argv
 	import argparse
@@ -398,61 +487,6 @@ Examples:
 			color: str = '#c2c7c6'
 
 
-		class MapPoint(NamedTuple):
-			radius: int = 5
-			width: int = 1
-			color: tuple[int] = (*ImageColor.getrgb('yellow'), 120)
-			outline: tuple[int] = (*ImageColor.getrgb('yellow'), 120)
-
-
-		class TextPoint(NamedTuple):
-			text: str = '🗶'
-			size: int = 48
-			color: tuple[int] = (*ImageColor.getrgb('yellow'), 120)
-			font: str = Paths.convert_path_to_os('web/Symbola.ttf')
-
-
-		def point_format(game: Game, section_name: str, name: str) -> MapPoint:
-			if (buff := game.config.odyssey_config.get(section_name, name)):
-				buff = buff.split(',', maxsplit=4)
-				if len(buff) == 4:
-					try:
-						return MapPoint(int(buff[0]), int(buff[1]), parse_color(buff[2]), parse_color(buff[3]))
-					except ValueError: pass
-					print(f'Wrong Map Point format: {", ".join(buff)}')
-			return MapPoint()
-
-		def parse_color(buff: str, default: str = 'yellow') -> str:
-			try:
-				buff = buff.strip().split(' ', maxsplit=4)
-				match len(buff):
-					case 1:	return ImageColor.getrgb(buff)  # named color
-					case 2: return (*ImageColor.getrgb(buff[0]), int(buff[1]))  # named color with alpha
-					case 3 | 4: return tuple(map(int, buff))  # RGB/RGBA
-				raise ValueError()
-			except ValueError:
-				print(f'Wrong color format: {buff}')
-				return default
-
-		def get_color(game: Game, section_name: str, color_name: str, default: str = 'yellow') -> str:
-			buff = game.config.odyssey_config.get(section_name, color_name)
-			try:
-				return parse_color(buff)
-			except ValueError:
-				print(f'Wrong color format for {DEFAULT_ODYSSEY_CONFIG_FILE_NAME} [{section_name}]{color_name}: {color}')
-				return default
-
-		def text_format(game: Game, section_name: str, name: str) -> TextPoint:
-			if (buff := game.config.odyssey_config.get(section_name, name)):
-				buff = buff.split(',', maxsplit=3)
-				try:
-					match len(buff):
-						case 3: return TextPoint(buff[0], int(buff[1]), parse_color(buff[2]))
-						case 4: return TextPoint(buff[0], int(buff[1]), parse_color(buff[2]), Paths.convert_path_to_os(buff[3]))
-				except ValueError: pass
-				print(f'Wrong Text Point format: {", ".join(buff)}')
-			return TextPoint()
-
 		def create_game() -> Game:
 			paths = PathsConfig(args.gamepath, args.version, args.gamedata, exclude_db_files=args.exclude_db_files, verbose=verbose)
 			game = Game(Game.Config(GameConfig(paths, localization=args.localization, verbose=verbose),
@@ -494,12 +528,14 @@ Examples:
 					if verbose:
 						print(f'<pre>{rect}</pre>')
 					draw = ImageDraw.Draw(image)
-					actor_text = text_format(game, 'maps.actor', 'text')
-					draw.text(map.coord_to_image_point(Pos3d(*pos).pos2d), actor_text.text, actor_text.color, align='center', anchor='mm',
-			   			font=ImageFont.truetype(actor_text.font, actor_text.size))
-					# actor_point = point_format(game, 'maps.actor', 'point')
-					# draw.circle(map.coord_to_image_point(Pos3d(*pos).pos2d),
-				 	# 	actor_point.radius, fill=actor_point.color, outline=actor_point.outline, width=actor_point.width)
+					# point
+					if (actor_point := MapImageSettings.get_actor_point(game)):
+						draw.circle(map.coord_to_image_point(Pos3d(*pos).pos2d),
+							actor_point.radius, fill=actor_point.color, outline=actor_point.outline, width=actor_point.width)
+					# text
+					if (actor_text := MapImageSettings.get_actor_text(game)):
+						draw.text(map.coord_to_image_point(Pos3d(*pos).pos2d), actor_text.text, actor_text.color,
+							align='center', anchor='mm', font=ImageFont.truetype(actor_text.font, actor_text.size))
 				print(get_image_as_html_img(image))
 
 			# actor condition
@@ -513,10 +549,31 @@ Examples:
 			# actor stuff
 			print('<h3>Stuff:</h3>')
 			print('<p>')
+			# group stuff by .ltx sections
+			obj_count: dict[str, int] = {}
 			for obj in save.iter_actor_objects():
+				obj_count[obj.section.name] = obj_count.get(obj.section.name, 0) + (obj.elapsed or 1)
+			# sort by .ltx class
+			prev_class = None
+			for obj in sorted(save.iter_actor_objects(), key=lambda x: x.section.get('class')):
+				if obj.section.name not in obj_count:
+					continue  # skip repeated items
+				if prev_class is None:
+					prev_class = obj.section.get('class').partition('_')[0]
+				if prev_class != obj.section.get('class').partition('_')[0]:
+					prev_class = obj.section.get('class').partition('_')[0]
+					print('<br/>')
+				print('<div style="display: inline grid;padding-left: 5px;padding-bottom: 2px;">')
 				if verbose > 1:
 					print(f'<pre>{obj.section.name}</pre>')
 				print(get_image_as_html_img(obj.image))
+				if (count := obj_count[obj.section.name]) > 1:
+					print('<div style="text-align: center;padding-bottom: 3px;border-bottom: 1px solid;border-bottom-left-radius: 12px;">')
+					print(obj_count[obj.section.name])
+					print('</div>')
+				print('</div>')
+				if (count := obj_count[obj.section.name]) > 1:
+					del obj_count[obj.section.name]
 			print('</p>')
 
 			if verbose:
