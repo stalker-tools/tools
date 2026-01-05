@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 
 # Stalker X-ray game map (level) files tool
 # Author: Stalker tools, 2023-2026
@@ -248,7 +250,6 @@ used to get original game (.db/.xdb files only) infographics; default: false
 			page_bgcolor: str = '#25252a'
 			bgcolor: str = '#20202030'
 			color: str = '#c2c7c6'
-
 
 
 		def analyse(paths_config: PathsConfig):

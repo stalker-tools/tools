@@ -6,6 +6,7 @@
 # Author: Stalker tools, 2023-2026
 
 from typing import Iterator, NamedTuple
+from struct import unpack
 from configparser import ConfigParser, NoOptionError, NoSectionError
 from pathlib import Path
 from itertools import islice
@@ -37,7 +38,7 @@ DEFAULT_ODYSSEY_PATH = 'odyssey'
 
 class Game:
 	'''
-	Xray game config: .ltx, .xml localization, items images (icons), maps (levels), game.graph
+	X-ray game config: .ltx, .xml localization, items images (icons), maps (levels), game.graph
 	Odyssey game config (if any): .ini
 	Xray gameplay: fsgame.ltx, .sav savings
 	'''
@@ -111,10 +112,32 @@ class Game:
 
 			__slots__ = ('save', 'raw_object', 'section')
 
+
+			class Weapon(NamedTuple):
+				'weapon data holder from .sav object that belongs to actor'
+				condition: float | None = None
+				loaded: int | None = None
+
+
+			class Outfit(NamedTuple):
+				'outfit data holder from .sav object that belongs to actor'
+				condition: float | None = None
+
+
 			def __init__(self, save: 'Game.Save', raw_object: dict[str, any], section: Ltx.Section):
 				self.save = save
 				self.raw_object = raw_object
 				self.section = section
+
+			@property
+			def ltx_class(self) -> str:
+				'returns .ltx section class'
+				return self.section.get('class', default_value='')
+
+			@property
+			def ltx_name(self) -> str:
+				'returns .ltx section name'
+				return self.section.name or ''
 
 			@property
 			def elapsed(self) -> int | None:
@@ -133,9 +156,28 @@ class Game:
 
 			@property
 			def pos(self) -> Pos3d | None:
-				'returns "position"'
+				'returns "position" on the map (level)'
 				if (position := self.raw_object.get('position')):
 					return Pos3d(position)
+				return None
+
+			@property
+			def item_type(self) -> str:
+				'returns str for object as type-specific characteristic'
+				return self.ltx_class.partition('_')[0]  # prefix of .ltx class
+
+			def get_actor_object_data(self) -> Weapon | Outfit | None:
+				'returns extracted data from .sav object'
+				if (client_data := self.raw_object.get('client_data')):
+					if (ltx_class := self.section.section.get('class')) and ltx_class.startswith('WP_'):
+						return self.Weapon(
+							unpack('f', client_data[2:6])[0],
+							unpack('H', client_data[7:9])[0],
+							)
+					elif (ltx_class := self.section.section.get('class')) and ltx_class.startswith('E_STLK'):
+						return self.Outfit(
+							unpack('f', client_data[2:6])[0],
+							)
 				return None
 
 
@@ -351,7 +393,7 @@ class MapImageSettings:
 	def get_actor_point(cls, game: Game) -> 'Point | None':
 		try:
 			return cls.Point.from_config(game, cls.ACTOR_POINT_SECTION, cls.ACTOR_POINT_OPTION)
-		except (NoSectionError, NoOptionError): return None
+		except (NoSectionError, NoOptionError): return cls.Point()
 
 	@classmethod
 	def get_actor_text(cls, game: Game) -> 'Point | None':
@@ -378,10 +420,10 @@ class MapImageSettings:
 
 
 	class Point(NamedTuple):
-		radius: int = 5
-		width: int = 1
-		color: tuple[int] = (*ImageColor.getrgb('yellow'), 120)
-		outline: tuple[int] = (*ImageColor.getrgb('yellow'), 120)
+		radius: int = 7
+		width: int = 3
+		color: tuple[int] = (*ImageColor.getrgb('yellow'), 170)
+		outline: tuple[int] = (*ImageColor.getrgb('black'), 150)
 
 		@classmethod
 		def from_config(cls, game: Game, section_name: str, name: str) -> 'Point':
@@ -421,6 +463,7 @@ class MapImageSettings:
 if __name__ == '__main__':
 	from sys import argv
 	import argparse
+	from struct import unpack
 
 	def main():
 
@@ -503,7 +546,7 @@ Examples:
 			if verbose:
 				print('<h2>Game log:</h2><pre>')
 			game = create_game()
-			save = game.get_save(save_name)
+			save = game.get_save(save_name)  # get .sav file
 			if verbose:
 				print(f'Load .sav file: {save.file_path.absolute()}')
 				if verbose > 1:
@@ -549,31 +592,62 @@ Examples:
 			# actor stuff
 			print('<h3>Stuff:</h3>')
 			print('<p>')
-			# group stuff by .ltx sections
+			# group stuff by .ltx sections and count
 			obj_count: dict[str, int] = {}
 			for obj in save.iter_actor_objects():
-				obj_count[obj.section.name] = obj_count.get(obj.section.name, 0) + (obj.elapsed or 1)
+				obj_count[obj.ltx_name] = obj_count.get(obj.ltx_name, 0) + (obj.elapsed or 1)
 			# sort by .ltx class
-			prev_class = None
-			for obj in sorted(save.iter_actor_objects(), key=lambda x: x.section.get('class')):
-				if obj.section.name not in obj_count:
+			prev_type, prev_section_name, count = None, None, None
+			# sort by class and name since multiple items may share one class
+			for obj in sorted(save.iter_actor_objects(), key=lambda x: x.ltx_class+x.ltx_name):
+				if obj.ltx_name not in obj_count:
+					if prev_section_name:
+						if (data := obj.get_actor_object_data()):
+							match type(data):
+								case obj.Weapon:
+									print(f'<td style="vertical-align: bottom; height: 100%; padding: 0; border: 1px solid; "><div style="height: {data.condition:.0%};width: min-content; border-top: 2px solid;"><sub>{data.loaded}</sub></div>')
 					continue  # skip repeated items
-				if prev_class is None:
-					prev_class = obj.section.get('class').partition('_')[0]
-				if prev_class != obj.section.get('class').partition('_')[0]:
-					prev_class = obj.section.get('class').partition('_')[0]
-					print('<br/>')
-				print('<div style="display: inline grid;padding-left: 5px;padding-bottom: 2px;">')
+				if prev_section_name:
+					prev_section_name = None
+					# close block for multiple items of the same type
+					print('</tr></table>')
+					print('<div style="display: table;text-align: center;padding-bottom: 3px;border-bottom: 1px solid;border-bottom-left-radius: 12px;">')
+					print(count)
+					print('</div></div>')
+				if prev_type is None:
+					prev_type = obj.item_type
+				elif prev_type != obj.item_type:
+					prev_type = obj.item_type
+					print('<br/>')  # start new line
+				print('<div style="display: inline grid;padding-left: 5px;padding-bottom: 5px;">')
 				if verbose > 1:
-					print(f'<pre>{obj.section.name}</pre>')
+					print(f'<pre>{obj.ltx_name}</pre>')
+				count = obj_count[obj.ltx_name]
+				# show item-type specific info
+				print('<table><tr><td>')
 				print(get_image_as_html_img(obj.image))
-				if (count := obj_count[obj.section.name]) > 1:
-					print('<div style="text-align: center;padding-bottom: 3px;border-bottom: 1px solid;border-bottom-left-radius: 12px;">')
-					print(obj_count[obj.section.name])
-					print('</div>')
-				print('</div>')
-				if (count := obj_count[obj.section.name]) > 1:
-					del obj_count[obj.section.name]
+				print('</td>')
+				if (elapsed := obj.elapsed):
+					# print(f'<td style="vertical-align: bottom;"><sub>{elapsed}</sub></td>')
+					print('</td></table>')
+					print(f'<div style="display: table;text-align: center;padding-bottom: 3px;border-bottom: 1px solid;border-bottom-left-radius: 12px;"><sub>{count}</sub></div></div>')
+				else:
+					if (data := obj.get_actor_object_data()):
+						match type(data):
+							case obj.Weapon:
+								print(f'<td style="vertical-align: bottom; height: 100%; padding: 0; border: 1px solid; "><div style="height: {data.condition:.0%};width: min-content; border-top: 2px solid;"><sub>{data.loaded}</sub></div></td>')
+								if count > 1:
+									prev_section_name = obj.ltx_name
+								else:
+									print('</tr></table></div>')
+							case obj.Outfit:
+								print(f'<td style="vertical-align: bottom; height: 100%; padding: 0; border: 1px solid; "><div style="height: {data.condition:.0%};width: min-content; border-top: 2px solid;">&nbsp;</div></td>')
+							case _:
+								print('</td></table></div>')
+					else:
+						print('</td></table></div>')
+				if (count := obj_count[obj.ltx_name]) > 1:
+					del obj_count[obj.ltx_name]
 			print('</p>')
 
 			if verbose:

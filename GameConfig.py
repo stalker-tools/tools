@@ -1,5 +1,5 @@
 
-# Main class for Stalker Xray game config files
+# Main class for Stalker X-ray game config files
 # Includes .ltx and .xml localization files
 # Author: Stalker tools, 2023-2026
 
@@ -253,7 +253,6 @@ class GameConfig:
 			if self.verbose:
 				print(f'Load root .ltx {sections_root.root_ltx_file_path} from cache: {get_cache_file_path()}')
 			with open(get_cache_file_path(), 'rb') as f_cache:
-				# sections_root.sections = pickle_load(f_cache)
 				sections = pickle_load(f_cache)
 				# copy properties from cache to SectionsBase inherited classes
 				for i, s in enumerate(sections):
