@@ -582,6 +582,86 @@ background: url("data:image/svg+xml,%3Csvg viewBox='0 0 20 300' xmlns='http://ww
 
 	print(f'</body></html>')
 
+def csv(gamedata: PathsConfig, localization: str, verbose: int, kind: str, csv_file_path: str):
+	'.csv inport/export'
+	game = GameConfig(gamedata, localization, verbose)
+
+	def export():
+		'export from .ltx files to .csv file'
+		out_buff = ''
+		with open(csv_file_path) as f:
+			fields_names: tuple[str] | None = None
+			while (line := f.readline()):
+				line = line.strip()
+				if fields_names is None:
+					# first line # [] and fields names
+					fields_names = tuple(map(str.strip, line.split(',')[1:]))
+					if len(fields_names) < 2:
+						raise ValueError(f'Expected: fileds names; has: {line}')
+					# if fields_names[0] != '[]':
+					# 	raise ValueError(f'Expected: []; has: {fields_names[0]} in line {line}')
+					out_buff += line + '\n'
+				else:
+					# next lines # .ltx section name and fields values
+					if (buff := tuple(map(str.strip, line.split(',')))):
+						if buff[0] == '':
+							out_buff += line
+						elif len(buff) - 1 != len(fields_names):
+							raise ValueError(f'Expected fields values: {", ".join(fields_names[1:])}; has: {line}')
+						elif (ltx_section := game.find(buff[0][1:-1].strip() if buff[0].startswith('[') else buff[0])):
+							buff2 = buff[0]
+							for field_name in fields_names:
+								if (field_value := ltx_section.get(field_name)):
+									loc = game.localization.get(field_value)
+									buff2 += (',' if buff2 else '') + ('"'+loc.replace('"', '""')+'"' if loc else field_value)
+								else:
+									buff2 += ','
+							out_buff += buff2
+					out_buff += '\n'
+		if out_buff:
+			with open(csv_file_path, 'w') as f:
+				f.write(out_buff)
+
+	def export_kind():
+		'export from .ltx files to .csv file by kind filter: ammo, weapons e.t.c'
+		with open(csv_file_path) as f:
+			fields_names: tuple[str] | None = None
+			while (line := f.readline()):
+				line = line.strip()
+				if fields_names is None:
+					# first line # [] and fields names
+					fields_names = tuple(map(str.strip, line.split(',')[1:]))
+					if len(fields_names) < 2:
+						raise ValueError(f'Expected: fileds names; has: {line}')
+					iter = None
+					match kind:
+						case 'ammo': iter = game.ammo_iter
+						case 'outfits': iter = game.outfits_iter
+						case 'weapons': iter = game.weapons_iter
+					if iter:
+						out_buff = line + '\n'
+						for ltx_section in sorted(iter(), key=lambda x: x.name):
+							buff = f'[{ltx_section.name}]'
+							for field_name in fields_names:
+								if (field_value := ltx_section.get(field_name)):
+									loc = game.localization.get(field_value)
+									buff += (',' if buff else '') + ('"'+loc.replace('"', '""')+'"' if loc else field_value)
+								else:
+									buff += ','
+							out_buff += buff + '\n'
+		if out_buff:
+			with open(csv_file_path, 'w') as f:
+				f.write(out_buff)
+
+	def import_():
+		'import from .csv file to .ltx files'
+		pass
+
+	if kind:
+		export_kind()
+	else:
+		export()
+
 
 if __name__ == '__main__':
 	from sys import argv, exit
@@ -618,13 +698,27 @@ title = S.T.A.L.K.E.R.: Тень Чернобыля
 pictures = Stalkercover.jpg
 
 Run from game path (where .db/.xdb files):
-{argv[0]} -t 2947ru > "SoC.htm"
+{argv[0]} -t 2947ru b > "SoC.htm"
 
 Run outside of game path:
-{argv[0]} -g ".../S.T.A.L.K.E.R" -t 2947ru > "SoC.htm"
+{argv[0]} -g ".../S.T.A.L.K.E.R" -t 2947ru b > "SoC.htm"
 
-For game developers may be helpful to get an analyse output type of .html page (--type a):
-{argv[0]} -g ".../S.T.A.L.K.E.R" -t 2947ru --type a > "SoC.analyse.htm"
+For game developers:
+
+Analyse output type of .html page:
+{argv[0]} -g ".../S.T.A.L.K.E.R" -t 2947ru a > "SoC.analyse.htm"
+
+Csv output of selected .ltx sections for selected fields names:
+{argv[0]} -g ".../S.T.A.L.K.E.R" -t 2947ru csv "ammo.names.csv"
+ammo.names.csv input file:
+[],inv_name_short,inv_name,description
+[ammo_11.43x23_fmj],,,
+[ammo_5.45x39_ap],,,
+
+Csv output of all ammo .ltx sections for selected fields names:
+{argv[0]} -g ".../S.T.A.L.K.E.R" -t 2947ru csv --kind ammo "ammo.names.csv"
+ammo.names.csv input file:
+[],inv_name_short,inv_name,description
 ''',
 				formatter_class=argparse.RawTextHelpFormatter
 			)
@@ -634,13 +728,23 @@ For game developers may be helpful to get an analyse output type of .html page (
 			parser.add_argument('-V', action='version', version=f'{PUBLIC_VERSION} {PUBLIC_DATETIME}', help='show version')
 			parser.add_argument('-f', '--gamedata', metavar='PATH', default=DEFAULT_GAMEDATA_PATH,
 				help=f'gamedata directory path; default: {DEFAULT_GAMEDATA_PATH}')
-			parser.add_argument('--type', metavar='TYPE', default='b', help='out type: a - analyse, b - brochure (default)')
 			parser.add_argument('--exclude-gamedata', action='store_true', help='''exclude files from gamedata sub-path;
 used to get original game (.db/.xdb files only) infographics; default: false
 ''')
-			parser.add_argument('-c', '--config', metavar='PATH', default=DEFAULT_CONFIG_PATH,
-				help=f'config file path; used for brochure; default: {DEFAULT_CONFIG_PATH}')
 			parser.add_argument('-v', action='count', default=0, help='verbose mode: 0..; examples: -v, -vv')
+			subparsers = parser.add_subparsers(dest='mode', help='sub-commands:')
+			parser_ = subparsers.add_parser('analyse', aliases=('a',), help='analyse: out .html file')
+			parser_.add_argument('-c', '--config', metavar='PATH', default=DEFAULT_CONFIG_PATH,
+				help=f'config file path; default: {DEFAULT_CONFIG_PATH}')
+			parser_ = subparsers.add_parser('brochure', aliases=('b',), help='brochure: out .html file')
+			parser_.add_argument('-c', '--config', metavar='PATH', default=DEFAULT_CONFIG_PATH,
+				help=f'config file path; default: {DEFAULT_CONFIG_PATH}')
+			parser_ = subparsers.add_parser('csv', help='csv: import/export to/from .csv (comma separated values) file')
+			parser_.add_argument('--kind', choices=('ammo', 'weapons', 'outfits'),
+				help='''export .ltx sections to table .csv file; first line: fields names, next lines: section name, fields values
+example .csv file:
+''')
+			parser_.add_argument('csv', metavar='PATH', help='.csv file path')
 			return parser.parse_args()
 
 		args = parse_args()
@@ -657,21 +761,28 @@ used to get original game (.db/.xdb files only) infographics; default: false
 				verbose=verbose,
 				exclude_gamedata=args.exclude_gamedata)
 
-		config_path = Path(args.config)
-		if not config_path.is_absolute():
-			config_path = gamepath / config_path
-		if not gamepath.exists():
-			raise ValueError(f'Game path not found: {args.gamepath}')
-		if not config_path.exists():
-			raise ValueError(f'Config file not found: {config_path}')
-		config = BrochureConfig.from_file(config_path.absolute().resolve())
+		match args.mode:
+			case 'brochure' | 'b' | 'analyse' | 'a':
+				config_path = Path(args.config)
+				if not config_path.is_absolute():
+					config_path = gamepath / config_path
+				if not gamepath.exists():
+					raise ValueError(f'Game path not found: {args.gamepath}')
+				if not config_path.exists():
+					raise ValueError(f'Config file not found: {config_path}')
 
-		match args.type:
-			case 'b':
+		match args.mode:
+			case 'brochure' | 'b':
 				# read config
+				config = BrochureConfig.from_file(config_path.absolute().resolve())
 				brochure(paths_config if paths_config else args.gamedata, config)
-			case _:
+			case 'analyse' | 'a':
+				# read config
+				config = BrochureConfig.from_file(config_path.absolute().resolve())
 				analyse(paths_config if paths_config else args.gamedata, config)
+			case 'csv':
+				# comma separated values as table from/to .ltx files
+				csv(paths_config, 'rus', verbose, args.kind, args.csv)
 
 	try:
 		main()
