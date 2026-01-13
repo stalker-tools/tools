@@ -167,7 +167,7 @@ class Game:
 				return self.ltx_class.partition('_')[0]  # prefix of .ltx class
 
 			def get_actor_object_data(self) -> Weapon | Outfit | None:
-				'returns extracted data from .sav object'
+				'returns specific extracted data from .sav object'
 				if (client_data := self.raw_object.get('client_data')):
 					if (ltx_class := self.section.section.get('class')) and ltx_class.startswith('WP_'):
 						return self.Weapon(
@@ -379,85 +379,159 @@ class Game:
 		return None
 
 
-class MapImageSettings:
-	'reads map (level) image settings from Odyssey Config: odyssey.ini'
-
-	DEFAULT_COLOR = 'yellow'
-
-	# .ini section/option names
-	ACTOR_POINT_SECTION = 'maps.actor'
-	ACTOR_POINT_OPTION = 'point'
-	ACTOR_TEXT_OPTION = 'text'
+class Settings:
+	'settings from odyssey.ini'
 
 	@classmethod
-	def get_actor_point(cls, game: Game) -> 'Point | None':
+	def get_option(cls, game: Game, section: str, option: str, default: str) -> str:
+		'returns settings option'
+		# read from odyssey.ini
 		try:
-			return cls.Point.from_config(game, cls.ACTOR_POINT_SECTION, cls.ACTOR_POINT_OPTION)
-		except (NoSectionError, NoOptionError): return cls.Point()
-
-	@classmethod
-	def get_actor_text(cls, game: Game) -> 'Point | None':
-		try:
-			return cls.TextPoint.from_config(game, cls.ACTOR_POINT_SECTION, cls.ACTOR_TEXT_OPTION)
-		except (NoSectionError, NoOptionError): return None
-
-	@classmethod
-	def parse_color(cls, buff: str, default: str = DEFAULT_COLOR) -> str:
-		try:
-			buff = buff.strip().split(' ', maxsplit=4)
-			match len(buff):
-				case 1:	return ImageColor.getrgb(buff)  # named color
-				case 2: return (*ImageColor.getrgb(buff[0]), int(buff[1]))  # named color with alpha
-				case 3 | 4: return tuple(map(int, buff))  # RGB/RGBA
-			raise ValueError()
-		except ValueError:
-			print(f'Wrong color format: {buff}')
-			return default
-
-	@classmethod
-	def get_color(cls, game: Game, section_name: str, color_name: str, default: str = DEFAULT_COLOR) -> str:
-		return cls.parse_color(game.config.odyssey_config.get(section_name, color_name), default)
+			if (buff := game.config.odyssey_config.get(section, option)):
+				return buff
+		except (NoSectionError, NoOptionError): pass
+		return default
 
 
-	class Point(NamedTuple):
-		radius: int = 7
-		width: int = 3
-		color: tuple[int] = (*ImageColor.getrgb('yellow'), 170)
-		outline: tuple[int] = (*ImageColor.getrgb('black'), 150)
+	class Global:
+		'reads global settings from Odyssey Config: odyssey.ini'
+
+		SECTION = 'global'
+		TITLE_OPTION = 'title'
+		AUTHOR_OPTION = 'author'
+		DEFAULT_TITLE = 'S.T.A.L.K.E.R'
+		DEFAULT_AUTHOR = 'GSC'
 
 		@classmethod
-		def from_config(cls, game: Game, section_name: str, name: str) -> 'Point':
-			if (buff := game.config.odyssey_config.get(section_name, name)):
-				buff = buff.split(',', maxsplit=4)
-				if len(buff) == 4:
+		def get_title(cls, game: Game) -> str:
+			'returns title'
+			# read from odyssey.ini
+			return Settings.get_option(game, cls.SECTION, cls.TITLE_OPTION, cls.DEFAULT_TITLE)
+
+		@classmethod
+		def get_author(cls, game: Game) -> str:
+			'returns author'
+			# read from odyssey.ini
+			return Settings.get_option(game, cls.SECTION, cls.AUTHOR_OPTION, cls.DEFAULT_AUTHOR)
+
+
+	class Html:
+		'reads html settings from Odyssey Config: odyssey.ini'
+
+		SECTION = 'html'
+		STYLE_OPTION = 'style'
+		DEFAULT_STYLE = 'dark'
+
+
+		class LightStyle(NamedTuple):
+			page_bgcolor: str = '#e8f1ec'
+			bgcolor: str = '#e8f1ec40'
+			color: str = 'black'
+
+
+		class DarkStyle(NamedTuple):
+			page_bgcolor: str = '#25252a'
+			bgcolor: str = '#20202030'
+			color: str = '#c2c7c6'
+
+
+		STYLE_NAMES = {
+			'dark': DarkStyle,
+			'd': DarkStyle,
+			'light': LightStyle,
+			'l': LightStyle,
+		}
+
+		@classmethod
+		def get_style(cls, game_or_style: Game | str | None) -> DarkStyle | LightStyle:
+			'returns style or default style'
+			if game_or_style is None:
+				return cls.STYLE_NAMES[cls.DEFAULT_STYLE]
+			if isinstance(game_or_style, str):
+				return cls.STYLE_NAMES.get(game_or_style.lower(), cls.STYLE_NAMES[cls.DEFAULT_STYLE])
+			# read from odyssey.ini
+			return cls.STYLE_NAMES[Settings.get_option(game_or_style, cls.SECTION, cls.STYLE_OPTION, cls.DEFAULT_STYLE)]
+
+
+	class MapImage:
+		'reads map (level) image settings from Odyssey Config: odyssey.ini'
+
+		DEFAULT_COLOR = 'yellow'
+
+		# .ini section/option names
+		ACTOR_POINT_SECTION = 'maps.actor'
+		ACTOR_POINT_OPTION = 'point'
+		ACTOR_TEXT_OPTION = 'text'
+
+		@classmethod
+		def get_actor_point(cls, game: Game) -> 'Point | None':
+			try:
+				return cls.Point.from_config(game, cls.ACTOR_POINT_SECTION, cls.ACTOR_POINT_OPTION)
+			except (NoSectionError, NoOptionError): return cls.Point()
+
+		@classmethod
+		def get_actor_text(cls, game: Game) -> 'Point | None':
+			try:
+				return cls.TextPoint.from_config(game, cls.ACTOR_POINT_SECTION, cls.ACTOR_TEXT_OPTION)
+			except (NoSectionError, NoOptionError): return None
+
+		@classmethod
+		def parse_color(cls, buff: str, default: str = DEFAULT_COLOR) -> str:
+			try:
+				buff = buff.strip().split(' ', maxsplit=4)
+				match len(buff):
+					case 1:	return ImageColor.getrgb(buff)  # named color
+					case 2: return (*ImageColor.getrgb(buff[0]), int(buff[1]))  # named color with alpha
+					case 3 | 4: return tuple(map(int, buff))  # RGB/RGBA
+				raise ValueError()
+			except ValueError:
+				print(f'Wrong color format: {buff}')
+				return default
+
+		@classmethod
+		def get_color(cls, game: Game, section_name: str, color_name: str, default: str = DEFAULT_COLOR) -> str:
+			return cls.parse_color(game.config.odyssey_config.get(section_name, color_name), default)
+
+
+		class Point(NamedTuple):
+			radius: int = 7
+			width: int = 3
+			color: tuple[int] = (*ImageColor.getrgb('yellow'), 170)
+			outline: tuple[int] = (*ImageColor.getrgb('black'), 150)
+
+			@classmethod
+			def from_config(cls, game: Game, section_name: str, name: str) -> 'Point':
+				if (buff := game.config.odyssey_config.get(section_name, name)):
+					buff = buff.split(',', maxsplit=4)
+					if len(buff) == 4:
+						try:
+							return cls(int(buff[0]), int(buff[1]),
+								Settings.MapImage.parse_color(buff[2]), Settings.MapImage.parse_color(buff[3]))
+						except ValueError: pass
+						print(f'Wrong Map Point format: {", ".join(buff)}')
+				return cls()
+
+
+		class TextPoint(NamedTuple):
+			text: str = '🗶'
+			size: int = 48
+			color: tuple[int] = (*ImageColor.getrgb('yellow'), 120)
+			font: str = Paths.convert_path_to_os('web/Symbola.ttf')
+
+			@classmethod
+			def from_config(cls, game: Game, section_name: str, name: str) -> 'TextPoint':
+				if (buff := game.config.odyssey_config.get(section_name, name)):
+					buff = buff.split(',', maxsplit=3)
 					try:
-						return cls(int(buff[0]), int(buff[1]),
-							MapImageSettings.parse_color(buff[2]), MapImageSettings.parse_color(buff[3]))
+						match len(buff):
+							# "", size, color
+							case 3: return cls(buff[0], int(buff[1]), Settings.MapImage.parse_color(buff[2]))
+							# "", size, color, font file path
+							case 4: return cls(buff[0], int(buff[1]), Settings.MapImage.parse_color(buff[2]),
+								Paths.convert_path_to_os(buff[3]))
 					except ValueError: pass
-					print(f'Wrong Map Point format: {", ".join(buff)}')
-			return cls()
-
-
-	class TextPoint(NamedTuple):
-		text: str = '🗶'
-		size: int = 48
-		color: tuple[int] = (*ImageColor.getrgb('yellow'), 120)
-		font: str = Paths.convert_path_to_os('web/Symbola.ttf')
-
-		@classmethod
-		def from_config(cls, game: Game, section_name: str, name: str) -> 'TextPoint':
-			if (buff := game.config.odyssey_config.get(section_name, name)):
-				buff = buff.split(',', maxsplit=3)
-				try:
-					match len(buff):
-						# "", size, color
-						case 3: return cls(buff[0], int(buff[1]), MapImageSettings.parse_color(buff[2]))
-						# "", size, color, font file path
-						case 4: return cls(buff[0], int(buff[1]), MapImageSettings.parse_color(buff[2]),
-							Paths.convert_path_to_os(buff[3]))
-				except ValueError: pass
-				print(f'Wrong Text Point format: {", ".join(buff)}')
-			return cls()
+					print(f'Wrong Text Point format: {", ".join(buff)}')
+				return cls()
 
 
 if __name__ == '__main__':
@@ -517,19 +591,6 @@ Examples:
 			parser_.add_argument('-l', '--list', action='store_true', help='list saves names (.sav files stems)')
 			return parser.parse_args()
 
-
-		class LightStyle(NamedTuple):
-			page_bgcolor: str = '#e8f1ec'
-			bgcolor: str = '#e8f1ec40'
-			color: str = 'black'
-
-
-		class DarkStyle(NamedTuple):
-			page_bgcolor: str = '#25252a'
-			bgcolor: str = '#20202030'
-			color: str = '#c2c7c6'
-
-
 		def create_game() -> Game:
 			paths = PathsConfig(args.gamepath, args.version, args.gamedata, exclude_db_files=args.exclude_db_files, verbose=verbose)
 			game = Game(Game.Config(GameConfig(paths, localization=args.localization, verbose=verbose),
@@ -538,10 +599,13 @@ Examples:
 				)
 			return game
 
-		def analyse_save(save_name: str, head: str = 'S.T.A.L.K.E.R', style: NamedTuple = DarkStyle):
+		def analyse_save(save_name: str, head: str = 'S.T.A.L.K.E.R', style: str | None = None):
+
+			# define html style
+			style = Settings.Html.get_style(style)
+
 			print(f'<html>\n<head><title>{head}</title></head>')
 			print(f'<body style="background-color:{style.page_bgcolor};color:{style.color};">')
-			print(f'<h1>{head}</h1><hr/>')
 
 			if verbose:
 				print('<h2>Game log:</h2><pre>')
@@ -555,6 +619,7 @@ Examples:
 						print(i+1, actor_object_raw)
 				print('</pre><hr/>')
 
+			print(f'<h1>{Settings.Global.get_title(game)}</h1><hr/>')
 			print(f'<h2>Save: {save_name}</h2>')
 
 			# show save screenshot image
@@ -572,11 +637,11 @@ Examples:
 						print(f'<pre>{rect}</pre>')
 					draw = ImageDraw.Draw(image)
 					# point
-					if (actor_point := MapImageSettings.get_actor_point(game)):
+					if (actor_point := Settings.MapImage.get_actor_point(game)):
 						draw.circle(map.coord_to_image_point(Pos3d(*pos).pos2d),
 							actor_point.radius, fill=actor_point.color, outline=actor_point.outline, width=actor_point.width)
 					# text
-					if (actor_text := MapImageSettings.get_actor_text(game)):
+					if (actor_text := Settings.MapImage.get_actor_text(game)):
 						draw.text(map.coord_to_image_point(Pos3d(*pos).pos2d), actor_text.text, actor_text.color,
 							align='center', anchor='mm', font=ImageFont.truetype(actor_text.font, actor_text.size))
 				print(get_image_as_html_img(image))
@@ -599,17 +664,21 @@ Examples:
 			# sort by .ltx class
 			prev_type, prev_section_name, count = None, None, None
 			# sort by class and name since multiple items may share one class
+			# show actor items (objects) grouped by kind
 			for obj in sorted(save.iter_actor_objects(), key=lambda x: x.ltx_class+x.ltx_name):
 				if obj.ltx_name not in obj_count:
 					if prev_section_name:
+						# show repeated item as group
 						if (data := obj.get_actor_object_data()):
 							match type(data):
 								case obj.Weapon:
 									print(f'<td style="vertical-align: bottom; height: 100%; padding: 0; border: 1px solid; "><div style="height: {data.condition:.0%};width: min-content; border-top: 2px solid;"><sub>{data.loaded}</sub></div>')
+								case obj.Outfit:
+									print(f'<td style="vertical-align: bottom; height: 100%; padding: 0; border: 1px solid; "><div style="height: {data.condition:.0%};width: min-content; border-top: 2px solid;">&nbsp;</div>')
 					continue  # skip repeated items
 				if prev_section_name:
 					prev_section_name = None
-					# close block for multiple items of the same type
+					# close group block for multiple items of the same type
 					print('</tr></table>')
 					print('<div style="display: table;text-align: center;padding-bottom: 3px;border-bottom: 1px solid;border-bottom-left-radius: 12px;">')
 					print(count)
@@ -618,7 +687,7 @@ Examples:
 					prev_type = obj.item_type
 				elif prev_type != obj.item_type:
 					prev_type = obj.item_type
-					print('<br/>')  # start new line
+					print('<br/>')  # start new line: new group
 				print('<div style="display: inline grid;padding-left: 5px;padding-bottom: 5px;">')
 				if verbose > 1:
 					print(f'<pre>{obj.ltx_name}</pre>')
@@ -627,24 +696,30 @@ Examples:
 				print('<table><tr><td>')
 				print(get_image_as_html_img(obj.image))
 				print('</td>')
-				if (elapsed := obj.elapsed):
-					# print(f'<td style="vertical-align: bottom;"><sub>{elapsed}</sub></td>')
+				if obj.elapsed:
+					# ammo
 					print('</td></table>')
 					print(f'<div style="display: table;text-align: center;padding-bottom: 3px;border-bottom: 1px solid;border-bottom-left-radius: 12px;"><sub>{count}</sub></div></div>')
 				else:
 					if (data := obj.get_actor_object_data()):
-						match type(data):
+						match type(data):  # check for specific .sav object data
 							case obj.Weapon:
 								print(f'<td style="vertical-align: bottom; height: 100%; padding: 0; border: 1px solid; "><div style="height: {data.condition:.0%};width: min-content; border-top: 2px solid;"><sub>{data.loaded}</sub></div></td>')
 								if count > 1:
+									# show next items as group
 									prev_section_name = obj.ltx_name
 								else:
 									print('</tr></table></div>')
 							case obj.Outfit:
 								print(f'<td style="vertical-align: bottom; height: 100%; padding: 0; border: 1px solid; "><div style="height: {data.condition:.0%};width: min-content; border-top: 2px solid;">&nbsp;</div></td>')
-							case _:
+								if count > 1:
+									# show next items as group
+									prev_section_name = obj.ltx_name
+								else:
+									print('</tr></table></div>')
+							case _:  # regular
 								print('</td></table></div>')
-					else:
+					else:  # regular
 						print('</td></table></div>')
 				if (count := obj_count[obj.ltx_name]) > 1:
 					del obj_count[obj.ltx_name]
