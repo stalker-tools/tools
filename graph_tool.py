@@ -170,20 +170,21 @@ def analyse(gamedata: PathsConfig | str, config: BrochureConfig, verbose = 0):
 		return name[len(prefix):] if name.startswith(prefix) else name
 
 	def print_table(sections: list[tuple[Ltx.Section, str, str]]):
-		FILELD_NAMES = ('No', 'Section name', 'Name', 'Icon', 'Description')
+		FILELD_NAMES = ('No', 'Section File/Name', 'inv_name_short', 'inv_name', 'Icon', 'description')
 		STYLE = 'style="text-align: left;"'
 		print(f'<table border=1 style="border-collapse:collapse">')
 		print(f'<thead><tr>{"".join(("<th>"+x+"</th>" for x in FILELD_NAMES))}</tr></thead><tbody>')
 		prev_description = None
 		for index, (section, _, _) in enumerate(sections):
-			inv_name_short, description = game.localize(section.get('inv_name_short')), section.get("description")
+			inv_name_short, inv_name, description = game.localize(section.get('inv_name_short')), game.localize(section.get('inv_name')), section.get("description")
 			if index == 0:
 				print('<tr style="border-left-style:hidden;border-right-style:hidden">')
 			else:
 				print('<tr style="border-style:hidden">')
 			print(f'<th>{index + 1}</th>')
-			print(f'<th {STYLE}><span style="text-decoration: underline dotted;">{game.paths.relative(section.ltx.ltx_file_path)}</span><br/>{section.name}</th>')
+			print(f'<th {STYLE}><span style="text-decoration: underline dotted;">{game.paths.relative(section.ltx.ltx_file_path)}</span><br/>[{section.name}]</th>')
 			print(f'<th>{inv_name_short}</th>')
+			print(f'<th>{inv_name}</th>')
 			inv_grid = (int(section.get('inv_grid_x')), int(section.get('inv_grid_y')), int(section.get('inv_grid_width', 1)), int(section.get('inv_grid_height', 1)))
 			print(f'<th>{get_image_as_html_img(icons.get_image(*inv_grid))}</th>')
 			print(f'<th {STYLE}>{game.localize(description, True) if prev_description != description else "↑"}</th>')
@@ -294,6 +295,7 @@ def analyse(gamedata: PathsConfig | str, config: BrochureConfig, verbose = 0):
 			GraphParams('bleeding_restore_speed', ''),
 			GraphParams('additional_inventory_weight', ''),
 			GraphParams('additional_inventory_weight2', ''),
+			GraphParams('cost', ''),
 			)
 		print_graphs(sections, graphs, 1, 1.15, style=config.style)
 
