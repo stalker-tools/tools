@@ -1,8 +1,10 @@
 # Stalker Xray tools
 
 The software consists of two parts:
-- Analysis tools for Xray game engine.
-- Hybrid game engine: Xray (.exe with Lua scripts) + Odyssey (Python with web interface).
+- Analysis tools for Xray game engine. Used by traditional X-ray game developers:
+  - .ltx/.xml/.script game logic modifications;
+  - .ogg/.dds/.ogf/.omf/.anm/.ppe game media modifications.
+- Hybrid game engine: Xray (.exe with Lua scripts) + Odyssey (Python with web interface). For a new featured, new kind of game developers that free of capabilities of X-ray engine.
 
 ## Table of contents:
 
@@ -21,6 +23,12 @@ The software consists of two parts:
 
 Odyssey/Stalker Xray tools is a cross-platform Python-based tools.
 
+It build with reach media visualizing features in mind, like .html files for infographics and .csv table files for .ltx batch editing.
+
+Tools authors strong believe that it helps to game developers to save time and speed-up development process.
+
+Since X-ray game engine was reached good 3D capabilities. Along with exciting the main idea of ​​the game. Authors of this tools houps to help reach a next level, new kind of game scenario.
+
 ### Little intro
 
 Tools usage falls into two category:
@@ -33,7 +41,8 @@ Tools usage falls into two category:
   Note: You still need [install](#2-installation-1) Python and dependencies. And You still can use Python-way API import statement to use modules from Python Zip Applications.
 
   List of standalone tools:
-  - db-extract
+  - db-extract<br/>
+    extract .db/.xdb files to gamedata path with extracted files filters
   - stalker-brochure<br/>
     example: [Clear Sky + SGM 3.10 + Real Weapons](https://html-preview.github.io/?url=https://github.com/stalker-tools/real_weapons_mod_clear_sky/blob/main/media/Clear%20Sky%20%2B%20SGM%203.10%20%2B%20Real%20Weapons.html)
   - stalker-dialogs<br/>
@@ -43,6 +52,7 @@ Tools usage falls into two category:
   - stalker-tasks<br/>
     example: [tasks - Sigerous Mod.csv](https://github.com/stalker-tools/real_weapons_mod_clear_sky/blob/main/media/tasks%20-%20Sigerous%20Mod.csv)
   - stalker-maps<br/>
+    see all game maps (levels) on single .html page
 
 ### Main features
 
@@ -103,8 +113,36 @@ Most useful utility for mod autor/publisher is `graph_tool.py`, standalone tool:
 Just see generated _.html_ brochure example: [Clear Sky + SGM 3.10 + Real Weapons.html](https://html-preview.github.io/?url=https://github.com/stalker-tools/real_weapons_mod_clear_sky/blob/main/media/Clear%20Sky%20%2B%20SGM%203.10%20%2B%20Real%20Weapons.html)<br/>
 This brochure genarated by this line:
 ```sh
-python graph_tool.py -g ".../S.T.A.L.K.E.R" -t 2947ru > "Clear Sky + SGM 3.10 + Real Weapons.html"
+python graph_tool.py -g ".../S.T.A.L.K.E.R" -t 2947ru b > "Clear Sky + SGM 3.10 + Real Weapons.html"
 ```
+
+One more exciting feature of `graph_tool.py` is **batch .ltx files editing**. Let imagine a game developer that wants real weapons in own game. This requires tens .ltx files modification with about ten parameters for each weapon and ammo. And holds all this information in mind with consistency requirements. Actually, it usual business process - use table-organized data representing way. Just gather all weapons and ammo info into .csv (comma separated values) tables files. For this - use `graph_tool.py` csv commands.
+
+Example workflow to make real weapons and ammo:
+- edit selected parameters for all weapons:
+  - create _weapons.power.csv_ file with one line:
+    ```[],hit_power,hit_impulse,fire_distance,bullet_speed,rpm,silencer_hit_power,silencer_hit_impulse,silencer_fire_distance,silencer_bullet_speed```
+  - export selected parameters from .ltx files with _--kind_ filter:
+    ```sh
+    python graph_tool.py -g ".../S.T.A.L.K.E.R" -t 2947ru csv --kind weapons "weapons.power.csv"
+    ```
+  - edit .csv file in Your faworit software, for example LibreOffice Calc
+  - import .csv file to .ltx files in _gamedata_ path:
+    ```sh
+    python graph_tool.py -g ".../S.T.A.L.K.E.R" -t 2947ru csv -i "weapons.power.csv"
+    ```
+- edit selected parameters for all ammo:
+  - create _ammo.power.csv_ file with one line:
+    ```[],k_dist,k_disp,k_hit,k_impulse,k_pierce,impair,buck_shot,inv_weight,box_size,cost```
+  - export selected parameters from .ltx files with _--kind_ filter:
+    ```sh
+    python graph_tool.py -g ".../S.T.A.L.K.E.R" -t 2947ru csv --kind ammo "ammo.power.csv"
+    ```
+  - edit .csv file in Your faworit software, for example MS Office Excel
+  - import .csv file to .ltx files in _gamedata_ path:
+    ```sh
+    python graph_tool.py -g ".../S.T.A.L.K.E.R" -t 2947ru csv -i "ammo.power.csv"
+    ```
 
 See help: [3.2 .ltx files analysis tool](ANALYSIS_LTX.md).
 
