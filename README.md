@@ -118,7 +118,7 @@ python graph_tool.py -g ".../S.T.A.L.K.E.R" -t 2947ru b > "Clear Sky + SGM 3.10 
 
 One more exciting feature of `graph_tool.py` is **batch .ltx files editing**. Let imagine a game developer that wants real weapons in own game. This requires tens .ltx files modification with about ten parameters for each weapon and ammo. And holds all this information in mind with consistency requirements. Actually, it usual business process - use table-organized data representing way. Just gather all weapons and ammo info into .csv (comma separated values) tables files. For this - use `graph_tool.py` csv commands.
 
-Example workflow to make real weapons and ammo:
+Example workflow to make real weapons and ammo (see [Real weapons and ammo parameters](https://github.com/stalker-tools/real_weapons_mod_clear_sky)):
 - edit selected parameters for all weapons:
   - create _weapons.power.csv_ file with one line:
     ```[],hit_power,hit_impulse,fire_distance,bullet_speed,rpm,silencer_hit_power,silencer_hit_impulse,silencer_fire_distance,silencer_bullet_speed```
