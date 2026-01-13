@@ -697,27 +697,31 @@ style = seaborn
 title = S.T.A.L.K.E.R.: Тень Чернобыля
 pictures = Stalkercover.jpg
 
+Make brochure .html file (with embedded images):
+
 Run from game path (where .db/.xdb files):
-{argv[0]} -t 2947ru b > "SoC.htm"
+{argv[0]} -t 2947ru b > "SoC.html"
 
 Run outside of game path:
-{argv[0]} -g ".../S.T.A.L.K.E.R" -t 2947ru b > "SoC.htm"
+{argv[0]} -g ".../S.T.A.L.K.E.R" -t 2947ru b > "SoC.html"
 
 For game developers:
 
-Analyse output type of .html page:
-{argv[0]} -g ".../S.T.A.L.K.E.R" -t 2947ru a > "SoC.analyse.htm"
+Make analyse .html page (with embedded images):
+{argv[0]} -g ".../S.T.A.L.K.E.R" -t 2947ru a > "SoC.analyse.html"
 
-Csv output of selected .ltx sections for selected fields names:
+Export from .db/.xdb files to .csv table file:
+
+Export of selected .ltx sections for selected fields names:
 {argv[0]} -g ".../S.T.A.L.K.E.R" -t 2947ru csv "ammo.names.csv"
-ammo.names.csv input file:
+ammo.names.csv input file (first line: .ltx field names, next lines: .ltx section names):
 [],inv_name_short,inv_name,description
 [ammo_11.43x23_fmj],,,
 [ammo_5.45x39_ap],,,
 
-Csv output of all ammo .ltx sections for selected fields names:
+Export of all ammo kind .ltx sections (by filter --kind) for selected fields names:
 {argv[0]} -g ".../S.T.A.L.K.E.R" -t 2947ru csv --kind ammo "ammo.names.csv"
-ammo.names.csv input file:
+ammo.names.csv input file (first line: .ltx field names):
 [],inv_name_short,inv_name,description
 ''',
 				formatter_class=argparse.RawTextHelpFormatter
