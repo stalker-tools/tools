@@ -4,11 +4,14 @@
 # Since .xml files break W3C XML rules
 # Author: Stalker tools, 2023-2024
 
+from collections.abc import Iterator
 from sys import stderr
 from io import BytesIO
 from os import sep as path_separator
 from os.path import join, basename, split
 from xml.dom.minidom import parseString, Element, Document
+# stalker-tools import
+from paths import Paths
 
 
 def xml_preprocessor(xml_file_path: str, include_base_path: str | None = None, included = False, failed_include_file_paths: list[str] = None,
@@ -70,6 +73,151 @@ def get_child_element_values(element: Element, child_name: str, join_str: str | 
 		if (e := e.firstChild):
 			ret.append(e.nodeValue)
 	return join_str.join(ret) if join_str is not None else ret
+
+
+class XmlParser:
+	'''.xml files parser with source reflexion; special for X-ray: out-of-standard W3C XML
+	used for localization files only for read and modify
+	open/close tags in one line: tag name and all tag attributes in on line
+	tag inner value in one line: tag open/close and inner value in one line; use \n for new line
+	'''
+
+	LINE_SEPS = b'\x0d\x0a'
+	INCLUDE_DIRECTIVE = b'#include'
+	DEFAULT_ENCODING = 'utf-8'
+
+
+	class MissingCloseTag(Exception) : pass
+	class AttributeExpected(Exception) : pass
+
+
+	class Tag:
+		'xml tag with attributes and inner value'
+
+		__slots__ = ('buff', 'encoding', 'line_no', 'line_pos')
+
+		def __init__(self, buff: bytes, encoding: str, line_no: int, line_pos: int):
+			self.buff, self.encoding = buff, encoding
+			self.line_no, self.line_pos = line_no, line_pos  # .xml file line: 1.., line absolute pos: 0..
+
+		@property
+		def name(self) -> bytes:
+			'tag name'
+			tag_open = self.buff.partition(b'>')[0]
+			return tag_open.split(maxsplit=1)[0]
+
+		def iter_attributes(self) -> Iterator[tuple[str, str]]:
+			'iters tag attributes and their values'
+			if (attributes := self.buff.split()):
+				for attribute in attributes[1:]:
+					attribute_name, _, attribute_value = attribute.partition(b'=')
+					yield attribute_name, attribute_value[1:-1].decode(self.encoding)
+
+		def get_attribute(self, name: bytes) -> str | None:
+			'returns attribute value if any'
+			for attribute_name, attribute_value in self.iter_attributes():
+				if attribute_name == name:
+					return attribute_value
+
+		@property
+		def value(self) -> str | None:
+			'returns tag inner value'
+			name = self.name
+			if not (self.buff.startswith(name+b'>') and self.buff.endswith(b'</'+name)):
+				raise self.MissingCloseTag(f'Close tag expected; file: {self.file_path}; line {self.line_no}: {self.buff}')
+			if (value := self.buff[len(name)+1:-(len(name)+2)]):
+				return value.decode(self.encoding)
+			return None
+
+		@property
+		def value_pos_and_len(self) -> tuple[int, int]:
+			'returns tag value for .xml file absolute pos: 0.., len: 0..'
+			inner_pos = self.buff.find(b'>') + 1  # tag inner pos
+			return (self.line_pos + inner_pos, self.buff.rfind(b'</') - inner_pos)
+
+
+	def __init__(self, paths: Paths, file_path: str):
+		self.paths = paths
+		self.file_path = file_path
+
+	def iter_lines(self, file_path: str) -> Iterator[tuple[int, int, bytes]]:
+		'iters (line no: 1.., line position: 0.., line)'
+
+		def define_line_seps(buff: bytes) -> bytes | None:
+			ret = []
+			line_sep_was_found = False
+			for ch in buff:
+				if ch in self.LINE_SEPS:
+					line_sep_was_found = True
+					ret.append(ch)
+				elif line_sep_was_found:
+					return bytes(ret)
+			return None
+
+		with self.paths.open(file_path, 'rb') as f:
+			if (buff := f.read()):
+				if (line_seps := define_line_seps(buff)):
+					# it multiline text
+					line_no, after_line_sep_index, line_seps_len = 1, 0, len(line_seps)
+					while after_line_sep_index < len(buff):
+						if (next_line_sep_index := buff.find(line_seps, after_line_sep_index)):
+							if next_line_sep_index < 0:
+								# last .xml line
+								yield (line_no, after_line_sep_index, buff[after_line_sep_index:])
+								break
+							yield (line_no, after_line_sep_index, buff[after_line_sep_index:next_line_sep_index])
+							after_line_sep_index = next_line_sep_index + line_seps_len
+							line_no += 1
+
+	def parse(self) -> Iterator[str | Tag]:
+		'''iters xml file with included xml files
+		iters: str - new parsing .xml file path or Tag
+		it loads xml file into memory
+		'''
+
+		def parse_include(file_path: str):
+			yield file_path
+			for line_no, line_pos, _line in self.iter_lines(file_path):
+				line = _line.strip()
+				offset = _line.find(line)
+				if line.startswith(b'<'):
+					if not line.endswith(b'>'):
+						# one-line tags supports only
+						raise self.MissingCloseTag(f'Close tag expected; file: {file_path}; line {line_no}: {line}')
+					yield (self.Tag(line[1:-1], encoding, line_no, line_pos+offset+1))
+
+		def get_encoding_from_tag(tag: str) -> str | None:
+			'returns encoding name from <? ?> tag; tag without open/close symbols'
+			for attribute_name, attribute_value in self.Tag(tag, encoding, 1, 0).iter_attributes():
+				if attribute_name == b'encoding':
+					return attribute_value
+			return None
+
+		yield self.file_path
+		encoding = self.DEFAULT_ENCODING
+		for line_no, line_pos, _line in self.iter_lines(self.file_path):
+			line = _line.strip()
+			offset = _line.find(line)
+			if line.startswith(b'</'):
+				# closing tag
+				pass
+			elif line.startswith(self.INCLUDE_DIRECTIVE):
+				# include .xml file; base path: config
+				parse_include(self.paths.join(self.paths.configs, line[len(self.INCLUDE_DIRECTIVE)+1:].strip().strip(b'"').decode()))
+			elif line.startswith(b'<?'):
+				# get file encoding
+				if not line.endswith(b'?>'):
+					# one-line tags supports only
+					raise self.MissingCloseTag(f'Close tag expected; file: {self.file_path}; line {line_no}: {line}')
+				if (_encoding := get_encoding_from_tag(line[2:-2])):
+					encoding_pref, _, encoding_number = _encoding.partition('-')
+					if encoding_pref == 'windows':
+						encoding = f'cp{encoding_number}'  # set encoding
+			elif line.startswith(b'<'):
+				if not line.endswith(b'>'):
+					# one-line tags supports only
+					raise self.MissingCloseTag(f'Close tag expected; file: {self.file_path}; line {line_no}: {line}')
+				yield (self.Tag(line[1:-1], encoding, line_no, line_pos+offset+1))
 
 
 if __name__ == '__main__':

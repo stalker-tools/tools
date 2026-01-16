@@ -249,8 +249,17 @@ def parse_ltx_file(file_path: str, follow_includes=False, open_fn = open) -> Ite
 		if not follow_includes:
 			raise LtxFileNotFoundException(e)
 
-def get_section_line_index(section: Ltx.Section, value_name: str, open_fn = open) -> int | None:
+def get_section_line_index(section: Ltx.Section, value_name: str | list[str], open_fn = open) -> int | dict[str, int] | None:
 	'gets line index of .ltx file section and lvalue'
+
+	def is_value_name(lvalue: str) -> bool:
+		if value_name_is_str:
+			return lvalue == value_name
+		return lvalue in value_name
+
+	value_name_is_str = type(value_name) is str
+	if not value_name_is_str:
+		ret = {}
 	is_section_body = False  # used to parse section into .ltx file
 	for x in parse_ltx_file(section.ltx.ltx_file_path, open_fn=open_fn):
 		match x[0]:
@@ -260,10 +269,16 @@ def get_section_line_index(section: Ltx.Section, value_name: str, open_fn = open
 			case LtxKind.LET:
 				if section.name == x[2]:  # check section name
 					is_section_body = True
-					if x[3] == value_name:  # check value name (lvalue)
+					if is_value_name(x[3]):  # check value name (lvalue)
 						# value found
-						return x[1]  # line index
-	return None  # not found
+						if value_name_is_str:
+							return x[1]  # line index
+						ret[x[3]] = x[1]  # value name (lvalue) = line index
+						if len(ret) == len(value_name):
+							return ret  # all value names found
+	if value_name_is_str:
+		return None  # value name not found
+	return ret
 
 def update_section_value(section: Ltx.Section, value_name: str, new_value: str, open_fn = open) -> bool:
 	'updates lvalue of .ltx file section'
@@ -293,6 +308,45 @@ def update_section_value(section: Ltx.Section, value_name: str, new_value: str, 
 		return ret
 	return ret
 
+def update_section_values(section: Ltx.Section, values: dict[str, str], game: 'GameConfig') -> bool:
+	'updates lvalues of .ltx file section'
+
+	def find_in_line(line: str | bytes, what: list[bytes | str], start_index=0):
+		ret = len(line)
+		for w in what:
+			if (i := line.find(w, start_index)) >= 0 and i < ret:
+				ret = i
+		return ret
+
+	ret = False
+	is_buffer_dirty = False
+	# get indexes of .ltx file lines for value names
+	if (line_indexes := get_section_line_index(section, values.keys(), open_fn=game.paths.open)):
+		# read .ltx file to buffer
+		with game.paths.open(section.ltx.ltx_file_path, 'rb') as f:
+			buff = f.readlines()
+		# write buffer to .ltx file
+		for i, line in enumerate(buff):
+			if i in line_indexes.values():
+				# found .ltx file line with lvalue to update
+				new_value = values.get(next(k for k, v in line_indexes.items() if v == i))
+				eq_index = line.find(b'=')
+				end_index = find_in_line(line, (b';', b'\r', b'\n'), eq_index)
+				line = bytearray(line)  # line: lvalue = rvalue
+				# check is rvalue to replace is localized id
+				if (rvalue := line[eq_index + 1:end_index]):  # rvalue to replace
+					# try treat rvalue as localize id
+					rvalue = rvalue.strip().decode()
+					if game.localization.update_file(rvalue, new_value, True):
+						continue  # .xml localization file updated
+				# replace rvalue in .ltx file
+				line[eq_index + 1:end_index] = (' ' + new_value).encode('cp1251')
+				is_buffer_dirty = True
+		if is_buffer_dirty:
+			with game.paths.open(section.ltx.ltx_file_path, 'wb') as f:
+				f.write(line)
+		return ret
+	return ret
 
 if __name__ == '__main__':
 	import argparse

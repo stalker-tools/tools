@@ -130,12 +130,12 @@ used to get original game (.db/.xdb files only) infographics; default: false
 				return element.getAttribute('id')
 			if (buff := get_child_element_values(element, element_name, '\n')):
 				if loc:
-					if (buff2 := loc.string_table.get(buff)):
+					if (buff2 := loc.get(buff)):
 						return buff2
 					if element_name =='name':
 						# enforce localization process
 						if loc.try_find_and_add(buff):
-							if (buff2 := loc.string_table.get(buff)):
+							if (buff2 := loc.get(buff)):
 								return buff2
 				if element_name == 'reputation':
 					try:

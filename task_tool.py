@@ -119,7 +119,7 @@ used to get original game (.db/.xdb files only) infographics; default: false
 				if (value := get_task_value(task, value_name)):
 					if value_name in LOCALIZED_TASK_VALUE_NAMES:
 						# try get localization
-						if (localized_value := loc.string_table.get(value)):
+						if (localized_value := loc.get(value)):
 							return localized_value
 						print(f'localization not found: {value}', file=stderr)
 					return value

@@ -13,7 +13,7 @@ from PIL.Image import open as image_open
 try:
 	from version import PUBLIC_VERSION, PUBLIC_DATETIME
 except ModuleNotFoundError: PUBLIC_VERSION, PUBLIC_DATETIME = '', ''
-from ltx_tool import Ltx
+from ltx_tool import Ltx, update_section_values
 from paths import Config as PathsConfig, DbFileVersion, DEFAULT_GAMEDATA_PATH
 from GameConfig import GameConfig
 from icon_tools import IconsEquipment, get_image_as_html_img
@@ -584,9 +584,63 @@ background: url("data:image/svg+xml,%3Csvg viewBox='0 0 20 300' xmlns='http://ww
 
 	print(f'</body></html>')
 
-def csv(gamedata: PathsConfig, localization: str, verbose: int, kind: str, csv_file_path: str):
-	'.csv inport/export'
+def csv(gamedata: PathsConfig, localization: str, csv_file_path: str, verbose: int, kind: str | None = None, do_import = False):
+	'.csv import/export'
 	game = GameConfig(gamedata, localization, verbose)
+
+	def split_values(line: str) -> tuple[str | None, list[str] | None]:
+		values = []
+		ltx_section_name, _, buff = line.partition(',')
+		ltx_section_name = ltx_section_name.strip('[').strip(']').strip()
+		if not ltx_section_name:
+			return None, None
+		# split values: , or ," or ", or ","
+		prev_index = 0
+		wait_quote = False
+		for i, ch in enumerate(buff):
+			if ch == ',':
+				if wait_quote:
+					if buff[i - 1] == '"':
+						wait_quote = False
+						values.append(buff[prev_index:i-1])
+						if buff[i + 1] == '"':
+							# ","
+							wait_quote = True
+							prev_index = i + 2
+						else:
+							# ",
+							prev_index = i + 1
+				else:
+					values.append(buff[prev_index:i])
+					if buff[i + 1] == '"':
+						# ,"
+						wait_quote = True
+						prev_index = i + 2
+					else:
+						# ,
+						prev_index = i + 1
+		if wait_quote:
+			values.append(buff[prev_index:-1])
+		else:
+			values.append(buff[prev_index:])
+		return ltx_section_name, values
+
+	def iter_csv_file() -> Iterator[tuple[bool | str, list[str]]]:
+		with open(csv_file_path) as f:
+			fields_names: tuple[str] | None = None
+			while (line := f.readline()):  # read .csv file line by line
+				line = line.strip()
+				if fields_names is None:
+					# first line # [] and fields names
+					fields_names = tuple(map(str.strip, line.split(',')[1:]))
+					if len(fields_names) < 2:
+						raise ValueError(f'Expected: fileds names; has: {line}')
+					yield False, fields_names
+				else:
+					# next lines # .ltx section name and fields values
+					ltx_section_name, values = split_values(line)
+					if ltx_section_name:
+						yield ltx_section_name, values
 
 	def export():
 		'export from .ltx files to .csv file'
@@ -640,6 +694,8 @@ def csv(gamedata: PathsConfig, localization: str, verbose: int, kind: str, csv_f
 						case 'ammo': iter = game.ammo_iter
 						case 'outfits': iter = game.outfits_iter
 						case 'weapons': iter = game.weapons_iter
+						case _:
+							raise ValueError(f'.ltx filter kind not correct: {kind}')
 					if iter:
 						out_buff = line + '\n'
 						for ltx_section in sorted(iter(), key=lambda x: x.name):
@@ -657,9 +713,25 @@ def csv(gamedata: PathsConfig, localization: str, verbose: int, kind: str, csv_f
 
 	def import_():
 		'import from .csv file to .ltx files'
-		pass
 
-	if kind:
+		fields_names = None
+		for ltx_section_name, values in iter_csv_file():
+			if not ltx_section_name:
+				# values names list
+				fields_names = values
+			else:
+				# .ltx section name and values list
+				if (ltx_section := game.find(ltx_section_name)):
+					if len(fields_names) != len(values):
+						raise ValueError(f'.csv file is not table: fields names count {len(fields_names)} not equals line values {values}')
+					values_names = dict(zip(fields_names, values))  # join field names (first .csv line) and its values
+					update_section_values(ltx_section, values_names, game)
+				else:
+					raise ValueError(f'.ltx section not found: section name {ltx_section_name}')
+
+	if do_import:
+		import_()
+	elif kind:
 		export_kind()
 	else:
 		export()
@@ -747,9 +819,10 @@ used to get original game (.db/.xdb files only) infographics; default: false
 				help=f'config file path; default: {DEFAULT_CONFIG_PATH}')
 			parser_ = subparsers.add_parser('csv', help='csv: import/export to/from .csv (comma separated values) file')
 			parser_.add_argument('--kind', choices=('ammo', 'weapons', 'outfits'),
-				help='''export .ltx sections to table .csv file; first line: fields names, next lines: section name, fields values
-example .csv file:
+				help='''export .ltx sections to table .csv file with filter; first line: fields names
+example .csv file: [],inv_name,inv_name_short,description
 ''')
+			parser_.add_argument('-i', '--import', action='store_true', help='import .csv file to gamedata path')
 			parser_.add_argument('csv', metavar='PATH', help='.csv file path')
 			return parser.parse_args()
 
@@ -788,7 +861,7 @@ example .csv file:
 				analyse(paths_config if paths_config else args.gamedata, config)
 			case 'csv':
 				# comma separated values as table from/to .ltx files
-				csv(paths_config, 'rus', verbose, args.kind, args.csv)
+				csv(paths_config, 'rus', args.csv, verbose, args.kind, getattr(args, 'import'))
 
 	try:
 		main()

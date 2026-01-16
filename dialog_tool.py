@@ -169,7 +169,7 @@ def create_dialog_graph(dialog: Element, engine: str, style: DarkStyle, loc: Loc
 
 		ret = ''
 		for id in ids:
-			if (text := loc.string_table.get(id)):
+			if (text := loc.get(id)):
 				ret += text
 		return smart_lines_split(ret)
 
@@ -368,7 +368,7 @@ used to get original game (.db/.xdb files only) infographics; default: false
 									ret += get_child_element_values(e, 'text', '\n')
 						elif loc.string_table:
 							# try find ids in localization string_table
-							ret = '\n'.join(map(lambda id: loc.string_table.get(id, ''), ids))
+							ret = '\n'.join(map(lambda id: loc.get(id) or '', ids))
 						return smart_lines_split(ret)
 
 					def add_graph_node(phrase: Element) -> bool:

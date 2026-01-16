@@ -36,7 +36,7 @@ class SectionsBase:
 		for section in self.sections:
 			if (value := section.get(value_name)) and (inv_name_short := section.get('inv_name_short')):
 				# try localize name
-				if (buff := self.localization.string_table.get(inv_name_short)):
+				if (buff := self.localization.get(inv_name_short)):
 					inv_name_short = buff
 				yield section.name, inv_name_short, value
 
@@ -360,7 +360,7 @@ class GameConfig:
 					break
 			return ret
 
-		if (buff := self.localization.string_table.get(id, None if localized_only else id)):
+		if (buff := self.localization.get(id)):
 			# has localization
 			if html_format and '%c[' in buff:
 				return process_tags(buff)

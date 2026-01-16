@@ -51,13 +51,14 @@ class Config:
 	'Game Paths config'
 
 	def __init__(self, game_path: str, version: str | None = None, gamedata_path: str = DEFAULT_GAMEDATA_PATH,
-			exclude_db_files: list[str] | None = None, verbose: int = 0, exclude_gamedata: bool = False):
-		self.game_path = game_path
-		self.gamedata_path = gamedata_path
+			exclude_db_files: list[str] | None = None, verbose: int = 0, exclude_gamedata: bool = False, gamedata_readonly = False):
+		self.game_path = game_path  # game path: .db/.xdb files path
+		self.gamedata_path = gamedata_path  # gamedata path
 		self.version = version
-		self.exclude_db_files = exclude_db_files
+		self.exclude_db_files = exclude_db_files  # not use .db/.xdb files
 		self.verbose = verbose
-		self.is_gamedata_exclude = exclude_gamedata
+		self.is_gamedata_exclude = exclude_gamedata  # not use files from gamedata path
+		self.is_gamedata_readonly = exclude_gamedata  # us files from gamedata path as readonly
 	def __repr__(self):
 		return f'game_path="{self.game_path}" gamedata_path="{self.gamedata_path}" version={self.version} exclude_db_files={self.exclude_db_files} is_gamedata_exclude={self.is_gamedata_exclude}'
 
@@ -402,12 +403,16 @@ class OsGamedataFs(LayerBase):
 		super().__init__()
 		self.paths: Paths = paths
 
-	def _find(self, path: str, file_wanted: bool = True) -> tuple[PathType, Path] | None:
+	def _find(self, path: str, file_wanted: bool = True) -> tuple[PathType | None, Path] | None:
 		'''finds file in OS gamedata path
 		returns (type, OS path)
 		'''
-		if (f := self.paths.gamedata / self.paths.convert_path_to_os(path)) and f.exists():
-			return (PathType.File if f.is_file() else PathType.Path, f)
+		if (f := self.paths.gamedata / self.paths.convert_path_to_os(path)):
+			# it gamedata file
+			if f.exists():
+				return (PathType.File if f.is_file() else PathType.Path, f)
+			# file not exists
+			return (None, f)
 		return None
 
 	def exists(self, path: str, file_wanted: bool = True) -> PathType:
@@ -416,12 +421,20 @@ class OsGamedataFs(LayerBase):
 		return PathType.NotExists
 
 	def open(self, path: str, mode: str) -> object | None:
-		if '+' in mode or 'w' in mode:
-			raise self.OsFilesIsReadOnlyFs(f'open(path={path}, {mode=})')
+		if self.paths.config.is_gamedata_readonly:
+			if '+' in mode or 'w' in mode:
+				raise self.OsFilesIsReadOnlyFs(f'open(path={path}, {mode=})')
 		if (item := self._find(path)):
 			_type, f = item
 			# print(f'{item}')
-			return f.open(mode if 'b' in mode else 'b' + mode)
+			if _type is None:
+				if '+' in mode or 'w' in mode:
+					# file not exists # create file
+					f.parent.mkdir(parents=True, exist_ok=True)
+					return f.open(mode if 'b' in mode else 'b' + mode)
+			else:
+				return f.open(mode if 'b' in mode else 'b' + mode)
+
 		return None
 
 
