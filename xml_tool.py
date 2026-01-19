@@ -74,6 +74,41 @@ def get_child_element_values(element: Element, child_name: str, join_str: str | 
 			ret.append(e.nodeValue)
 	return join_str.join(ret) if join_str is not None else ret
 
+def iter_lines(buff: bytes) -> Iterator[tuple[int, int, bytes]]:
+	'''iters (line no: 1.., line position: 0.., line) with automatic detection of line delimiter
+	buffer can be changed while iterating; used to edit iterated lines
+	'''
+
+	LINE_SEPS = b'\x0d\x0a'
+
+	def define_line_seps(buff: bytes) -> bytes | None:
+		ret = []
+		line_sep_was_found = False
+		for ch in buff:
+			if ch in LINE_SEPS:
+				line_sep_was_found = True
+				ret.append(ch)
+			elif line_sep_was_found:
+				return bytes(ret)
+		return None
+
+	if (line_seps := define_line_seps(buff)):
+		# it multiline text
+		line_no, after_line_sep_index, line_seps_len = 1, 0, len(line_seps)
+		while after_line_sep_index < len(buff):
+			if (next_line_sep_index := buff.find(line_seps, after_line_sep_index)):
+				if next_line_sep_index < 0:
+					# last .xml line
+					yield (line_no, after_line_sep_index, buff[after_line_sep_index:])
+					break
+				buff_len = len(buff)
+				yield (line_no, after_line_sep_index, buff[after_line_sep_index:next_line_sep_index])
+				if buff_len != len(buff):
+					# buff lenght was changed
+					next_line_sep_index += len(buff) - buff_len
+				after_line_sep_index = next_line_sep_index + line_seps_len
+				line_no += 1
+
 
 class XmlParser:
 	'''.xml files parser with source reflexion; special for X-ray: out-of-standard W3C XML
@@ -82,7 +117,6 @@ class XmlParser:
 	tag inner value in one line: tag open/close and inner value in one line; use \n for new line
 	'''
 
-	LINE_SEPS = b'\x0d\x0a'
 	INCLUDE_DIRECTIVE = b'#include'
 	DEFAULT_ENCODING = 'utf-8'
 
@@ -92,13 +126,14 @@ class XmlParser:
 
 
 	class Tag:
-		'xml tag with attributes and inner value'
+		'xml tag with attributes and inner value; tag editing facility is supported'
 
-		__slots__ = ('buff', 'encoding', 'line_no', 'line_pos')
+		__slots__ = ('buff', 'encoding', 'line_no', 'line_pos', '_is_buff_dirty')
 
 		def __init__(self, buff: bytes, encoding: str, line_no: int, line_pos: int):
-			self.buff, self.encoding = buff, encoding
+			self.buff, self.encoding = buff, encoding  # text with encoding
 			self.line_no, self.line_pos = line_no, line_pos  # .xml file line: 1.., line absolute pos: 0..
+			self._is_buff_dirty = False  # buffer was changed
 
 		@property
 		def name(self) -> bytes:
@@ -131,43 +166,63 @@ class XmlParser:
 
 		@property
 		def value_pos_and_len(self) -> tuple[int, int]:
-			'returns tag value for .xml file absolute pos: 0.., len: 0..'
+			'returns tag inner value pos: 0.., len: 0..'
 			inner_pos = self.buff.find(b'>') + 1  # tag inner pos
-			return (self.line_pos + inner_pos, self.buff.rfind(b'</') - inner_pos)
+			return (inner_pos, self.buff.rfind(b'</') - inner_pos)
+
+		@property
+		def value_absolute_pos_and_len(self) -> tuple[int, int]:
+			'returns tag inner value for .xml file absolute pos: 0.., len: 0..'
+			pos, len = self.value_pos_and_len
+			return (self.line_pos + pos, len)
+
+		def set_value(self, new_value: str):
+			'sets tag inner value'
+			pos, len = self.value_pos_and_len
+			if not isinstance(self.buff, bytearray):
+				self.buff = bytearray(self.buff)
+			self.buff[pos:pos+len] = new_value.encode(self.encoding)
+			self._is_buff_dirty = True
+
+
+	class FileBuffer:
+		'buffered file read/write'
+
+		def __init__(self, paths: Paths, file_path: str):
+			self.paths = paths
+			self.file_path = file_path
+			self.is_dirty = False
+			self.buff: bytearray | None = None
+			self._read()
+
+		def _read(self):
+			with self.paths.open(self.file_path, 'rb') as f:
+				if (buff := f.read()):
+					self.buff = bytearray(buff)
+
+		def save(self):
+			if self.buff:
+				with self.paths.open(self.file_path, 'wb') as f:
+					f.write(self.buff)
 
 
 	def __init__(self, paths: Paths, file_path: str):
 		self.paths = paths
 		self.file_path = file_path
 
-	def iter_lines(self, file_path: str) -> Iterator[tuple[int, int, bytes]]:
+	def _iter_lines(self, file_path: str) -> Iterator[tuple[int, int, bytes]]:
 		'iters (line no: 1.., line position: 0.., line)'
 
-		def define_line_seps(buff: bytes) -> bytes | None:
-			ret = []
-			line_sep_was_found = False
-			for ch in buff:
-				if ch in self.LINE_SEPS:
-					line_sep_was_found = True
-					ret.append(ch)
-				elif line_sep_was_found:
-					return bytes(ret)
-			return None
-
 		with self.paths.open(file_path, 'rb') as f:
-			if (buff := f.read()):
-				if (line_seps := define_line_seps(buff)):
-					# it multiline text
-					line_no, after_line_sep_index, line_seps_len = 1, 0, len(line_seps)
-					while after_line_sep_index < len(buff):
-						if (next_line_sep_index := buff.find(line_seps, after_line_sep_index)):
-							if next_line_sep_index < 0:
-								# last .xml line
-								yield (line_no, after_line_sep_index, buff[after_line_sep_index:])
-								break
-							yield (line_no, after_line_sep_index, buff[after_line_sep_index:next_line_sep_index])
-							after_line_sep_index = next_line_sep_index + line_seps_len
-							line_no += 1
+			# load buffer from .xml file
+			fb = self.FileBuffer(self.paths, file_path)
+			if fb.buff:
+				# process buffer line by line
+				for v in iter_lines(fb.buff):
+					yield fb, *v
+				if fb.is_dirty:
+					# buffer was changed # save buffer to .xml file
+					fb.save()
 
 	def parse(self) -> Iterator[str | Tag]:
 		'''iters xml file with included xml files
@@ -175,16 +230,24 @@ class XmlParser:
 		it loads xml file into memory
 		'''
 
+		def yield_tag():
+			tag = self.Tag(line[1:-1], encoding, line_no, line_pos+offset+1)
+			buff_len = len(tag.buff)
+			yield (tag)
+			if tag._is_buff_dirty:
+				fb.buff[tag.line_pos:tag.line_pos+buff_len] = tag.buff
+				fb.is_dirty = True
+
 		def parse_include(file_path: str):
 			yield file_path
-			for line_no, line_pos, _line in self.iter_lines(file_path):
+			for fb, line_no, line_pos, _line in self._iter_lines(file_path):
 				line = _line.strip()
 				offset = _line.find(line)
 				if line.startswith(b'<'):
 					if not line.endswith(b'>'):
 						# one-line tags supports only
 						raise self.MissingCloseTag(f'Close tag expected; file: {file_path}; line {line_no}: {line}')
-					yield (self.Tag(line[1:-1], encoding, line_no, line_pos+offset+1))
+					yield from yield_tag()
 
 		def get_encoding_from_tag(tag: str) -> str | None:
 			'returns encoding name from <? ?> tag; tag without open/close symbols'
@@ -195,7 +258,7 @@ class XmlParser:
 
 		yield self.file_path
 		encoding = self.DEFAULT_ENCODING
-		for line_no, line_pos, _line in self.iter_lines(self.file_path):
+		for fb, line_no, line_pos, _line in self._iter_lines(self.file_path):
 			line = _line.strip()
 			offset = _line.find(line)
 			if line.startswith(b'</'):
@@ -217,7 +280,7 @@ class XmlParser:
 				if not line.endswith(b'>'):
 					# one-line tags supports only
 					raise self.MissingCloseTag(f'Close tag expected; file: {self.file_path}; line {line_no}: {line}')
-				yield (self.Tag(line[1:-1], encoding, line_no, line_pos+offset+1))
+				yield from yield_tag()
 
 
 if __name__ == '__main__':

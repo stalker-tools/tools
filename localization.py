@@ -106,7 +106,7 @@ class Localization:
 		return ret
 
 	def _iter_xml_file(self, file_path: str, *, low_level = False) -> Iterator[tuple[str, _STRINGS_ENTRY_TYPE] | XmlParser.Tag]:
-		'iters localization id and entry'
+		'iters localization ids with entry from .xml lile'
 
 		def normalize_text(text: str) -> str:
 			'replace escape sequence: new line'
@@ -184,7 +184,7 @@ class Localization:
 
 		return False
 
-	def get(self, id: str, case_insensitive=False, get_file_path = False) -> str | None:
+	def get(self, id: str, case_insensitive=False, *, get_file_path = False) -> str | None:
 		'returns localized str by id, or localize file path'
 		if self.string_table:
 			if (buff := self.string_table.get(id)):
@@ -196,31 +196,21 @@ class Localization:
 						return buff[1] if get_file_path else buff[0]
 		return None
 
-	def update_file(self, id: str, new_value: str, case_insensitive=False) -> bool:
-		'returns True if localized string by id was modified in .xml file'
+	def update_files(self, ids_values: dict[str, str], case_insensitive=False):
+		'updates .xml files with localization ids'
 
-		def replace_id_value(tag: XmlParser.Tag):
-			'replaces tag inner value in .xml file with id'
-			# load .xml file to modify
-			with self.paths.open(file_path, 'br') as f:
-				buff = bytearray(f.read())
-			# define binary piece and modify it
-			pos, len = tag.value_pos_and_len
-			buff[pos:pos+len] = new_value.encode(tag.encoding)
-			# write modified .xml file
-			with self.paths.open(file_path, 'wb') as f:
-				f.write(buff)
-
-		# find .xml file path for localization id
-		if (file_path := self.get(id, case_insensitive, True)):
-			# parse current .xml file and find .xml tag with id
-			for id_file, tag in self._iter_xml_file(file_path, low_level=True):
-				if id == id_file:
-					# id found # replace .xml tag inner value
-					replace_id_value(tag)
-					return True
-
-		return False
+		# collect .xml files paths
+		files_ids: set[str] = set()  # .xml files paths
+		for id in ids_values:
+			if (file_path := self.get(id, case_insensitive, get_file_path=True)):
+				files_ids.add(file_path)
+		# modify .xml files grouped by file path
+		for file_path in files_ids:
+			# update ids in .xml file # iter localization file: id text tag by id text tag
+			for id, tag in self._iter_xml_file(file_path, low_level=True):
+				if id in ids_values:
+					# localization id to update is found
+					tag.set_value(ids_values[id])
 
 
 if __name__ == '__main__':

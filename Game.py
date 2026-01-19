@@ -6,10 +6,12 @@
 # Author: Stalker tools, 2023-2026
 
 from typing import Iterator, NamedTuple
+from types import ModuleType
 from struct import unpack
 from configparser import ConfigParser, NoOptionError, NoSectionError
 from pathlib import Path
 from itertools import islice
+from sys import path as sys_path
 from PIL import ImageDraw, ImageColor, ImageFont
 from PIL.Image import open as image_open, Image
 # stalker-tools import
@@ -34,6 +36,20 @@ DEFAULT_FSGAME_FILE_NAME = 'fsgame.ltx'
 DEFAULT_GAMEDATA = 'gamedata'
 DEFAULT_ODYSSEY_CONFIG_FILE_NAME = 'odyssey.ini'
 DEFAULT_ODYSSEY_PATH = 'odyssey'
+
+
+class Events:
+
+
+	class MapLoad(NamedTuple):
+		name: str  # .ltx map (level) name
+		localized_name: str
+		source: object | None
+
+
+	class RunOrPause(NamedTuple):
+		run: bool  # True: run; False: pause
+		source: object | None
 
 
 class Game:
@@ -251,7 +267,7 @@ class Game:
 			return next(self.iter_actor_objects_raw(True))
 
 
-	def __init__(self, config: Config) -> None:
+	def __init__(self, config: Config, load_addons: bool = False) -> None:
 		self.config = config
 		# cache
 		self._icons_equipment: IconsEquipment | None = None
@@ -259,6 +275,9 @@ class Game:
 		self._icons_total: UiIconstotal | None = None
 		self._maps: Maps | None = None  # game maps (levels)
 		self._graph: GameGraph | None = None  # game graph
+		self.addons: dict[str, object] = {}
+		if load_addons:
+			self._load_addons()
 
 	# Game Files Paths API
 
@@ -279,6 +298,27 @@ class Game:
 		if (gamedata := self.gamedata_path):
 			return gamedata / 'game.graph'
 		return None
+
+	# Addons API
+
+	def _load_addons(self):
+		if (addons_path := Settings.Odyssey.get_path(self)) and addons_path.exists():
+			if self.config.game_config.verbose > 1:
+				print(f'Add addon path to Python: {addons_path.absolute()}')
+			sys_path.insert(0, str(addons_path.absolute()))
+			for p in Settings.Odyssey.iter_addons_paths(self):
+				if self.config.game_config.verbose:
+					print(f'Load addon: {p.absolute()}')
+				addon = __import__(p.stem)
+				if not hasattr(addon, 'ADDONS'):
+					print(f'Wrong addon: {p.absolute()}')
+					continue
+				for addon in addon.ADDONS:
+					self.addons[p.stem] = addon(self)
+
+	def event_sink(self, event: Events.MapLoad | Events.RunOrPause) -> None:
+		for addon in self.addons.values():
+			addon.event(event)
 
 	# Icons API
 
@@ -534,6 +574,29 @@ class Settings:
 				return cls()
 
 
+	class Odyssey:
+		'reads odyssey settings from Odyssey Config: odyssey.ini'
+
+		SECTION = 'odyssey'
+		PATH_OPTION = 'path'
+		DEFAULT_PATH = 'odyssey'
+
+		@classmethod
+		def get_path(cls, game: Game) -> Path:
+			'returns path'
+			# read from odyssey.ini
+			addons_path = Path(Settings.get_option(game, cls.SECTION, cls.PATH_OPTION, cls.DEFAULT_PATH))
+			if not addons_path.is_absolute():
+				addons_path = game.config.game_config.paths.path / addons_path
+			return addons_path
+
+		@classmethod
+		def iter_addons_paths(cls, game: Game) -> Iterator[Path]:
+			addons_path = Path(cls.get_path(game))
+			for p in (x for x in addons_path.iterdir() if x.is_file() and x.suffix == '.py'):
+				yield p
+
+
 if __name__ == '__main__':
 	from sys import argv
 	import argparse
@@ -591,11 +654,12 @@ Examples:
 			parser_.add_argument('-l', '--list', action='store_true', help='list saves names (.sav files stems)')
 			return parser.parse_args()
 
-		def create_game() -> Game:
+		def create_game(load_addons: bool = False) -> Game:
 			paths = PathsConfig(args.gamepath, args.version, args.gamedata, exclude_db_files=args.exclude_db_files, verbose=verbose)
 			game = Game(Game.Config(GameConfig(paths, localization=args.localization, verbose=verbose),
-					odyssey_config_file_name=args.odyssey,
-					fsgame_file_name=args.fsgame)
+				odyssey_config_file_name=args.odyssey,
+				fsgame_file_name=args.fsgame),
+				load_addons,
 				)
 			return game
 
@@ -609,7 +673,7 @@ Examples:
 
 			if verbose:
 				print('<h2>Game log:</h2><pre>')
-			game = create_game()
+			game = create_game(load_addons=True)
 			save = game.get_save(save_name)  # get .sav file
 			if verbose:
 				print(f'Load .sav file: {save.file_path.absolute()}')
