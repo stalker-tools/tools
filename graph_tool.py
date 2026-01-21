@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 # Author: Stalker tools, 2023-2026
 
-from collections.abc import Iterator
+from collections.abc import Iterator, Callable
 from typing import NamedTuple, Literal, Self
 from configparser import ConfigParser
 from plotly.subplots import make_subplots
@@ -584,57 +584,89 @@ background: url("data:image/svg+xml,%3Csvg viewBox='0 0 20 300' xmlns='http://ww
 
 	print(f'</body></html>')
 
+def get_csv_kinds(game: GameConfig | None = None) -> dict[str, Iterator[Ltx.Section] | None]:
+	'returns list of .ltx section kind filters'
+	return {
+		'ammo': game.ammo_iter if game else None,
+		'outfits': game.outfits_iter if game else None,
+		'weapons': game.weapons_iter if game else None,
+		}
+
 def csv(gamedata: PathsConfig, localization: str, csv_file_path: str, verbose: int, kind: str | None = None, do_import = False):
-	'.csv import/export'
+	'.ltx/.xml import/export from/to .csv file'
+
+	# make info from .db/.xdb gamedata path
 	game = GameConfig(gamedata, localization, verbose)
 
-	def split_values(line: str) -> tuple[str | None, list[str] | None]:
-		values = []
-		ltx_section_name, _, buff = line.partition(',')
-		ltx_section_name = ltx_section_name.strip('[').strip(']').strip()
-		if not ltx_section_name:
-			return None, None
-		# split values: , or ," or ", or ","
-		prev_index = 0
-		wait_quote = False
-		for i, ch in enumerate(buff):
-			if ch == ',':
-				if wait_quote:
-					if buff[i - 1] == '"':
-						wait_quote = False
-						values.append(buff[prev_index:i-1])
-						if buff[i + 1] == '"':
-							# ","
+	def iter_csv_file(*, without_values=False) -> Iterator[tuple[bool | str, list[str]]]:
+		'''iters .csv table file row by row
+		iters: first .csv row (False, .ltx fileds names: (name, name,..))
+		iters: next .csv rows (.ltx section name, .ltx fields values: (value, value,..))
+		'''
+
+		def split_values(line: str) -> tuple[str | None, list[str] | None]:
+			'returns second and next .csv rows: .ltx section name and it field values'
+
+			def get_buff_char(offset: int) -> str:
+				try:
+					return buff[i + offset]
+				except IndexError:
+					return ''
+
+			values = []
+			ltx_section_name, _, buff = line.partition(',')
+			ltx_section_name = ltx_section_name.strip('[').strip(']').strip()
+			if not ltx_section_name:
+				return None, None
+			if without_values:
+				return ltx_section_name, None
+			# split values: , or ," or ", or ","
+			prev_index = 0
+			wait_quote = False
+			for i, ch in enumerate(buff):
+				if i == 0 and ch == '"':
+					wait_quote = True
+					prev_index = i + 1
+				elif ch == ',':
+					if wait_quote:
+						if get_buff_char(-1) == '"':
+							wait_quote = False
+							values.append(buff[prev_index:i-1])
+							if get_buff_char(+1) == '"':
+								# ","
+								wait_quote = True
+								prev_index = i + 2
+							else:
+								# ",
+								prev_index = i + 1
+					else:
+						values.append(buff[prev_index:i])
+						if get_buff_char(+1) == '"':
+							# ,"
 							wait_quote = True
 							prev_index = i + 2
 						else:
-							# ",
+							# ,
 							prev_index = i + 1
-				else:
-					values.append(buff[prev_index:i])
-					if buff[i + 1] == '"':
-						# ,"
-						wait_quote = True
-						prev_index = i + 2
-					else:
-						# ,
-						prev_index = i + 1
-		if wait_quote:
-			values.append(buff[prev_index:-1])
-		else:
-			values.append(buff[prev_index:])
-		return ltx_section_name, values
+			if wait_quote:
+				values.append(buff[prev_index:-1])
+			else:
+				values.append(buff[prev_index:])
+			return ltx_section_name, values
 
-	def iter_csv_file() -> Iterator[tuple[bool | str, list[str]]]:
+		if verbose:
+			print(f'\tOpen "{csv_file_path}"')
 		with open(csv_file_path) as f:
 			fields_names: tuple[str] | None = None
 			while (line := f.readline()):  # read .csv file line by line
 				line = line.strip()
 				if fields_names is None:
-					# first line # [] and fields names
+					# first line # file format magic [] and fields names
 					fields_names = tuple(map(str.strip, line.split(',')[1:]))
 					if len(fields_names) < 2:
 						raise ValueError(f'Expected: fileds names; has: {line}')
+					if verbose:
+						print(f'\tLtx fields names: "{", ".join(fields_names)}"')
 					yield False, fields_names
 				else:
 					# next lines # .ltx section name and fields values
@@ -642,99 +674,146 @@ def csv(gamedata: PathsConfig, localization: str, csv_file_path: str, verbose: i
 					if ltx_section_name:
 						yield ltx_section_name, values
 
+	def get_calc_func(field_name: str) -> tuple[str, Callable] | None:
+
+		def one_div(value: str) -> str:
+			return f'{(1 / float(value)):f}'
+
+		if field_name.startswith('1/'):
+			return (field_name[2:], one_div)
+		
+		return None
+
+	def get_csv_line_from_ltx_section(ltx_section: Ltx.Section, fields_names: tuple[str]) -> str:
+		'returns .csv line from .ltx section values; used for export'
+
+		if verbose:
+			print(f'Ltx section: [{ltx_section.name}] {ltx_section.ltx.ltx_file_path}')
+
+		ret = f'[{ltx_section.name}]'
+		for field_name in fields_names:  # iter fields names from .csv file
+			calc_func = get_calc_func(field_name)
+			if (calc_func):
+				# calculated value by function
+				field_name, calc_func = calc_func
+			if (field_value := ltx_section.get(field_name)):
+				if isinstance(field_value, tuple):
+					# list of values # usually numbers/floats list
+					field_value, loc = '"' + ', '.join(field_value) + '"', None
+				elif calc_func:
+					# calculated value by function
+					field_value = calc_func(field_value)
+				else:
+					# try localize field value
+					loc = game.localization.get(field_value)
+				if verbose:
+					print(f'\t{field_name}={field_value}{" localized: "+loc if loc else ""}')
+				# add .ltx field value to .csv line
+				ret += (',' if ret else '') + ('"'+loc.replace('"', '""')+'"' if loc else field_value)
+			else:
+				ret += ','
+		return ret
+
 	def export():
 		'export from .ltx files to .csv file'
+
+		if verbose:
+			print('Export from .ltx/.xml files to .csv')
+
 		out_buff = ''
-		with open(csv_file_path) as f:
-			fields_names: tuple[str] | None = None
-			while (line := f.readline()):
-				line = line.strip()
-				if fields_names is None:
-					# first line # [] and fields names
-					fields_names = tuple(map(str.strip, line.split(',')[1:]))
-					if len(fields_names) < 2:
-						raise ValueError(f'Expected: fileds names; has: {line}')
-					# if fields_names[0] != '[]':
-					# 	raise ValueError(f'Expected: []; has: {fields_names[0]} in line {line}')
-					out_buff += line + '\n'
-				else:
-					# next lines # .ltx section name and fields values
-					if (buff := tuple(map(str.strip, line.split(',')))):
-						if buff[0] == '':
-							out_buff += line
-						elif len(buff) - 1 != len(fields_names):
-							raise ValueError(f'Expected fields values: {", ".join(fields_names[1:])}; has: {line}')
-						elif (ltx_section := game.find(buff[0][1:-1].strip() if buff[0].startswith('[') else buff[0])):
-							buff2 = buff[0]
-							for field_name in fields_names:
-								if (field_value := ltx_section.get(field_name)):
-									loc = game.localization.get(field_value)
-									buff2 += (',' if buff2 else '') + ('"'+loc.replace('"', '""')+'"' if loc else field_value)
-								else:
-									buff2 += ','
-							out_buff += buff2
-					out_buff += '\n'
+		fields_names: tuple[str] | None = None
+		for ltx_section_name, values in iter_csv_file(without_values=True):  # iter .csv lines
+			if not ltx_section_name:
+				# .csv first row # .csv table header # values names list
+				fields_names = values
+				out_buff += '[],' + ','.join(values) + '\n'  # first .csv row
+			else:
+				# .csv next lines # .csv table values # .ltx section name and .ltx values list
+				if (ltx_section := game.find(ltx_section_name)):  # get .ltx section by name
+					out_buff += get_csv_line_from_ltx_section(ltx_section, fields_names)
+				out_buff += '\n'
+
+		# save out buffer to .csv file
 		if out_buff:
 			with open(csv_file_path, 'w') as f:
 				f.write(out_buff)
 
 	def export_kind():
 		'export from .ltx files to .csv file by kind filter: ammo, weapons e.t.c'
-		with open(csv_file_path) as f:
-			fields_names: tuple[str] | None = None
-			while (line := f.readline()):
-				line = line.strip()
-				if fields_names is None:
-					# first line # [] and fields names
-					fields_names = tuple(map(str.strip, line.split(',')[1:]))
-					if len(fields_names) < 2:
-						raise ValueError(f'Expected: fileds names; has: {line}')
-					iter = None
-					match kind:
-						case 'ammo': iter = game.ammo_iter
-						case 'outfits': iter = game.outfits_iter
-						case 'weapons': iter = game.weapons_iter
-						case _:
-							raise ValueError(f'.ltx filter kind not correct: {kind}')
-					if iter:
-						out_buff = line + '\n'
-						for ltx_section in sorted(iter(), key=lambda x: x.name):
-							buff = f'[{ltx_section.name}]'
-							for field_name in fields_names:
-								if (field_value := ltx_section.get(field_name)):
-									loc = game.localization.get(field_value)
-									buff += (',' if buff else '') + ('"'+loc.replace('"', '""')+'"' if loc else field_value)
-								else:
-									buff += ','
-							out_buff += buff + '\n'
+
+		if verbose:
+			print(f'Export from .ltx/.xml files to .csv file with .ltx section kind filter: {kind}')
+
+		for ltx_section_name, values in iter_csv_file():  # iter .csv lines
+			if not ltx_section_name:
+				# .csv first line # file format magic [] and .ltx fields names
+				# define .ltx sections filtered iterator from kind (filter)
+				if (iter := get_csv_kinds(game).get(kind)):  # iterator for filtered .ltx sections
+					# iter .ltx sections acording to filter # store data to out buffer
+					out_buff += '[],' + ','.join(values) + '\n'  # first .csv row
+					for ltx_section in sorted(iter(), key=lambda x: x.name):  # iter section by section sorted by section name
+						out_buff += get_csv_line_from_ltx_section(ltx_section, values) + '\n'
+				else:
+					raise ValueError(f'.ltx filter kind not correct: {kind}; supported one from: {", ".join(get_csv_kinds().keys())}')
+			break  # only first .csv row used
+
+		# save out buffer to .csv file
 		if out_buff:
 			with open(csv_file_path, 'w') as f:
 				f.write(out_buff)
 
 	def import_():
-		'import from .csv file to .ltx files'
+		'''import from .csv file to .ltx/.xml files
+		.csv format:
+			first row - .ltx section fields names (second and next columns)
+			next rows - .ltx section name (first column); .ltx section fields values (second and next columns)
+		'''
 
-		fields_names = None
-		for ltx_section_name, values in iter_csv_file():
+		def calc_values(fields_names: tuple[str], values: tuple[str]) -> dict[str, str]:
+			'returns fields calculated values is any'
+			ret = {}
+			for field_name, value in zip(fields_names, values):
+				if (calc_func := get_calc_func(field_name)):
+					ret[calc_func[0]] = calc_func[1](value)
+				else:
+					ret[field_name] = value
+			return ret
+
+		if verbose:
+			print('Import from .csv to .ltx/.xml files')
+
+		fields_names: tuple[str] | None = None  # .ltx fields names
+		for ltx_section_name, values in iter_csv_file():  # iter .csv lines
 			if not ltx_section_name:
-				# values names list
+				# .csv first row # .csv table header # values names list
 				fields_names = values
 			else:
-				# .ltx section name and values list
-				if (ltx_section := game.find(ltx_section_name)):
-					if len(fields_names) != len(values):
+				# .csv next lines # .csv table values # .ltx section name and .ltx values list
+				if (ltx_section := game.find(ltx_section_name)):  # get .ltx section by name
+					if verbose:
+						print(f'Ltx section: [{ltx_section.name}] {ltx_section.ltx.ltx_file_path}')
+					# check .csv table: header with this row
+					if len(fields_names) != len(values):  # check .csv table: header and values counts
 						raise ValueError(f'.csv file is not table: fields names count {len(fields_names)} not equals line values {values}')
-					values_names = dict(zip(fields_names, values))  # join field names (first .csv line) and its values
-					update_section_values(ltx_section, values_names, game)
+					# save .csv table row to .ltx section
+					values_names = calc_values(fields_names, values)  # join field names (first .csv line) and its values
+					if verbose:
+						for k, v in values_names.items():
+							print(f'\t{k}={v}')
+					update_section_values(ltx_section, values_names, game)  # save .csv table values to .ltx file
 				else:
 					raise ValueError(f'.ltx section not found: section name {ltx_section_name}')
 
-	if do_import:
-		import_()
-	elif kind:
-		export_kind()
-	else:
-		export()
+	# main functions
+	try:
+		if do_import:
+			import_()
+		elif kind:
+			export_kind()
+		else:
+			export()
+	except FileNotFoundError as e:
+		print(f'File not found: {e}')
 
 
 if __name__ == '__main__':
@@ -748,16 +827,28 @@ if __name__ == '__main__':
 
 		def parse_args():
 			parser = argparse.ArgumentParser(
-				description='''Infographics brochure maker for X-ray gamedata files.
+				description='''Infographics brochure maker for main game info and gameplay settings.
+Used to game developer engagement with gamers.
 Out format: html with embedded images.
 
 Note:
 It is not necessary to extract .db/.xdb files to gamedata path. This utility can read all game files from .db/.xdb files !
-''',
-				epilog=f'''Examples:
 
-Note:
-You should implement "brochure.ini" file in game folder (where .db/.xdb files).
+And game developer tools:
+- analyze infographics .html maker for .ltx files; out format: html with embedded images and graphs
+- table-based export/import: .ltx/.xml <-> .csv table
+''',
+				epilog=f'''Examples.
+
+	Make brochure infographics .html file (with embedded images).
+
+Contains localized .ltx sections names with fields names and additional text with images.
+So developer can introduce main game info and gameplay settings.
+
+Note: game developer should implement "brochure.ini" file in game folder (where .db/.xdb files).
+This file holds various info and brochure settings:
+- .html style: default - dark
+- .html caption, head title and images, author info footer
 
 For example, "brochure.ini" for SoC (download Stalkercover.jpg from wiki to game folder):
 [global]
@@ -771,20 +862,66 @@ style = seaborn
 title = S.T.A.L.K.E.R.: Тень Чернобыля
 pictures = Stalkercover.jpg
 
-Make brochure .html file (with embedded images):
-
 Run from game path (where .db/.xdb files):
 {argv[0]} -t 2947ru b > "SoC.html"
 
 Run outside of game path:
 {argv[0]} -g ".../S.T.A.L.K.E.R" -t 2947ru b > "SoC.html"
 
-For game developers:
+	For game developers.
 
-Make analyse .html page (with embedded images):
+	Make analyze infographics .html file (with embedded images and graphs).
+
+Contains .ltx sections names with fields names. Textual info localized. So developer can check main game info.
+
+Make analyse infographics .html page:
 {argv[0]} -g ".../S.T.A.L.K.E.R" -t 2947ru a > "SoC.analyse.html"
 
-Export from .db/.xdb files to .csv table file:
+	Import/export .ltx sections as table-based .csv files.
+
+Encoding-aware notes.
+All .csv files have utf-8 encoding always.
+Localized .xml files have self-defined encoding. Do not edit this files by manually. Ltx files already have encoding mess !
+
+Note: be free to increase verbose by -v option.
+
+Export process allows split .ltx fields by number of .csv files to group kind-specific data for ease of use.
+For example, split text .ltx fields and power/reliability fields:
+- weapons.power.csv for weapons power;
+- weapons.names.csv for weapons names;
+- weapons.reliability.csv for weapons reliability.
+
+Note: names, descriptions and another textual info usually not mixed with numericals fields in .ltx - because localization problem.
+To solve this problem used additional storage: localization .xml files.
+Textual info where split into items with own ids and stored in simple structured localization .xml files.
+This allows an easy support multi languages mechanism by switching .xml files.
+But authors do not recommends to modify localization .xml files manually - it can lead to XML format/encoding errors.
+
+Table .csv table format involve two filters: .ltx sections names and .ltx section fields names:
+- first row:
+  - first column: file format magic: "[]"
+  - next columns: .ltx section fields names
+- next rows (can be omitted for --kind automatic filter):
+  - first column: .ltx section name
+  - next columns: .ltx section fields values
+
+Example of .csv for export .ltx 3 sections with fields: k_dist, k_disp, k_hit:
+[],k_dist,k_disp,k_hit
+[ammo_11.43x23_fmj],,,
+[ammo_11.43x23_hydro],,,
+[ammo_12x70_buck],,,
+
+Note: there is calculated fields: 1/.
+Example .csv file for weapons.reliability.csv (from .ltx condition_shot_dec field to the count of shots):
+[],1/condition_shot_dec
+
+Export process allows automatic define .ltx exported sections by sections kind filter.
+This allows automatic export all .ltx sections with fields names (used only .csv first row) for:
+- ammo
+- weapons
+- outfits
+
+	Export examples from .db/.xdb files to .csv table file.
 
 Export of selected .ltx sections for selected fields names:
 {argv[0]} -g ".../S.T.A.L.K.E.R" -t 2947ru csv "ammo.names.csv"
@@ -797,6 +934,11 @@ Export of all ammo kind .ltx sections (by filter --kind) for selected fields nam
 {argv[0]} -g ".../S.T.A.L.K.E.R" -t 2947ru csv --kind ammo "ammo.names.csv"
 ammo.names.csv input file (first line: .ltx field names):
 [],inv_name_short,inv_name,description
+
+	Import examples from .csv to gamedata path.
+
+Import from .csv to gamedata path:
+{argv[0]} -g ".../S.T.A.L.K.E.R" -t 2947ru csv -i "ammo.names.csv"
 ''',
 				formatter_class=argparse.RawTextHelpFormatter
 			)
@@ -818,7 +960,7 @@ used to get original game (.db/.xdb files only) infographics; default: false
 			parser_.add_argument('-c', '--config', metavar='PATH', default=DEFAULT_CONFIG_PATH,
 				help=f'config file path; default: {DEFAULT_CONFIG_PATH}')
 			parser_ = subparsers.add_parser('csv', help='csv: import/export to/from .csv (comma separated values) file')
-			parser_.add_argument('--kind', choices=('ammo', 'weapons', 'outfits'),
+			parser_.add_argument('--kind', choices=(get_csv_kinds().keys()),
 				help='''export .ltx sections to table .csv file with filter; first line: fields names
 example .csv file: [],inv_name,inv_name_short,description
 ''')
@@ -826,9 +968,11 @@ example .csv file: [],inv_name,inv_name_short,description
 			parser_.add_argument('csv', metavar='PATH', help='.csv file path')
 			return parser.parse_args()
 
+		# parse command-line arguments
 		args = parse_args()
 		verbose = args.v
 
+		# make game info
 		gamepath = Path(args.gamepath) if args.gamepath else Path()
 		paths_config = None
 		if gamepath:
@@ -840,6 +984,7 @@ example .csv file: [],inv_name,inv_name_short,description
 				verbose=verbose,
 				exclude_gamedata=args.exclude_gamedata)
 
+		# prepare some data for .html infographics
 		match args.mode:
 			case 'brochure' | 'b' | 'analyse' | 'a':
 				config_path = Path(args.config)
@@ -850,6 +995,7 @@ example .csv file: [],inv_name,inv_name_short,description
 				if not config_path.exists():
 					raise ValueError(f'Config file not found: {config_path}')
 
+		# run main function
 		match args.mode:
 			case 'brochure' | 'b':
 				# read config

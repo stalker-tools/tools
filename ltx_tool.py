@@ -265,7 +265,10 @@ def get_section_line_index(section: Ltx.Section, value_name: str | list[str], op
 		match x[0]:
 			case LtxKind.NEW_SECTION:
 				if is_section_body:
-					return None  # section was read but value with name were not found
+					# section was read but value with name were not found
+					if value_name_is_str:
+						return None
+					return ret  # return found values
 			case LtxKind.LET:
 				if section.name == x[2]:  # check section name
 					is_section_body = True
@@ -323,6 +326,8 @@ def update_section_values(section: Ltx.Section, values: dict[str, str], game: 'G
 	localize_buff: dict[str, str] = {}  # id: text
 	# get indexes of .ltx file lines for value names
 	if (line_indexes := get_section_line_index(section, values.keys(), open_fn=game.paths.open)):
+		# define .ltx files encoding in gamedata path
+		encoding, line_separator = game.paths.get_gamedata_text_info()
 		# read .ltx file to buffer
 		with game.paths.open(section.ltx.ltx_file_path, 'rb') as f:
 			buff = f.readlines()
@@ -336,23 +341,26 @@ def update_section_values(section: Ltx.Section, values: dict[str, str], game: 'G
 				line = bytearray(line)  # line: lvalue = rvalue
 				# check is rvalue to replace is localized id
 				if (rvalue := line[eq_index + 1:end_index]):  # rvalue to replace
-					rvalue = rvalue.strip().decode('cp1251')
+					rvalue = rvalue.strip().decode(encoding)
 					if rvalue.strip() == new_value:
 						continue  # no changes
 					# try treat rvalue as localize id
-					if (localized := game.localize(rvalue)):
+					if (localized := game.localize(rvalue, localized_only=True)):
 						# is localization id
 						if localized == new_value:
 							continue  # no changed
 						localize_buff[rvalue] = new_value
 						continue  # update of .xml localization file is buffered
-				# replace rvalue in .ltx file
-				line[eq_index + 1:end_index] = (' ' + new_value).encode('cp1251')
-				is_buffer_dirty = True
+					if rvalue == new_value:
+						continue  # no changed
+					# replace rvalue in .ltx file
+					line[eq_index + 1:end_index] = (' ' + new_value).encode(encoding)
+					buff[i] = line
+					is_buffer_dirty = True
 		if is_buffer_dirty:
 			# flush .ltx buffer to file
 			with game.paths.open(section.ltx.ltx_file_path, 'wb') as f:
-				f.write(line)
+				f.write(line_separator.join(buff))
 		if localize_buff:
 			# update .xml localization files
 			game.localization.update_files(localize_buff)

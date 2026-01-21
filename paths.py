@@ -14,6 +14,7 @@ from codecs import getreader, StreamReader
 from io import UnsupportedOperation
 from fnmatch import fnmatch
 from pickle import load as pickle_load, dump as pickle_dump
+from configparser import ConfigParser
 # tools imports
 try:
 	from version import PUBLIC_VERSION, PUBLIC_DATETIME
@@ -27,6 +28,7 @@ DEFAULT_OS_ENCODING = 'utf-8'
 DEFAULT_GAME_ENCODING = 'cp1251'
 TEXT_FILES_EXT = ('.ltx', '.xml', '.script')
 DEFAULT_GAME_LENESEP_B = b'\r\n'
+GAMEDATA_INFO_FILE_NAME = '_extract.ini'
 
 def is_xml_utf_8_file(path: str, buff: bytes | None = None) -> bool:
 	# little hack for .xml files; todo: use BOM to detect binary UTF format
@@ -221,6 +223,35 @@ class Paths:
 				del f
 		else:
 			raise FileNotFoundError(f'File not found: {path}')
+
+	def get_gamedata_info_parser(self) -> ConfigParser | None:
+		'returns info file parser if .ini file exists in gamedata path'
+		if self.gamedata.exists():
+			if (gamedata_info := self.gamedata / GAMEDATA_INFO_FILE_NAME) and gamedata_info.exists():
+				# get from gamedata info file
+				ret = ConfigParser()
+				ret.read(gamedata_info.absolute())
+				return ret
+		return None
+
+	def get_gamedata_text_info(self) -> tuple[str, bytes]:
+		'returns text files parameters: (encoding, line separator)'
+		if (gamedata_info := self.get_gamedata_info_parser()):
+			# gamedata .ini file exists # read from info file
+			encoding = gamedata_info.get('global', 'encoding', fallback=None)
+			if encoding is None or encoding.lower() == 'raw':
+				encoding = DEFAULT_GAME_ENCODING
+			if (line_separator := gamedata_info.get('global', 'line-separator', fallback=None)):
+				try:
+					line_separator = bytes.fromhex(line_separator)
+				except ValueError:
+					print(f'Wrong "line-separator" from gamedata .ini file: {line_separator}')
+					line_separator = DEFAULT_GAME_LENESEP_B
+			else:
+				line_separator = DEFAULT_GAME_LENESEP_B
+			return (encoding, line_separator)
+		# no gamedata info file
+		return (DEFAULT_GAME_ENCODING, DEFAULT_GAME_LENESEP_B)
 
 	# Well-known paths
 
@@ -445,6 +476,7 @@ if __name__ == "__main__":
 	from os.path import basename
 	from fnmatch import fnmatch
 	from typing import Iterator
+	from datetime import datetime, timezone
 
 	LINESEP_B = LINESEP.encode()
 	DEFAULT_GAMEDATA_PATH = 'gamedata'
@@ -585,9 +617,11 @@ used to copy of all gamedata files (.db/.xdb and gamedata sub-path) to another l
 				return buff.decode('utf-8')
 			return buff.decode(DEFAULT_GAME_ENCODING)
 
+		# parse command-line arguments
 		args = parse_args()
 		verbose = args.v
 
+		# run main function
 		match args.mode:
 
 			case 'extract' | 'e':
@@ -619,6 +653,26 @@ used to copy of all gamedata files (.db/.xdb and gamedata sub-path) to another l
 					print('No files to extract')
 					return
 
+				# save gamedata info file
+				line_separator = LINESEP_B if args.encoding != 'raw' else DEFAULT_GAME_LENESEP_B
+				start_time = datetime.now(timezone.utc)
+				gamedata_info = ConfigParser()
+				gamedata_info['global'] = {
+					'name': 'stalker-tools',
+					'version': f'{PUBLIC_VERSION} {PUBLIC_DATETIME}',
+					'db-version': p.config.version,
+					'exclude-db-files': args.exclude_db_files if args.exclude_db_files else '',
+					'filter': args.filter,
+					'encoding': args.encoding,
+					'line-separator': line_separator.hex(),
+					'datetime': start_time.astimezone().isoformat(timespec='minutes'),
+				}
+				gamedata_info_path = (extract_path / GAMEDATA_INFO_FILE_NAME).absolute()
+				gamedata_info_path.parent.mkdir(parents=True, exist_ok=True)
+				with open(gamedata_info_path, 'w') as f:
+					gamedata_info.write(f)
+				db_files_names = []
+
 				# extract file by file grouped by .db/.xdb files to use cached .db/.xdb reader
 				stat_write = stat_skip = 0  # files statistics
 				prev_f = None
@@ -638,6 +692,7 @@ used to copy of all gamedata files (.db/.xdb and gamedata sub-path) to another l
 					# open .db/.xdb file
 					if not db_reader or prev_f != f:
 						prev_f = f
+						db_files_names.append(str(f))
 						db_reader = XRReader(str(p.path / f), p.config.version)
 					# find file info in .db/.xdb header chunk and get it data from .db/.xdb file
 					for f_f in db_reader.iter_files():
@@ -655,7 +710,18 @@ used to copy of all gamedata files (.db/.xdb and gamedata sub-path) to another l
 					save_file(pp, buff)
 					stat_write += 1
 				# all files extracted
-				print(f'Total files: check {i+1}, write {stat_write}, skip {stat_skip}, text encoding {args.encoding}, line separator: {str(LINESEP_B if args.encoding != 'raw' else DEFAULT_GAME_LENESEP_B)[1:]} (hex: {(LINESEP_B if args.encoding != 'raw' else DEFAULT_GAME_LENESEP_B).hex()})')
+				# update gamedata info file
+				gamedata_info['statistic'] = {
+					'db-files': db_files_names,
+					'check': i+1,
+					'write': stat_write,
+					'skip': stat_skip,
+					'spent-time': datetime.now(timezone.utc) - start_time,
+				}
+				with open(gamedata_info_path, 'w') as f:
+					gamedata_info.write(f)
+				# show statistic info
+				print(f'Total files: check {i+1}, write {stat_write}, skip {stat_skip}, text encoding {args.encoding}, line separator: {str(line_separator)[1:]} (hex: {line_separator.hex()})')
 
 			case 'diff' | 'd':
 				# compare files: .db/.xdb and gamedata
