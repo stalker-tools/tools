@@ -588,8 +588,9 @@ def get_csv_kinds(game: GameConfig | None = None) -> dict[str, Iterator[Ltx.Sect
 	'returns list of .ltx section kind filters'
 	return {
 		'ammo': game.ammo_iter if game else None,
-		'outfits': game.outfits_iter if game else None,
 		'weapons': game.weapons_iter if game else None,
+		'outfits': game.outfits_iter if game else None,
+		'damages': game.damages_iter if game else None,
 		}
 
 def csv(gamedata: PathsConfig, localization: str, csv_file_path: str, verbose: int, kind: str | None = None, do_import = False):
@@ -663,7 +664,7 @@ def csv(gamedata: PathsConfig, localization: str, csv_file_path: str, verbose: i
 				if fields_names is None:
 					# first line # file format magic [] and fields names
 					fields_names = tuple(map(str.strip, line.split(',')[1:]))
-					if len(fields_names) < 2:
+					if len(fields_names) < 1:
 						raise ValueError(f'Expected: fileds names; has: {line}')
 					if verbose:
 						print(f'\tLtx fields names: "{", ".join(fields_names)}"')
@@ -671,8 +672,7 @@ def csv(gamedata: PathsConfig, localization: str, csv_file_path: str, verbose: i
 				else:
 					# next lines # .ltx section name and fields values
 					ltx_section_name, values = split_values(line)
-					if ltx_section_name:
-						yield ltx_section_name, values
+					yield ltx_section_name, values
 
 	def get_calc_func(field_name: str) -> tuple[str, Callable] | None:
 
@@ -723,15 +723,18 @@ def csv(gamedata: PathsConfig, localization: str, csv_file_path: str, verbose: i
 		out_buff = ''
 		fields_names: tuple[str] | None = None
 		for ltx_section_name, values in iter_csv_file(without_values=True):  # iter .csv lines
-			if not ltx_section_name:
+			if ltx_section_name == False:
 				# .csv first row # .csv table header # values names list
 				fields_names = values
 				out_buff += '[],' + ','.join(values) + '\n'  # first .csv row
-			else:
+			elif ltx_section_name:
 				# .csv next lines # .csv table values # .ltx section name and .ltx values list
 				if (ltx_section := game.find(ltx_section_name)):  # get .ltx section by name
 					out_buff += get_csv_line_from_ltx_section(ltx_section, fields_names)
 				out_buff += '\n'
+			else:
+				# empty .csv row # preserve empty rows
+				out_buff += ',' * len(fields_names) + '\n'
 
 		# save out buffer to .csv file
 		if out_buff:
@@ -744,8 +747,9 @@ def csv(gamedata: PathsConfig, localization: str, csv_file_path: str, verbose: i
 		if verbose:
 			print(f'Export from .ltx/.xml files to .csv file with .ltx section kind filter: {kind}')
 
+		out_buff = ''
 		for ltx_section_name, values in iter_csv_file():  # iter .csv lines
-			if not ltx_section_name:
+			if ltx_section_name == False:
 				# .csv first line # file format magic [] and .ltx fields names
 				# define .ltx sections filtered iterator from kind (filter)
 				if (iter := get_csv_kinds(game).get(kind)):  # iterator for filtered .ltx sections
@@ -784,10 +788,10 @@ def csv(gamedata: PathsConfig, localization: str, csv_file_path: str, verbose: i
 
 		fields_names: tuple[str] | None = None  # .ltx fields names
 		for ltx_section_name, values in iter_csv_file():  # iter .csv lines
-			if not ltx_section_name:
+			if ltx_section_name == False:
 				# .csv first row # .csv table header # values names list
 				fields_names = values
-			else:
+			elif ltx_section_name:
 				# .csv next lines # .csv table values # .ltx section name and .ltx values list
 				if (ltx_section := game.find(ltx_section_name)):  # get .ltx section by name
 					if verbose:
