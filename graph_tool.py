@@ -5,6 +5,7 @@
 from collections.abc import Iterator, Callable
 from typing import NamedTuple, Literal, Self
 from configparser import ConfigParser
+from pathlib import Path
 from plotly.subplots import make_subplots
 import plotly.graph_objects as go
 import plotly.io as pio
@@ -24,8 +25,10 @@ class BrochureConfig(NamedTuple):
 	author: str
 	head: str
 	head_pictures: tuple[str]
+	head_intro: str
 	style: Literal['d', 'dark']
 	localization: str
+	path: Path
 
 	@classmethod
 	def from_file(cls, path: str) -> Self:
@@ -37,9 +40,10 @@ class BrochureConfig(NamedTuple):
 		style = config_parser.get('global', 'style', fallback=None)
 		head = config_parser.get('head', 'title', fallback=None)
 		head_pictures = config_parser.get('head', 'pictures', fallback=None)
+		head_intro = config_parser.get('head', 'intro', fallback=None)
 		if head_pictures:
 			head_pictures = head_pictures.split(',')
-		ret = cls(caption, author, head, head_pictures, style, localization)
+		ret = cls(caption, author, head, head_pictures, head_intro, style, localization, Path(path))
 		return ret
 
 
@@ -526,12 +530,13 @@ background: url("data:image/svg+xml,%3Csvg viewBox='0 0 20 300' xmlns='http://ww
 </style>''')
 	print(f'</head>')
 	print(f'<body>')
+	print(f'<h1 align="center">{config.head}</h1><hr/>')
 	if config.head_pictures:
 		print('<p align="center">')
 		for pict_path in config.head_pictures:
-			print(f'{get_image_as_html_img(image_open(Path(gamedata.game_path) / pict_path))} ')
-		print('</p>')
-	print(f'<h1 align="center">{config.head}<h1><hr/>')
+			print(f'{get_image_as_html_img(image_open(config.path.parent / pict_path))} ')
+		print('</p><hr/>')
+	print(f'<p align="left">{config.head_intro}<p><hr/>')
 
 	game = gamedata
 	game = GameConfig(gamedata, config.localization, False)
@@ -823,7 +828,6 @@ def csv(gamedata: PathsConfig, localization: str, csv_file_path: str, verbose: i
 if __name__ == '__main__':
 	from sys import argv, exit
 	import argparse
-	from pathlib import Path
 
 	DEFAULT_CONFIG_PATH = 'brochure.ini'
 
