@@ -175,6 +175,15 @@ class Artefact(SectionsBase):
 		return False
 
 
+class CreaturesImmunities(SectionsBase):
+
+	def load_section(self, section: Ltx.Section) -> bool:
+		if section.get('fire_wound_immunity') is not None:
+			self.sections.append(section)
+			return True
+		return False
+
+
 class Maps(SectionsBase):
 	'Maps (levels): global and levels'
 
@@ -225,12 +234,13 @@ class GameConfig:
 		self.food = Food()
 		self.medkit = Medkit()
 		self.artefact = Artefact()
+		self.creatures_immunities = CreaturesImmunities()
 		self.maps = Maps()
 		# load .ltx files from root .ltx file
 		self.sections_roots: list[SectionsRoot] = []  # .ltx roots files
 		self.sections_roots.append(SectionsRoot(self.paths.system_ltx, (
 			self.ammo, self.grenade, self.weapons, self.detectors, self.torchs, self.binocles, self.pda,
-			self.outfits, self.damages, self.food, self.medkit, self.artefact)))
+			self.outfits, self.damages, self.food, self.medkit, self.artefact, self.creatures_immunities)))
 		self.sections_roots.append(SectionsRoot(join(self.paths.configs, 'game.ltx'), (self.maps,)))
 		for sections_root in self.sections_roots:
 			self._load_ltx_sections(sections_root)

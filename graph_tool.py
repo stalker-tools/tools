@@ -689,7 +689,12 @@ def csv(gamedata: PathsConfig, localization: str, csv_files_paths: tuple[str], v
 	def get_calc_func(field_name: str) -> tuple[str, Callable] | None:
 
 		def one_div(value: str) -> str:
-			return f'{(1 / float(value)):f}'
+			if not value:
+				return ''
+			try:
+				return f'{(1 / float(value)):f}'
+			except ZeroDivisionError:
+				return '0'
 
 		if field_name.startswith('1/'):
 			return (field_name[2:], one_div)
@@ -709,18 +714,22 @@ def csv(gamedata: PathsConfig, localization: str, csv_files_paths: tuple[str], v
 				# calculated value by function
 				field_name, calc_func = calc_func
 			if (field_value := ltx_section.get(field_name)):
+				loc = None  # localized field value
 				if isinstance(field_value, tuple):
 					# list of values # usually numbers/floats list
-					field_value, loc = '"' + ', '.join(field_value) + '"', None
+					field_value = '"' + ', '.join(field_value) + '"'
 				elif calc_func:
 					# calculated value by function
+					field_value_calc = field_value
 					field_value = calc_func(field_value)
+					if verbose:
+						print(f'\t{field_name}={field_value} calculated from {field_value_calc}')
 				else:
 					# try localize field value
 					loc = game.localization.get(field_value)
-				if verbose:
-					print(f'\t{field_name}={field_value}{" localized: "+loc if loc else ""}')
-				# add .ltx field value to .csv line
+					if verbose:
+						print(f'\t{field_name}={field_value}{" localized: "+loc if loc else ""}')
+				# add .ltx field value to .csv line # escape quote if any
 				ret += (',' if ret else '') + ('"'+loc.replace('"', '""')+'"' if loc else field_value)
 			else:
 				ret += ','
