@@ -360,10 +360,14 @@ def update_section_values(section: Ltx.Section, values: dict[str, str], game: 'G
 					# replace rvalue in .ltx file # use .ltx file buffer
 					line[eq_index + 1:end_index] = (' ' + new_value).encode(encoding)
 					buff[i], is_buffer_dirty = line, True  # mark .ltx buffer to flush to file
+
 		if is_buffer_dirty:
 			# flush .ltx buffer to file
 			with game.paths.open(section.ltx.ltx_file_path, 'wb') as f:
 				f.write(line_separator.join((x.rstrip() for x in buff)))
+		elif game.verbose:
+			print('\t.ltx file not changed')
+
 		if localize_buff:
 			# update .xml localization files
 			game.localization.update_files(localize_buff, verbose=game.verbose)
