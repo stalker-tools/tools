@@ -160,8 +160,6 @@ class Ltx:
 				yield from ltx.iter_sections()
 
 
-SECTION_RE = compile(r'^\[([\S]+)\]:?(.*)$')
-
 def get_filters_re_compiled(search_patterns: list[str] | None) -> tuple[Pattern] | None:
 
 	def re_escape(search_pattern: str) -> str:
@@ -233,9 +231,13 @@ def parse_ltx_file(file_path: str, follow_includes=False, open_fn = open) -> Ite
 					if line.startswith('['):
 						# new section starts
 						# example: [ammo_base]:identity_immunities,default_weapon_params
-						section_name, section_parents = SECTION_RE.findall(line)[0]
+						section_name, _, section_parents = line.partition(':')
+						section_name = section_name.strip()[1:-1].strip()
+						if section_name.startswith('ammo_5'):
+							pass
+						section_parents = tuple(map(str.strip, section_parents.split(','))) if section_parents else None
 						if section_name:
-							yield LtxKind.NEW_SECTION, section_name, section_parents.split(',') if section_parents else None
+							yield LtxKind.NEW_SECTION, section_name, section_parents
 					elif '=' in line:
 						# let expression
 						# example: position = -0.021, -0.085, 0.0

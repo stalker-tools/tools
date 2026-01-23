@@ -9,7 +9,8 @@ from pathlib import Path
 from plotly.subplots import make_subplots
 import plotly.graph_objects as go
 import plotly.io as pio
-from PIL.Image import open as image_open
+from PIL.Image import open as image_open, Image
+from PIL import ImageDraw
 # stalker-tools import
 try:
 	from version import PUBLIC_VERSION, PUBLIC_DATETIME
@@ -97,6 +98,15 @@ class GraphParamsCondition(GraphParams):
 		shots_count = (1 - misfire_condition_k) / condition_shot_dec
 		return shots_count
 
+
+def get_image_by_inv_grid(icons: IconsEquipment, ltx_section: Ltx.Section) -> Image | None:
+	if not ltx_section or not icons:
+		return None
+	try:
+		inv_grid = (int(ltx_section.get('inv_grid_x')), int(ltx_section.get('inv_grid_y')), int(ltx_section.get('inv_grid_width', 1)), int(ltx_section.get('inv_grid_height', 1)))
+	except TypeError:
+		return None
+	return icons.get_image(*inv_grid)
 
 def get_table(game, iter_sections: Iterator[Ltx.Section], exclude_prefixes: list[str] = None, localized_only = False) -> list[tuple[Ltx.Section, str, str]]:
 	'''
@@ -189,8 +199,7 @@ def analyse(gamedata: PathsConfig | str, config: BrochureConfig, verbose = 0):
 			print(f'<th {STYLE}><span style="text-decoration: underline dotted;">{game.paths.relative(section.ltx.ltx_file_path)}</span><br/>[{section.name}]</th>')
 			print(f'<th>{inv_name_short}</th>')
 			print(f'<th>{inv_name}</th>')
-			inv_grid = (int(section.get('inv_grid_x')), int(section.get('inv_grid_y')), int(section.get('inv_grid_width', 1)), int(section.get('inv_grid_height', 1)))
-			print(f'<th>{get_image_as_html_img(icons.get_image(*inv_grid))}</th>')
+			print(f'<th>{get_image_as_html_img(get_image_by_inv_grid(icons, section))}</th>')
 			print(f'<th {STYLE}>{game.localize(description, True) if prev_description != description else "↑"}</th>')
 			print('</tr>')
 			prev_description = description
@@ -367,8 +376,7 @@ def brochure(gamedata: PathsConfig | str, config: BrochureConfig):
 
 		print(f'<div class="main">')
 		for index, (section, inv_name_short_localized, _) in enumerate(sections):
-			inv_grid = (int(section.get('inv_grid_x')), int(section.get('inv_grid_y')), int(section.get('inv_grid_width', 1)), int(section.get('inv_grid_height', 1)))
-			print(f'<div class="item"><div style="display:flex;align-items:flex-start;">{index+1} {get_image_as_html_img(icons.get_image(*inv_grid))}<br/><span class="item-header">{inv_name_short_localized}</span></div><div style="display:flex;align-items:end;">{get_parameters(graphs, section)}</div></div>')
+			print(f'<div class="item"><div style="display:flex;align-items:flex-start;">{index+1} {get_image_as_html_img(get_image_by_inv_grid(icons, section))}<br/><span class="item-header">{inv_name_short_localized}</span></div><div style="display:flex;align-items:end;">{get_parameters(graphs, section)}</div></div>')
 			# <div>{game.localize(section.get("description"))}</div>
 		print('</div>')
 
@@ -381,7 +389,6 @@ def brochure(gamedata: PathsConfig | str, config: BrochureConfig):
 		prev_description = None
 		print(f'<div class="description">')
 		for index, (section, inv_name_short_localized, inv_name_localized) in enumerate(sections):
-			inv_grid = (int(section.get('inv_grid_x')), int(section.get('inv_grid_y')), int(section.get('inv_grid_width', 1)), int(section.get('inv_grid_height', 1)))
 			description = game.localize(section.get('description'), True)
 			# keep multiline description as HTML
 			while '\n ' in description:
@@ -393,7 +400,7 @@ def brochure(gamedata: PathsConfig | str, config: BrochureConfig):
 				description = '&nbsp;↑'
 			else:
 				prev_description = description
-			img = icons.get_image(*inv_grid)
+			img = get_image_by_inv_grid(icons, section)
 			img = img.resize((int(img.width * 1.5), int(img.height * 1.5)))
 			print(f'<div class="item-description stroke-bg">{index+1}{get_image_as_html_img(img)}<span class="item-header">{inv_name_localized}</span><br/>')
 			if (ammo_class := section.get('ammo_class')):  # has ammo
@@ -589,7 +596,7 @@ background: url("data:image/svg+xml,%3Csvg viewBox='0 0 20 300' xmlns='http://ww
 
 	print(f'</body></html>')
 
-def get_csv_kinds(game: GameConfig | None = None) -> dict[str, Iterator[Ltx.Section] | None]:
+def get_kinds(game: GameConfig | None = None) -> dict[str, Iterator[Ltx.Section] | None]:
 	'returns list of .ltx section kind filters'
 	return {
 		'ammo': game.ammo_iter if game else None,
@@ -773,13 +780,13 @@ def csv(gamedata: PathsConfig, localization: str, csv_files_paths: tuple[str], v
 			if ltx_section_name == False:
 				# .csv first line # file format magic [] and .ltx fields names
 				# define .ltx sections filtered iterator from kind (filter)
-				if (iter := get_csv_kinds(game).get(kind)):  # iterator for filtered .ltx sections
+				if (iter := get_kinds(game).get(kind)):  # iterator for filtered .ltx sections
 					# iter .ltx sections acording to filter # store data to out buffer
 					out_buff += '[],' + ','.join(values) + '\n'  # first .csv row
 					for ltx_section in sorted(iter(), key=lambda x: x.name):  # iter section by section sorted by section name
 						out_buff += get_csv_line_from_ltx_section(ltx_section, values) + '\n'
 				else:
-					raise ValueError(f'.ltx filter kind not correct: {kind}; supported one from: {", ".join(get_csv_kinds().keys())}')
+					raise ValueError(f'.ltx filter kind not correct: {kind}; supported one from: {", ".join(get_kinds().keys())}')
 			break  # only first .csv row used
 
 		# save out buffer to .csv file
@@ -845,6 +852,43 @@ def csv(gamedata: PathsConfig, localization: str, csv_files_paths: tuple[str], v
 		except FileNotFoundError as e:
 			print(f'File not found: {e}')
 
+def inv(gamedata: PathsConfig, localization: str, path: str, verbose: int, kind: str | None = None):
+	'export/import inventory images'
+
+	# make info from .db/.xdb gamedata path
+	game = GameConfig(gamedata, localization, verbose)
+	icons = IconsEquipment(game.paths)
+
+	def export_kind():
+		if not path:
+			return
+		kind_path = Path(path[0]) / kind
+		kind_path.mkdir(parents=True, exist_ok=True)
+		if (iter := get_kinds(game).get(kind)):  # iterator for filtered .ltx sections
+			for ltx_section in iter():
+				if (image := get_image_by_inv_grid(icons, ltx_section)):
+					image.save(str((kind_path / ltx_section.name).absolute()) + '.png')
+
+	export_kind()
+
+def export_equipment(gamedata: PathsConfig, localization: str, path: str, verbose: int):
+	'export marked equipment .dds to image'
+
+	# make info from .db/.xdb gamedata path
+	if not path:
+		return
+	game = GameConfig(gamedata, localization, verbose)
+	icons = IconsEquipment(game.paths)
+	draw = ImageDraw.Draw(icons.image)
+	x, y = icons.image.size
+	for xx in range(0, x, 50):
+		draw.line((xx, 0, xx, y), fill=(255, 0, 0))
+	for yy in range(0, y, 50):
+		draw.line((0, yy, x, yy), fill=(255, 0, 0))
+	for xx in range(0, x, 50):
+		for yy in range(0, y, 50):
+			draw.text((xx, yy), f'{xx//50},{yy//50}', fill=(255, 255, 255))
+	icons.image.save(path[0])
 
 if __name__ == '__main__':
 	from sys import argv, exit
@@ -990,12 +1034,20 @@ used to get original game (.db/.xdb files only) infographics; default: false
 			parser_.add_argument('-c', '--config', metavar='PATH', default=DEFAULT_CONFIG_PATH,
 				help=f'config file path; default: {DEFAULT_CONFIG_PATH}')
 			parser_ = subparsers.add_parser('csv', help='csv: import/export to/from .csv (comma separated values) file')
-			parser_.add_argument('--kind', choices=(get_csv_kinds().keys()),
+			parser_.add_argument('--kind', choices=(get_kinds().keys()),
 				help='''export .ltx sections to table .csv file with filter; first line: fields names
 example .csv file: [],inv_name,inv_name_short,description
 ''')
 			parser_.add_argument('-i', '--import', action='store_true', help='import .csv file to gamedata path')
 			parser_.add_argument('csv', metavar='PATH', nargs='+', help='.csv file path')
+			parser_ = subparsers.add_parser('inv', help='inv: import/export to/from inventory image files')
+			parser_.add_argument('--kind', choices=(get_kinds().keys()),
+				help='''export .ltx sections to table .csv file with filter; first line: fields names
+example .csv file: [],inv_name,inv_name_short,description
+''')
+			# parser_.add_argument('-i', '--import', action='store_true', help='import image file to gamedata path')
+			parser_.add_argument('--equipment', action='store_true', help='export full-size .dds to marked image file')
+			parser_.add_argument('sections', metavar='PATTERN', nargs='*', help='sections names filter pattern; bash name filter: *, ?, [], [!]')
 			return parser.parse_args()
 
 		# parse command-line arguments
@@ -1036,7 +1088,7 @@ example .csv file: [],inv_name,inv_name_short,description
 				config = BrochureConfig.from_file(config_path.absolute().resolve())
 				analyse(paths_config if paths_config else args.gamedata, config)
 			case 'csv':
-				# comma separated values as table from/to .ltx files
+				# export/import comma separated values .csv as table from/to .ltx files
 				csv_files_paths = []
 				for csv_path in args.csv:
 					csv_path = Path(csv_path)
@@ -1045,6 +1097,12 @@ example .csv file: [],inv_name,inv_name_short,description
 					else:
 						csv_files_paths.extend(Path().glob(str(csv_path)))
 				csv(paths_config, 'rus', sorted(csv_files_paths), verbose, args.kind, getattr(args, 'import'))
+			case 'inv':
+				# export/import inventory images
+				if args.equipment:
+					export_equipment(paths_config, 'rus', args.sections, verbose)
+				else:
+					inv(paths_config, 'rus', args.sections, verbose, args.kind)
 
 	try:
 		main()
