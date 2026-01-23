@@ -598,13 +598,13 @@ def get_csv_kinds(game: GameConfig | None = None) -> dict[str, Iterator[Ltx.Sect
 		'damages': game.damages_iter if game else None,
 		}
 
-def csv(gamedata: PathsConfig, localization: str, csv_file_path: str, verbose: int, kind: str | None = None, do_import = False):
+def csv(gamedata: PathsConfig, localization: str, csv_files_paths: tuple[str], verbose: int, kind: str | None = None, do_import = False):
 	'.ltx/.xml import/export from/to .csv file'
 
 	# make info from .db/.xdb gamedata path
 	game = GameConfig(gamedata, localization, verbose)
 
-	def iter_csv_file(*, without_values=False) -> Iterator[tuple[bool | str, list[str]]]:
+	def iter_csv_file(csv_file_path: str, *, without_values=False) -> Iterator[tuple[bool | str, list[str]]]:
 		'''iters .csv table file row by row
 		iters: first .csv row (False, .ltx fileds names: (name, name,..))
 		iters: next .csv rows (.ltx section name, .ltx fields values: (value, value,..))
@@ -619,6 +619,11 @@ def csv(gamedata: PathsConfig, localization: str, csv_file_path: str, verbose: i
 				except IndexError:
 					return ''
 
+			QUOTE_REPLACE = '\x07'
+
+			def append_value(value: str):
+				values.append(value.replace(QUOTE_REPLACE, '"'))
+
 			values = []
 			ltx_section_name, _, buff = line.partition(',')
 			ltx_section_name = ltx_section_name.strip('[').strip(']').strip()
@@ -627,6 +632,8 @@ def csv(gamedata: PathsConfig, localization: str, csv_file_path: str, verbose: i
 			if without_values:
 				return ltx_section_name, None
 			# split values: , or ," or ", or ","
+			# with escape "" -> "
+			buff = buff.replace('""', QUOTE_REPLACE)
 			prev_index = 0
 			wait_quote = False
 			for i, ch in enumerate(buff):
@@ -637,7 +644,7 @@ def csv(gamedata: PathsConfig, localization: str, csv_file_path: str, verbose: i
 					if wait_quote:
 						if get_buff_char(-1) == '"':
 							wait_quote = False
-							values.append(buff[prev_index:i-1])
+							append_value(buff[prev_index:i-1])
 							if get_buff_char(+1) == '"':
 								# ","
 								wait_quote = True
@@ -646,7 +653,7 @@ def csv(gamedata: PathsConfig, localization: str, csv_file_path: str, verbose: i
 								# ",
 								prev_index = i + 1
 					else:
-						values.append(buff[prev_index:i])
+						append_value(buff[prev_index:i])
 						if get_buff_char(+1) == '"':
 							# ,"
 							wait_quote = True
@@ -655,9 +662,9 @@ def csv(gamedata: PathsConfig, localization: str, csv_file_path: str, verbose: i
 							# ,
 							prev_index = i + 1
 			if wait_quote:
-				values.append(buff[prev_index:-1])
+				append_value(buff[prev_index:-1])
 			else:
-				values.append(buff[prev_index:])
+				append_value(buff[prev_index:])
 			return ltx_section_name, values
 
 		if verbose:
@@ -719,7 +726,7 @@ def csv(gamedata: PathsConfig, localization: str, csv_file_path: str, verbose: i
 				ret += ','
 		return ret
 
-	def export():
+	def export(csv_file_path: str):
 		'export from .ltx files to .csv file'
 
 		if verbose:
@@ -727,7 +734,7 @@ def csv(gamedata: PathsConfig, localization: str, csv_file_path: str, verbose: i
 
 		out_buff = ''
 		fields_names: tuple[str] | None = None
-		for ltx_section_name, values in iter_csv_file(without_values=True):  # iter .csv lines
+		for ltx_section_name, values in iter_csv_file(csv_file_path, without_values=True):  # iter .csv lines
 			if ltx_section_name == False:
 				# .csv first row # .csv table header # values names list
 				fields_names = values
@@ -746,14 +753,14 @@ def csv(gamedata: PathsConfig, localization: str, csv_file_path: str, verbose: i
 			with open(csv_file_path, 'w') as f:
 				f.write(out_buff)
 
-	def export_kind():
+	def export_kind(csv_file_path: str):
 		'export from .ltx files to .csv file by kind filter: ammo, weapons e.t.c'
 
 		if verbose:
 			print(f'Export from .ltx/.xml files to .csv file with .ltx section kind filter: {kind}')
 
 		out_buff = ''
-		for ltx_section_name, values in iter_csv_file():  # iter .csv lines
+		for ltx_section_name, values in iter_csv_file(csv_file_path):  # iter .csv lines
 			if ltx_section_name == False:
 				# .csv first line # file format magic [] and .ltx fields names
 				# define .ltx sections filtered iterator from kind (filter)
@@ -771,7 +778,7 @@ def csv(gamedata: PathsConfig, localization: str, csv_file_path: str, verbose: i
 			with open(csv_file_path, 'w') as f:
 				f.write(out_buff)
 
-	def import_():
+	def import_(csv_file_path: str):
 		'''import from .csv file to .ltx/.xml files
 		.csv format:
 			first row - .ltx section fields names (second and next columns)
@@ -792,7 +799,7 @@ def csv(gamedata: PathsConfig, localization: str, csv_file_path: str, verbose: i
 			print('Import from .csv to .ltx/.xml files')
 
 		fields_names: tuple[str] | None = None  # .ltx fields names
-		for ltx_section_name, values in iter_csv_file():  # iter .csv lines
+		for ltx_section_name, values in iter_csv_file(csv_file_path):  # iter .csv lines
 			if ltx_section_name == False:
 				# .csv first row # .csv table header # values names list
 				fields_names = values
@@ -810,24 +817,30 @@ def csv(gamedata: PathsConfig, localization: str, csv_file_path: str, verbose: i
 						for k, v in values_names.items():
 							print(f'\t{k}={v}')
 					update_section_values(ltx_section, values_names, game)  # save .csv table values to .ltx file
+					if verbose:
+						print()
 				else:
 					raise ValueError(f'.ltx section not found: section name {ltx_section_name}')
 
 	# main functions
-	try:
-		if do_import:
-			import_()
-		elif kind:
-			export_kind()
-		else:
-			export()
-	except FileNotFoundError as e:
-		print(f'File not found: {e}')
+	for csv_file_path in csv_files_paths:
+		if verbose:
+			print()
+		try:
+			if do_import:
+				import_(csv_file_path)
+			elif kind:
+				export_kind(csv_file_path)
+			else:
+				export(csv_file_path)
+		except FileNotFoundError as e:
+			print(f'File not found: {e}')
 
 
 if __name__ == '__main__':
 	from sys import argv, exit
 	import argparse
+	from glob import glob
 
 	DEFAULT_CONFIG_PATH = 'brochure.ini'
 
@@ -973,7 +986,7 @@ used to get original game (.db/.xdb files only) infographics; default: false
 example .csv file: [],inv_name,inv_name_short,description
 ''')
 			parser_.add_argument('-i', '--import', action='store_true', help='import .csv file to gamedata path')
-			parser_.add_argument('csv', metavar='PATH', help='.csv file path')
+			parser_.add_argument('csv', metavar='PATH', nargs='+', help='.csv file path')
 			return parser.parse_args()
 
 		# parse command-line arguments
@@ -1015,7 +1028,14 @@ example .csv file: [],inv_name,inv_name_short,description
 				analyse(paths_config if paths_config else args.gamedata, config)
 			case 'csv':
 				# comma separated values as table from/to .ltx files
-				csv(paths_config, 'rus', args.csv, verbose, args.kind, getattr(args, 'import'))
+				csv_files_paths = []
+				for csv_path in args.csv:
+					csv_path = Path(csv_path)
+					if csv_path.is_absolute():
+						csv_files_paths.extend(glob(str(csv_path)))
+					else:
+						csv_files_paths.extend(Path().glob(str(csv_path)))
+				csv(paths_config, 'rus', sorted(csv_files_paths), verbose, args.kind, getattr(args, 'import'))
 
 	try:
 		main()

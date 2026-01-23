@@ -28,6 +28,7 @@ DEFAULT_OS_ENCODING = 'utf-8'
 DEFAULT_GAME_ENCODING = 'cp1251'
 TEXT_FILES_EXT = ('.ltx', '.xml', '.script')
 DEFAULT_GAME_LENESEP_B = b'\r\n'
+CACHE_PATH_NAME = '_cache'
 GAMEDATA_INFO_FILE_NAME = '_extract.ini'
 
 def is_xml_utf_8_file(path: str, buff: bytes | None = None) -> bool:
@@ -83,7 +84,7 @@ class Paths:
 			self.config = gamedata_path
 			# define well-known root sub-paths
 			self.path = Path(self.config.game_path).resolve()  # root game path: .db/.xdb files and optionally gamedata folder
-			self.cache_path = self.path / 'cache'
+			self.cache_path = self.path / CACHE_PATH_NAME
 			if self.path.exists() and not self.cache_path.exists():
 				self.cache_path.mkdir(parents=True)
 			# resolve gamedata path: it can be absolute or relative to game root
@@ -147,7 +148,7 @@ class Paths:
 		'''
 
 		def get_cache_file_path() -> Path:
-			return Path(config.game_path) / 'cache' / 'gamedata.db.cache'
+			return Path(config.game_path) / CACHE_PATH_NAME / 'gamedata.db.cache'
 
 		def iter_db_files() -> Iterator[Path]:
 			'iters .db/.xdb files in game path'

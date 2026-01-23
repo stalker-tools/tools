@@ -329,6 +329,8 @@ def update_section_values(section: Ltx.Section, values: dict[str, str], game: 'G
 		# define .ltx files encoding in gamedata path
 		encoding, line_separator = game.paths.get_gamedata_text_info()
 		# read .ltx file to buffer
+		if game.verbose:
+			print(f'Edit [{section.name}] {section.ltx.ltx_file_path}')
 		with game.paths.open(section.ltx.ltx_file_path, 'rb') as f:
 			buff = f.readlines()
 		# update .ltx buffer
@@ -342,28 +344,29 @@ def update_section_values(section: Ltx.Section, values: dict[str, str], game: 'G
 				# check is rvalue to replace is localized id
 				if (rvalue := line[eq_index + 1:end_index]):  # rvalue to replace
 					rvalue = rvalue.strip().decode(encoding)
-					if rvalue.strip() == new_value:
-						continue  # no changes
+					if rvalue == new_value:
+						if game.verbose:
+							print(f'\tnot changed {i}: {line[:eq_index].strip().decode(encoding)}={rvalue}')
+						continue  # not changed # ignore new value
 					# try treat rvalue as localize id
 					if (localized := game.localize(rvalue, localized_only=True)):
 						# is localization id
 						if localized == new_value:
-							continue  # no changed
-						localize_buff[rvalue] = new_value
+							if game.verbose:
+								print(f'\tnot changed {i}: {line[:eq_index].strip().decode(encoding)}={rvalue} localized "{localized}"')
+							continue  # not changed # ignore new value
+						localize_buff[rvalue] = new_value  # use .xml localization buffer
 						continue  # update of .xml localization file is buffered
-					if rvalue == new_value:
-						continue  # no changed
-					# replace rvalue in .ltx file
+					# replace rvalue in .ltx file # use .ltx file buffer
 					line[eq_index + 1:end_index] = (' ' + new_value).encode(encoding)
-					buff[i] = line
-					is_buffer_dirty = True
+					buff[i], is_buffer_dirty = line, True  # mark .ltx buffer to flush to file
 		if is_buffer_dirty:
 			# flush .ltx buffer to file
 			with game.paths.open(section.ltx.ltx_file_path, 'wb') as f:
-				f.write(line_separator.join(buff))
+				f.write(line_separator.join((x.rstrip() for x in buff)))
 		if localize_buff:
 			# update .xml localization files
-			game.localization.update_files(localize_buff)
+			game.localization.update_files(localize_buff, verbose=game.verbose)
 		return ret
 	return ret
 

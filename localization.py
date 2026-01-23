@@ -48,8 +48,8 @@ class Localization:
 		self.string_table: dict[str, _STRINGS_ENTRY_TYPE] = {}  # localized strings: id, (string, xml file path, line no: 1.., line pos: 0..)
 		self._load_string_tables()
 
-	def save_cache(self, cache_file_path: str):
-		if not self.is_from_cache:
+	def save_cache(self, cache_file_path: str | None):
+		if cache_file_path and not self.is_from_cache:
 			if self.verbose:
 				print(f'Save localization to cache: {cache_file_path}')
 			with open(cache_file_path, 'wb') as f_cache:
@@ -196,7 +196,7 @@ class Localization:
 						return buff[1] if get_file_path else buff[0]
 		return None
 
-	def update_files(self, ids_values: dict[str, str], case_insensitive=False):
+	def update_files(self, ids_values: dict[str, str], case_insensitive=False, *, verbose=False):
 		'updates .xml files with localization ids'
 
 		# collect .xml files paths
@@ -207,9 +207,13 @@ class Localization:
 		# modify .xml files grouped by file path
 		for file_path in files_ids:
 			# update ids in .xml file # iter localization file: id text tag by id text tag
+			if verbose:
+				print(f'Edit {file_path}')
 			for id, tag in self._iter_xml_file(file_path, low_level=True):
 				if id in ids_values:
 					# localization id to update is found
+					if verbose:
+						print(f'\tid={id}')
 					tag.set_value(ids_values[id])
 
 

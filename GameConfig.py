@@ -210,7 +210,7 @@ class GameConfig:
 		# set game paths
 		self.verbose = verbose
 		self.paths = Paths(config_or_gamedata_path)
-		cache_path = self.paths.cache_path / 'localization.cache'
+		cache_path = self.paths.cache_path / 'localization.cache' if not self.paths.gamedata.exists() else None
 		self.localization = Localization(self.paths, verbose, cache_file_path=cache_path)
 		# init item-type specific lists
 		self.ammo = Ammo()
@@ -248,8 +248,8 @@ class GameConfig:
 		def get_cache_file_path() -> Path:
 			return Path(self.paths.cache_path) / (sections_root.root_ltx_file_path.replace('\\', '_').replace('/', '_') + '.cache')
 
-		# load from cache
-		if get_cache_file_path().exists():
+		# load from cache if gamedata path not exists
+		if not self.paths.gamedata.exists() and get_cache_file_path().exists():
 			if self.verbose:
 				print(f'Load root .ltx {sections_root.root_ltx_file_path} from cache: {get_cache_file_path()}')
 			with open(get_cache_file_path(), 'rb') as f_cache:
@@ -264,7 +264,11 @@ class GameConfig:
 		for section_base in sections_root.sections:
 			if (loc_fnames := section_base.get_localization_files_names()):
 				for loc_fname in loc_fnames:
-					self.localization.add_localization_xml_file(join(self.localization.localization_text_path, loc_fname))
+					try:
+						self.localization.add_localization_xml_file(join(self.localization.localization_text_path, loc_fname))
+					except FileNotFoundError:
+						if self.verbose:
+							print(f'Localization file not found: {join(self.localization.localization_text_path, loc_fname)}')
 
 		# load root .ltx
 		if self.verbose:
@@ -280,9 +284,10 @@ class GameConfig:
 
 		load_localization()
 
-		# update cache
-		with open(get_cache_file_path(), 'wb') as f_cache:
-			pickle_dump(sections_root.sections, f_cache)
+		# update cache if gamedata path not exists
+		if not self.paths.gamedata.exists():
+			with open(get_cache_file_path(), 'wb') as f_cache:
+				pickle_dump(sections_root.sections, f_cache)
 
 	def get_actor_outfit(self) -> Ltx | None:
 		ltx_path = join(self.paths.gamedata, 'configs/misc/outfit.ltx')
