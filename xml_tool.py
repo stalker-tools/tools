@@ -178,6 +178,9 @@ class XmlParser:
 
 		def set_value(self, new_value: str):
 			'sets tag inner value'
+			# escape xml: &amp;
+			new_value = new_value.replace('&', '&amp;')
+			# replace file buffer with new value
 			pos, len = self.value_pos_and_len
 			if not isinstance(self.buff, bytearray):
 				self.buff = bytearray(self.buff)

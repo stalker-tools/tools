@@ -5,6 +5,7 @@
 
 from collections.abc import Iterator
 from os.path import join
+from pathlib import Path
 from xml.dom.minidom import parse, Element
 from io import BytesIO
 from base64 import b64encode
@@ -28,6 +29,7 @@ class IconsEquipment:
 	'Images from <gamedata path>/textures/ui/ui_icon_equipment.dds'
 
 	GRID_SIZE = 50
+	DDS_FILE_PATH = ('textures', 'ui', 'ui_icon_equipment.dds')
 
 	def __init__(self, paths: Paths) -> None:
 		self.paths = paths
@@ -35,7 +37,7 @@ class IconsEquipment:
 
 	def _read_dds(self):
 		'load ui_icon_equipment.dds to image in self'
-		with self.paths.open(join('textures', 'ui', 'ui_icon_equipment.dds'), 'rb') as f:
+		with self.paths.open(join(*self.DDS_FILE_PATH), 'rb') as f:
 			self.image = image_open(f)
 
 	def get_image(self, inv_grid_x: int, inv_grid_y: int, inv_grid_width: int, inv_grid_height: int) -> Image:
@@ -43,6 +45,16 @@ class IconsEquipment:
 		x, y = inv_grid_x * self.GRID_SIZE, inv_grid_y * self.GRID_SIZE
 		return self.image.crop((x, y, x + inv_grid_width * self.GRID_SIZE, y + inv_grid_height * self.GRID_SIZE))
 
+	def set_image(self, image: Image, inv_grid: tuple[int, int], *, file_path: str | None = None) -> Image:
+		'import image to ui_icon_equipment.dds with coordinates according to .ltx section inventory grid square'
+		inv_grid = tuple(map(lambda x: x * self.GRID_SIZE, inv_grid))  # convert coordinates from grid to pixels
+		self.image.paste(image, inv_grid[:2])  # inv_grid[:2]: works only like that
+		if file_path:
+			self.save_file(file_path)
+
+	def save_file(self, gamedata_path: str):
+		'save equipment .dds to file'
+		self.image.save(Path(gamedata_path) / join(*self.DDS_FILE_PATH))
 
 class IconsXmlDds:
 	'Pair of .xml texture tags and .dds texture files'

@@ -99,14 +99,21 @@ class GraphParamsCondition(GraphParams):
 		return shots_count
 
 
-def get_image_by_inv_grid(icons: IconsEquipment, ltx_section: Ltx.Section) -> Image | None:
-	if not ltx_section or not icons:
+def get_inv_grid(ltx_section: Ltx.Section | None) -> tuple[int, int, int, int] | None:
+	'returns .ltx section inventory grid square: coordinate and size (inv_grid_*)'
+	if not ltx_section:
 		return None
 	try:
-		inv_grid = (int(ltx_section.get('inv_grid_x')), int(ltx_section.get('inv_grid_y')), int(ltx_section.get('inv_grid_width', 1)), int(ltx_section.get('inv_grid_height', 1)))
+		return (int(ltx_section.get('inv_grid_x')), int(ltx_section.get('inv_grid_y')), int(ltx_section.get('inv_grid_width', 1)), int(ltx_section.get('inv_grid_height', 1)))
 	except TypeError:
 		return None
-	return icons.get_image(*inv_grid)
+
+def get_image_by_inv_grid(icons: IconsEquipment, ltx_section: Ltx.Section) -> Image | None:
+	'returns image from .dds according to .ltx section inventory grid square (inv_grid_*)'
+	if icons and ltx_section:
+		if (inv_grid := get_inv_grid(ltx_section)):
+			return icons.get_image(*inv_grid)
+	return None
 
 def get_table(game, iter_sections: Iterator[Ltx.Section], exclude_prefixes: list[str] = None, localized_only = False) -> list[tuple[Ltx.Section, str, str]]:
 	'''
@@ -603,6 +610,8 @@ def get_kinds(game: GameConfig | None = None) -> dict[str, Iterator[Ltx.Section]
 		'weapons': game.weapons_iter if game else None,
 		'outfits': game.outfits_iter if game else None,
 		'damages': game.damages_iter if game else None,
+		'monsters': game.monsters_iter if game else None,
+		'monsters.immunities': game.monsters_immunities_iter if game else None,
 		}
 
 def csv(gamedata: PathsConfig, localization: str, csv_files_paths: tuple[str], verbose: int, kind: str | None = None, do_import = False):
@@ -852,27 +861,44 @@ def csv(gamedata: PathsConfig, localization: str, csv_files_paths: tuple[str], v
 		except FileNotFoundError as e:
 			print(f'File not found: {e}')
 
-def inv(gamedata: PathsConfig, localization: str, path: str, verbose: int, kind: str | None = None):
-	'export/import inventory images'
+def inv(gamedata: PathsConfig, localization: str, images_paths: tuple[str], verbose: int, kind: str | None = None, do_import = False):
+	'export/import inventory images from/to equipment .dds according to .ltx section inventory square'
 
 	# make info from .db/.xdb gamedata path
 	game = GameConfig(gamedata, localization, verbose)
 	icons = IconsEquipment(game.paths)
 
 	def export_kind():
-		if not path:
+		'export images from equipment .dds filtered by .ltx section kind filter'
+		if not images_paths:
 			return
-		kind_path = Path(path[0]) / kind
+		kind_path = Path(images_paths[0]) / kind  # export path to export images to
 		kind_path.mkdir(parents=True, exist_ok=True)
-		if (iter := get_kinds(game).get(kind)):  # iterator for filtered .ltx sections
-			for ltx_section in iter():
-				if (image := get_image_by_inv_grid(icons, ltx_section)):
-					image.save(str((kind_path / ltx_section.name).absolute()) + '.png')
+		if (iter := get_kinds(game).get(kind)):  # get iterator for filtered .ltx sections
+			for ltx_section in iter():  # iter .ltx section according to kind filter
+				if (image := get_image_by_inv_grid(icons, ltx_section)):  # get inventory image from .ltx section
+					image.save(str((kind_path / ltx_section.name).absolute()) + '.png')  # save image to export path
 
-	export_kind()
+	def import_(image_path: str):
+		'import image file to equipment .dds file according to .ltx section inventory square'
+		image_path = Path(image_path)
+		if (image := image_open(image_path.absolute())):  # open image to import
+			# copy image to .dds # get inventory square from .ltx section # find .ltx section by name
+			if (ltx_section := game.find(image_path.stem)) and (inv_grid := get_inv_grid(ltx_section)):
+				icons.set_image(image, inv_grid)
+
+	if do_import:
+		if images_paths:
+			# batch images import to equipment .dds
+			for image_path in images_paths:
+				import_(image_path)
+			# save equipment .dds to gamepath
+			icons.save_file(game.paths.gamedata)
+	else:
+		export_kind()
 
 def export_equipment(gamedata: PathsConfig, localization: str, path: str, verbose: int):
-	'export marked equipment .dds to image'
+	'export marked equipment .dds to image: grid and grid cell coordinates'
 
 	# make info from .db/.xdb gamedata path
 	if not path:
@@ -881,13 +907,16 @@ def export_equipment(gamedata: PathsConfig, localization: str, path: str, verbos
 	icons = IconsEquipment(game.paths)
 	draw = ImageDraw.Draw(icons.image)
 	x, y = icons.image.size
-	for xx in range(0, x, 50):
+	grid_size = IconsEquipment.GRID_SIZE
+	# draw grid
+	for xx in range(0, x, grid_size):
 		draw.line((xx, 0, xx, y), fill=(255, 0, 0))
-	for yy in range(0, y, 50):
+	for yy in range(0, y, grid_size):
 		draw.line((0, yy, x, yy), fill=(255, 0, 0))
-	for xx in range(0, x, 50):
-		for yy in range(0, y, 50):
-			draw.text((xx, yy), f'{xx//50},{yy//50}', fill=(255, 255, 255))
+	# draw grid cell coordinates
+	for xx in range(0, x, grid_size):
+		for yy in range(0, y, grid_size):
+			draw.text((xx, yy), f'{xx//grid_size},{yy//grid_size}', fill=(255, 255, 255))
 	icons.image.save(path[0])
 
 if __name__ == '__main__':
@@ -1045,9 +1074,11 @@ example .csv file: [],inv_name,inv_name_short,description
 				help='''export .ltx sections to table .csv file with filter; first line: fields names
 example .csv file: [],inv_name,inv_name_short,description
 ''')
-			# parser_.add_argument('-i', '--import', action='store_true', help='import image file to gamedata path')
-			parser_.add_argument('--equipment', action='store_true', help='export full-size .dds to marked image file')
-			parser_.add_argument('sections', metavar='PATTERN', nargs='*', help='sections names filter pattern; bash name filter: *, ?, [], [!]')
+			parser_.add_argument('-i', '--import', action='store_true', help='import image file to gamedata path')
+			parser_.add_argument('--equipment', action='store_true',
+				help='export full-size .dds to marked image file: grid and grid cell coordinates')
+			parser_.add_argument('sections', metavar='PATTERN', nargs='*',
+				help='sections names filter pattern; bash name filter: *, ?, [], [!]')
 			return parser.parse_args()
 
 		# parse command-line arguments
@@ -1100,9 +1131,11 @@ example .csv file: [],inv_name,inv_name_short,description
 			case 'inv':
 				# export/import inventory images
 				if args.equipment:
+					# export marked equipment .dds
 					export_equipment(paths_config, 'rus', args.sections, verbose)
 				else:
-					inv(paths_config, 'rus', args.sections, verbose, args.kind)
+					# batch export/import
+					inv(paths_config, 'rus', args.sections, verbose, args.kind, getattr(args, 'import'))
 
 	try:
 		main()

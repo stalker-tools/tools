@@ -18,11 +18,12 @@ class SectionsBase:
 
 	def __init__(self) -> None:
 		self.sections: list[Ltx.Section] = []  # item-type specific sections list
-		self.is_loaded = False
 
-	def load_section(self, section: Ltx.Section) -> bool:
-		'load section (add to sections list) according to item-type specific filter'
-		return False
+	def load_section(self, section: Ltx.Section, game: 'GameConfig') -> list[str] | None:
+		'''load section (add to sections list) according to item-type specific filter
+		returns section names to load to addition sections list
+		'''
+		return None
 
 	def get_localization_files_names(self) -> Iterable[str]: pass  # for inherited class
 
@@ -41,8 +42,22 @@ class SectionsBase:
 				yield section.name, inv_name_short, value
 
 
+class ImmunitiesBase(SectionsBase):
+	'base class for that has immunities'
+
+	IMMUNITIES_SECTION_NAME = 'immunities_sect'
+
+	def load_section(self, section: Ltx.Section, game: 'GameConfig') -> list[str] | None:
+		'returns section names to store'
+		self.sections.append(section)
+		return (section.get(self.IMMUNITIES_SECTION_NAME),)
+
+	def get_immunity(self, section: Ltx.Section) -> Ltx.Section | None:
+		return self.immunities.get(section.get(self.IMMUNITIES_SECTION_NAME))
+
+
 class SectionsRoot:
-	'.ltx files root'
+	'.ltx files root to gather .ltx files thru include statements'
 
 	def __init__(self, root_ltx_file_path: str, sections: Iterable[SectionsBase]):
 		self.root_ltx_file_path: str = root_ltx_file_path
@@ -54,20 +69,18 @@ class Ammo(SectionsBase):
 	def get_localization_files_names(self) -> Iterable[str]:
 		return ('st_items_weapons.xml',)
 
-	def load_section(self, section: Ltx.Section) -> bool:
+	def load_section(self, section: Ltx.Section, game: 'GameConfig') -> list[str] | None:
 		if section.get('class') == 'AMMO':
 			self.sections.append(section)
-			return True
-		return False
+		return None
 
 
 class Grenade(SectionsBase):
 
-	def load_section(self, section: Ltx.Section) -> bool:
+	def load_section(self, section: Ltx.Section, game: 'GameConfig') -> list[str] | None:
 		if (sname := section.get('class')) and sname.startswith('G_'):
 			self.sections.append(section)
-			return True
-		return False
+		return None
 
 
 class Weapons(SectionsBase):
@@ -75,47 +88,42 @@ class Weapons(SectionsBase):
 	def get_localization_files_names(self) -> Iterable[str]:
 		return ('st_items_weapons.xml',)
 
-	def load_section(self, section: Ltx.Section) -> bool:
+	def load_section(self, section: Ltx.Section, game: 'GameConfig') -> list[str] | None:
 		if (section.get('weapon_class') or section.get('ammo_class')) and not section.name.endswith(('_up', '_up2', '_minigame')):
 			self.sections.append(section)
-			return True
-		return False
+		return None
 
 
 class Detectors(SectionsBase):
 
-	def load_section(self, section: Ltx.Section) -> bool:
+	def load_section(self, section: Ltx.Section, game: 'GameConfig') -> list[str] | None:
 		if section.get('class') == 'D_SIMDET':
 			self.sections.append(section)
-			return True
-		return False
+		return None
 
 
 class Torchs(SectionsBase):
 
-	def load_section(self, section: Ltx.Section) -> bool:
+	def load_section(self, section: Ltx.Section, game: 'GameConfig') -> list[str] | None:
 		if section.get('class') == 'TORCH_S':
 			self.sections.append(section)
-			return True
-		return False
+		return None
 
 
 class Binocles(SectionsBase):
 
-	def load_section(self, section: Ltx.Section) -> bool:
+	def load_section(self, section: Ltx.Section, game: 'GameConfig') -> list[str] | None:
 		if section.get('class') == 'WP_BINOC':
 			self.sections.append(section)
-			return True
-		return False
+		return None
 
 
 class Pda(SectionsBase):
 
-	def load_section(self, section: Ltx.Section) -> bool:
+	def load_section(self, section: Ltx.Section, game: 'GameConfig') -> list[str] | None:
 		if section.get('class') == 'D_PDA':
 			self.sections.append(section)
-			return True
-		return False
+		return None
 
 
 class Outfits(SectionsBase):
@@ -123,7 +131,7 @@ class Outfits(SectionsBase):
 	def get_localization_files_names(self) -> Iterable[str]:
 		return ('st_items_outfit.xml',)
 
-	def load_section(self, section: Ltx.Section) -> bool:
+	def load_section(self, section: Ltx.Section, game: 'GameConfig') -> list[str] | None:
 		if section.get('class') == 'E_STLK':
 			self.sections.append(section)
 			return True
@@ -132,11 +140,10 @@ class Outfits(SectionsBase):
 
 class Damages(SectionsBase):
 
-	def load_section(self, section: Ltx.Section) -> bool:
+	def load_section(self, section: Ltx.Section, game: 'GameConfig') -> list[str] | None:
 		if section.get('hit_fraction') is not None:
 			self.sections.append(section)
-			return True
-		return False
+		return None
 
 
 class Food(SectionsBase):
@@ -144,11 +151,10 @@ class Food(SectionsBase):
 	def get_localization_files_names(self) -> Iterable[str]:
 		return ('st_items_equipment.xml',)
 
-	def load_section(self, section: Ltx.Section) -> bool:
+	def load_section(self, section: Ltx.Section, game: 'GameConfig') -> list[str] | None:
 		if section.get('class') in ('II_FOOD', 'II_BOTTL'):
 			self.sections.append(section)
-			return True
-		return False
+		return None
 
 
 class Medkit(SectionsBase):
@@ -156,7 +162,7 @@ class Medkit(SectionsBase):
 	def get_localization_files_names(self) -> Iterable[str]:
 		return ('st_items_equipment.xml',)
 
-	def load_section(self, section: Ltx.Section) -> bool:
+	def load_section(self, section: Ltx.Section, game: 'GameConfig') -> list[str] | None:
 		if section.get('class') in ('II_ANTIR', 'II_MEDKI', 'II_BANDG'):
 			self.sections.append(section)
 			return True
@@ -168,20 +174,18 @@ class Artefact(SectionsBase):
 	def get_localization_files_names(self) -> Iterable[str]:
 		return ('st_items_artefacts.xml',)
 
-	def load_section(self, section: Ltx.Section) -> bool:
+	def load_section(self, section: Ltx.Section, game: 'GameConfig') -> list[str] | None:
 		if section.get('class') == 'ARTEFACT':
 			self.sections.append(section)
-			return True
-		return False
+		return None
 
 
-class CreaturesImmunities(SectionsBase):
+class Monsters(ImmunitiesBase):
 
-	def load_section(self, section: Ltx.Section) -> bool:
-		if section.get('fire_wound_immunity') is not None:
-			self.sections.append(section)
-			return True
-		return False
+	def load_section(self, section: Ltx.Section, game: 'GameConfig') -> list[str] | None:
+		if game.has_parent_section(section, 'monster_base'):
+			return ImmunitiesBase.load_section(self, section, game)
+		return None
 
 
 class Maps(SectionsBase):
@@ -196,7 +200,7 @@ class Maps(SectionsBase):
 	def get_localization_files_names(self) -> Iterable[str]:
 		return ('string_table_general.xml',)
 
-	def load_section(self, section: Ltx.Section) -> bool:
+	def load_section(self, section: Ltx.Section, game: 'GameConfig') -> list[str] | None:
 		if section.name.lower() in self._maps_names:
 			self.maps.append(section)
 		else:
@@ -221,6 +225,8 @@ class GameConfig:
 		self.paths = Paths(config_or_gamedata_path)
 		cache_path = self.paths.cache_path / 'localization.cache' if not self.paths.gamedata.exists() else None
 		self.localization = Localization(self.paths, verbose, cache_file_path=cache_path)
+		# init addition sections list
+		self.addition_sections: dict[str, Ltx.Section | None] = {}
 		# init item-type specific lists
 		self.ammo = Ammo()
 		self.grenade = Grenade()
@@ -234,13 +240,14 @@ class GameConfig:
 		self.food = Food()
 		self.medkit = Medkit()
 		self.artefact = Artefact()
-		self.creatures_immunities = CreaturesImmunities()
+		self.monsters = Monsters()
 		self.maps = Maps()
-		# load .ltx files from root .ltx file
+		# load .ltx files from root .ltx file thru include statements
 		self.sections_roots: list[SectionsRoot] = []  # .ltx roots files
 		self.sections_roots.append(SectionsRoot(self.paths.system_ltx, (
 			self.ammo, self.grenade, self.weapons, self.detectors, self.torchs, self.binocles, self.pda,
-			self.outfits, self.damages, self.food, self.medkit, self.artefact, self.creatures_immunities)))
+			self.outfits, self.damages, self.food, self.medkit, self.artefact,
+			self.monsters)))
 		self.sections_roots.append(SectionsRoot(join(self.paths.configs, 'game.ltx'), (self.maps,)))
 		for sections_root in self.sections_roots:
 			self._load_ltx_sections(sections_root)
@@ -271,26 +278,41 @@ class GameConfig:
 				return
 
 		# try load well-known localization .xml
-		for section_base in sections_root.sections:
-			if (loc_fnames := section_base.get_localization_files_names()):
-				for loc_fname in loc_fnames:
-					try:
-						self.localization.add_localization_xml_file(join(self.localization.localization_text_path, loc_fname))
-					except FileNotFoundError:
-						if self.verbose:
-							print(f'Localization file not found: {join(self.localization.localization_text_path, loc_fname)}')
+		# for section_base in sections_root.sections:
+		# 	if (loc_fnames := section_base.get_localization_files_names()):
+		# 		for loc_fname in loc_fnames:
+		# 			try:
+		# 				self.localization.add_localization_xml_file(join(self.localization.localization_text_path, loc_fname))
+		# 			except FileNotFoundError:
+		# 				if self.verbose:
+		# 					print(f'Localization file not found: {join(self.localization.localization_text_path, loc_fname)}')
 
 		# load root .ltx
 		if self.verbose:
 			print(f'Load root .ltx: {sections_root.root_ltx_file_path}')
 		# load sections from root .ltx
 		ltx = Ltx(sections_root.root_ltx_file_path, open_fn=self.paths.open, verbose=self.verbose)
+		# process loaded .ltx sections
 		for section in ltx.iter_sections():
 			# load from .ltx for not loaded yet sections
 			for section_base in sections_root.sections:  # not loaded sections
-				if section_base.load_section(section):
-					section_base.is_loaded = True
-					continue
+				if (section_names := section_base.load_section(section, self)):
+					if isinstance(section_names, tuple):
+						for section_name in section_names:
+							if section_name:
+								if section_name not in self.addition_sections:
+									self.addition_sections[section_name] = None
+							elif self.verbose:
+								print(f'\t section [{section.name}] for {type(section_base)} has not existing additional sections')
+				if self.addition_sections.get(section.name, True) is None:
+					self.addition_sections[section.name] = section
+
+		# second pass for missing addition sections # it happens if section declared before it referenced
+		if any(x is None for x in self.addition_sections.values()):
+			# addition sections without .ltx section # try find .ltx section for now
+			for section in ltx.iter_sections():
+				if self.addition_sections.get(section.name, True) is None:
+					self.addition_sections[section.name] = section
 
 		load_localization()
 
@@ -298,6 +320,15 @@ class GameConfig:
 		if not self.paths.gamedata.exists():
 			with open(get_cache_file_path(), 'wb') as f_cache:
 				pickle_dump(sections_root.sections, f_cache)
+
+	def has_parent_section(self, section: Ltx.Section, parent_section_name: str) -> bool:
+		if section.has_parent_section(parent_section_name):
+			return True
+		for section_name in section.iter_parent_sections_names():
+			if (section := self.find(section_name)):
+				if  self.has_parent_section(section, parent_section_name):
+					return True
+		return False
 
 	def get_actor_outfit(self) -> Ltx | None:
 		ltx_path = join(self.paths.gamedata, 'configs/misc/outfit.ltx')
@@ -313,9 +344,13 @@ class GameConfig:
 
 	def iter(self) -> Iterator[Ltx.Section]:
 		'iterate for all known (loaded) .ltx sections: ammo, weapons e.t.c.'
+		# iter in item-specific sections from all section roots
 		for sections_root in self.sections_roots:
 			for item in sections_root.sections:
 				yield from self._iter(item)
+		# iter in adition sections
+		for section in (x for x in self.addition_sections.values() if x):
+			yield section
 
 	def find(self, section_name: str, case_insensitive = True) -> Ltx.Section | None:
 		'returns section; searchs from cached system.ltx file and all included .ltx files'
@@ -351,6 +386,20 @@ class GameConfig:
 	def artefact_iter(self) -> Iterator[Ltx.Section]:
 		'iterate for artefacts sections'
 		yield from self._iter(self.artefact)
+
+	def monsters_iter(self) -> Iterator[Ltx.Section]:
+		'iterate for monsters sections'
+		yield from self._iter(self.monsters)
+
+	def monsters_immunities_iter(self) -> Iterator[Ltx.Section]:
+		'iterate for monsters sections'
+		sections_names = set()  # collect sections names with respect to multiple references
+		for section in self._iter(self.monsters):
+			if (section_name := section.get(Monsters.IMMUNITIES_SECTION_NAME)):
+				sections_names.add(section_name)
+		for section_name in sections_names:
+			if (section := self.addition_sections.get(section_name)):
+				yield section
 
 	def localize(self, id: str, html_format = False, localized_only = False) -> str | None:
 		'''returns localized text by id with different formats since localized text may have formatting

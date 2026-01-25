@@ -464,8 +464,10 @@ class OsGamedataFs(LayerBase):
 					# file not exists # create file
 					f.parent.mkdir(parents=True, exist_ok=True)
 					return f.open(mode if 'b' in mode else 'b' + mode)
-			else:
+			elif _type == PathType.File:
 				return f.open(mode if 'b' in mode else 'b' + mode)
+			else:
+				raise self.OsFilesIsReadOnlyFs(f'folder is read only: open(path={path}, {mode=})')
 
 		return None
 

@@ -109,10 +109,9 @@ class Localization:
 		'iters localization ids with entry from .xml lile'
 
 		def normalize_text(text: str) -> str:
-			'replace escape sequence: new line'
+			'replace escape sequence: new line, &amp;'
 			if text:
-				while '\\n' in text:
-					text = text.replace('\\n', '\n')
+				text = text.replace('\\n', '\n').replace('&amp;', '&')
 			return text
 
 		xml_parser = XmlParser(self.paths, file_path)

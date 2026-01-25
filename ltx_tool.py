@@ -65,11 +65,24 @@ class Ltx:
 							return value
 			return None
 
-		def iter_parent_sections(self) -> Iterator['Ltx.Section']:
+		def has_parent_section(self, parent_section_name: str) -> bool:
+			'returns True if this section has parent section with name'
+			for section_name in self.iter_parent_sections_names():
+				if section_name == parent_section_name:
+					return True
+			return False
+
+		def iter_parent_sections_names(self) -> Iterator['Ltx.Section']:
+			'ites parent sections names'
 			if (parents := self.section.get('')):  # is any parent
 				for parent in parents:  # loop thru parent sections names
-					if (parent_section := self.ltx.sections.get(parent)):
-						yield parent_section
+					yield parent
+
+		def iter_parent_sections(self) -> Iterator[dict[str, str]]:
+			'iters parent sections'
+			for section_name in self.iter_parent_sections_names():
+				if (parent_section := self.ltx.sections.get(section_name)):
+					yield parent_section
 
 		def iter_names(self, include_parents = False) -> Iterator[str]:
 			'iterates section values names'
@@ -105,10 +118,14 @@ class Ltx:
 					if follow_includes:
 						try:
 							ltx = Ltx(join(dirname(self.ltx_file_path), included_ltx_file_path), True, open_fn=self.open_fn, verbose=self.verbose)
-							ltx.line_number = line_number
-							self.ltxs.append(ltx)
 						except LtxFileNotFoundException:
-							pass
+							# .ltx file not found # it can be happened with char case mess # try treat .ltx file name as case insensitive
+							try:
+								ltx = Ltx(join(dirname(self.ltx_file_path), included_ltx_file_path.lower()), True, open_fn=self.open_fn, verbose=self.verbose)
+							except LtxFileNotFoundException:
+								continue  # pass this line
+						ltx.line_number = line_number
+						self.ltxs.append(ltx)
 				case (LtxKind.NEW_SECTION, section_name, section_parents):
 					if section_name in sections:
 						print(f'duplicated section name: {section_name}', file=stderr)
@@ -182,7 +199,7 @@ def is_filters_re_match(re_filters: tuple[Pattern] | None, value: str | None) ->
 def remove_comment(line: bytearray) -> str:
 	return line.partition(b';')[0].strip()
 
-def try_decode(buff: bytearray, encoding=locale.getpreferredencoding()) -> str:
+def try_decode(buff: bytearray, encoding='cp1251') -> str:
 	try:
 		return buff.decode(encoding)
 	except:
