@@ -609,6 +609,7 @@ def get_kinds(game: GameConfig | None = None) -> dict[str, Iterator[Ltx.Section]
 		'ammo': game.ammo_iter if game else None,
 		'weapons': game.weapons_iter if game else None,
 		'outfits': game.outfits_iter if game else None,
+		'outfits.immunities': game.outfits_immunities_iter if game else None,
 		'damages': game.damages_iter if game else None,
 		'monsters': game.monsters_iter if game else None,
 		'monsters.immunities': game.monsters_immunities_iter if game else None,

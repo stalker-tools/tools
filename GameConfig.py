@@ -126,16 +126,15 @@ class Pda(SectionsBase):
 		return None
 
 
-class Outfits(SectionsBase):
+class Outfits(ImmunitiesBase):
 
 	def get_localization_files_names(self) -> Iterable[str]:
 		return ('st_items_outfit.xml',)
 
 	def load_section(self, section: Ltx.Section, game: 'GameConfig') -> list[str] | None:
 		if section.get('class') == 'E_STLK':
-			self.sections.append(section)
-			return True
-		return False
+			return ImmunitiesBase.load_section(self, section, game)
+		return None
 
 
 class Damages(SectionsBase):
@@ -371,6 +370,16 @@ class GameConfig:
 	def outfits_iter(self) -> Iterator[Ltx.Section]:
 		'iterate for outfits sections'
 		yield from self._iter(self.outfits)
+
+	def outfits_immunities_iter(self) -> Iterator[Ltx.Section]:
+		'iterate for outfits sections'
+		sections_names = set()  # collect sections names with respect to multiple references
+		for section in self._iter(self.outfits):
+			if (section_name := section.get(Outfits.IMMUNITIES_SECTION_NAME)):
+				sections_names.add(section_name)
+		for section_name in sections_names:
+			if (section := self.addition_sections.get(section_name)):
+				yield section
 
 	def damages_iter(self) -> Iterator[Ltx.Section]:
 		yield from self._iter(self.damages)
