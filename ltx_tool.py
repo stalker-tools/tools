@@ -176,6 +176,12 @@ class Ltx:
 			for ltx in self.ltxs:
 				yield from ltx.iter_sections()
 
+	def find(self, section_name: str) -> 'Ltx.Section | None':
+		for section in self.iter_sections():
+			if section.name == section_name:
+				return section
+		return None
+
 
 def get_filters_re_compiled(search_patterns: list[str] | None) -> tuple[Pattern] | None:
 
