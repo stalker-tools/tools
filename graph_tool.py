@@ -604,22 +604,34 @@ background: url("data:image/svg+xml,%3Csvg viewBox='0 0 20 300' xmlns='http://ww
 	print(f'</body></html>')
 
 def get_kinds(game: GameConfig | None = None) -> dict[str, Iterator[Ltx.Section] | None]:
-	'returns list of .ltx section kind filters'
+	'returns list of .ltx section kind filters; None is group delimiter'
+
+	def weapons_iter() -> Iterator[Ltx.Section | None]:
+		'grouped by ef_weapon_type: pistols, riffles e.t.c.'
+		prev_ef_weapon_type = None
+		for section in sorted(game.weapons_iter(), key=lambda x: f'{x.get("ef_weapon_type", "0")}{x.name}'):
+			if prev_ef_weapon_type is None or section.get('ef_weapon_type') != prev_ef_weapon_type:
+				prev_ef_weapon_type = section.get('ef_weapon_type')
+				yield None
+			yield section
+
 	return {
 		'ammo': game.ammo_iter if game else None,
 		'weapons': game.weapons_iter if game else None,
+		'group(weapons)': weapons_iter if game else None,
 		'outfits': game.outfits_iter if game else None,
+		'outfits.bones_protection': game.outfits_bones_protection_iter if game else None,
 		'outfits.immunities': game.outfits_immunities_iter if game else None,
 		'damages': game.damages_iter if game else None,
 		'monsters': game.monsters_iter if game else None,
 		'monsters.immunities': game.monsters_immunities_iter if game else None,
 		}
 
-def csv(gamedata: PathsConfig, localization: str, csv_files_paths: tuple[str], verbose: int, do_import = False):
+def csv(gamedata: PathsConfig, localization: str, csv_files_paths: tuple[str], verbose: int, do_import = False, dummy = False):
 	'.ltx/.xml import/export from/to .csv file'
 
 
-	class CsvMagic:
+	class CsvHeader:
 
 		def __init__(self, game: GameConfig, fields_names: list[str], kind: str | None = None, ltx_file_path: str | None = None):
 			self.game, self.fields_names = game, fields_names
@@ -641,19 +653,20 @@ def csv(gamedata: PathsConfig, localization: str, csv_files_paths: tuple[str], v
 			'returns class from .csv first line: magic and fields names'
 			magic = magic.strip().strip('[').strip(']').strip()
 			if magic:
+				# [], [.ltx file path], [kind filter]
 				if magic.endswith('.ltx'):
 					# .ltx file path
-					return CsvMagic(game, fields, None, magic)
+					return CsvHeader(game, fields, None, magic)
 				else:
 					# kind filter
-					return CsvMagic(game, fields, magic, None)
-			return CsvMagic(game, fields)
+					return CsvHeader(game, fields, magic, None)
+			return CsvHeader(game, fields)
 
 
 	# make info from .db/.xdb gamedata path
 	game = GameConfig(gamedata, localization, verbose)
 
-	def iter_csv_file(csv_file_path: str, *, without_values=False) -> Iterator[tuple[CsvMagic, Ltx.Section | str | None, list[str] | None]]:
+	def iter_csv_file(csv_file_path: str, *, without_values=False) -> Iterator[tuple[CsvHeader, Ltx.Section | str | None, list[str] | None]]:
 		'''iters .csv table file row by row
 		iters .csv rows (except first .csv line: magic and fields names)
 		'''
@@ -718,7 +731,7 @@ def csv(gamedata: PathsConfig, localization: str, csv_files_paths: tuple[str], v
 		if verbose:
 			print(f'\tOpen "{csv_file_path}"')
 
-		csv_magic: CsvMagic | None = None
+		csv_magic: CsvHeader | None = None
 		with open(csv_file_path) as f:
 			fields_names: tuple[str] | None = None
 			while (line := f.readline()):  # read .csv file line by line
@@ -729,7 +742,7 @@ def csv(gamedata: PathsConfig, localization: str, csv_files_paths: tuple[str], v
 					fields_names = tuple(map(str.strip, fields_names.split(',')))
 					if len(fields_names) < 1:
 						raise ValueError(f'Expected: fileds names; has: {line}')
-					csv_magic = CsvMagic.from_table_header(csv_magic, fields_names)
+					csv_magic = CsvHeader.from_table_header(csv_magic, fields_names)
 
 					if verbose:
 						print(f'\tLtx {csv_magic} fields names: "{", ".join(fields_names)}"')
@@ -748,11 +761,18 @@ def csv(gamedata: PathsConfig, localization: str, csv_files_paths: tuple[str], v
 							raise ValueError(f'.ltx section not found: section name {ltx_section_name}')
 						yield csv_magic, csv_magic.get_section(ltx_section_name) if ltx_section_name else None, values
 
+		# check for kind filter
 		if without_values and csv_magic.kind:
 			# iter .ltx sections accordings to kind filter
 			if (iter := get_kinds(csv_magic.game).get(csv_magic.kind)):  # iterator for filtered .ltx sections
-				for ltx_section in sorted(iter(), key=lambda x: x.name):
-					yield csv_magic, ltx_section, None
+				if csv_magic.kind.startswith('group('):
+					# already grouped and sorted
+					for ltx_section in iter():
+						yield csv_magic, ltx_section, None
+				else:
+					# sort by section name
+					for ltx_section in sorted(iter(), key=lambda x: x.name):
+						yield csv_magic, ltx_section, None
 
 	def get_calc_func(field_name: str) -> tuple[str, Callable] | None:
 
@@ -857,10 +877,12 @@ def csv(gamedata: PathsConfig, localization: str, csv_files_paths: tuple[str], v
 					raise ValueError(f'.csv file is not table: fields names count {len(csv_magic.fields_names)} not equals line values {values}')
 				# save .csv table row to .ltx section
 				fields_values = calc_values(csv_magic.fields_names, values)  # join field names (first .csv line) and its values
-				if verbose:
+				if verbose > 1:
 					for k, v in fields_values.items():
 						print(f'\t{k}={v}')
-				update_section_values(ltx_section, fields_values, game)  # save .csv table values to .ltx file
+				if update_section_values(ltx_section, fields_values, game, dummy):  # save .csv table values to .ltx file
+					if dummy:
+						print(f'\t{csv_file_path} change {ltx_section.ltx.ltx_file_path}')
 				if verbose:
 					print()
 
@@ -1077,6 +1099,7 @@ used to get original game (.db/.xdb files only) infographics; default: false
 				help=f'config file path; default: {DEFAULT_CONFIG_PATH}')
 			parser_ = subparsers.add_parser('csv', help='csv: import/export to/from .csv (comma separated values) file')
 			parser_.add_argument('-i', '--import', action='store_true', help='import .csv file to gamedata path')
+			parser_.add_argument('-D', '--dummy', action='store_true', help='dummy run for import: do not change any file')
 			parser_.add_argument('csv', metavar='PATH', nargs='+', help='.csv file path')
 			parser_ = subparsers.add_parser('inv', help='inv: import/export to/from inventory image files')
 			parser_.add_argument('--kind', choices=(get_kinds().keys()),
@@ -1136,7 +1159,7 @@ example .csv file: [],inv_name,inv_name_short,description
 						csv_files_paths.extend(glob(str(csv_path)))
 					else:
 						csv_files_paths.extend(Path().glob(str(csv_path)))
-				csv(paths_config, 'rus', sorted(csv_files_paths), verbose, getattr(args, 'import'))
+				csv(paths_config, 'rus', sorted(csv_files_paths), verbose, getattr(args, 'import'), args.dummy)
 			case 'inv':
 				# export/import inventory images
 				if args.equipment:

@@ -128,12 +128,19 @@ class Pda(SectionsBase):
 
 class Outfits(ImmunitiesBase):
 
+	BONES_KOEFF_PROTECTION = 'bones_koeff_protection'
+
 	def get_localization_files_names(self) -> Iterable[str]:
 		return ('st_items_outfit.xml',)
 
 	def load_section(self, section: Ltx.Section, game: 'GameConfig') -> list[str] | None:
 		if section.get('class') == 'E_STLK':
-			return ImmunitiesBase.load_section(self, section, game)
+			ret = []
+			if (protection_section_name := section.get(self.BONES_KOEFF_PROTECTION)):
+				ret.append(protection_section_name)
+			if (section_names := ImmunitiesBase.load_section(self, section, game)):
+				ret.extend(section_names)
+			return ret
 		return None
 
 
@@ -296,7 +303,7 @@ class GameConfig:
 			# load from .ltx for not loaded yet sections
 			for section_base in sections_root.sections:  # not loaded sections
 				if (section_names := section_base.load_section(section, self)):
-					if isinstance(section_names, tuple):
+					if isinstance(section_names, (tuple, list)):
 						for section_name in section_names:
 							if section_name:
 								if section_name not in self.addition_sections:
@@ -376,6 +383,16 @@ class GameConfig:
 		sections_names = set()  # collect sections names with respect to multiple references
 		for section in self._iter(self.outfits):
 			if (section_name := section.get(Outfits.IMMUNITIES_SECTION_NAME)):
+				sections_names.add(section_name)
+		for section_name in sections_names:
+			if (section := self.addition_sections.get(section_name)):
+				yield section
+
+	def outfits_bones_protection_iter(self) -> Iterator[Ltx.Section]:
+		'iterate for outfits sections'
+		sections_names = set()  # collect sections names with respect to multiple references
+		for section in self._iter(self.outfits):
+			if (section_name := section.get(Outfits.BONES_KOEFF_PROTECTION)):
 				sections_names.add(section_name)
 		for section_name in sections_names:
 			if (section := self.addition_sections.get(section_name)):

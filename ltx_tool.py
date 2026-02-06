@@ -336,7 +336,7 @@ def update_section_value(section: Ltx.Section, value_name: str, new_value: str, 
 		return ret
 	return ret
 
-def update_section_values(section: Ltx.Section, values: dict[str, str], game: 'GameConfig') -> bool:
+def update_section_values(section: Ltx.Section, values: dict[str, str], game: 'GameConfig', dummy = False) -> bool:
 	'updates lvalues of .ltx file section'
 
 	def find_in_line(line: str | bytes, what: list[bytes | str], start_index=0):
@@ -370,24 +370,39 @@ def update_section_values(section: Ltx.Section, values: dict[str, str], game: 'G
 				if (rvalue := line[eq_index + 1:end_index]):  # rvalue to replace
 					rvalue = rvalue.strip().decode(encoding)
 					if rvalue == new_value:
-						if game.verbose:
-							print(f'\tnot changed {i}: {line[:eq_index].strip().decode(encoding)}={rvalue}')
+						# if game.verbose > 1:
+						# 	print(f'\tnot changed {i}: {line[:eq_index].strip().decode(encoding)}={rvalue}')
 						continue  # not changed # ignore new value
+					if not new_value:
+						if game.verbose > 1:
+							print(f'\t ignore empty new value: {line[:eq_index].strip().decode(encoding)}={new_value}')
+						continue  # new value is empty value # ignore it
 					# try treat rvalue as localize id
 					if (localized := game.localize(rvalue, localized_only=True)):
 						# is localization id
 						if localized == new_value:
-							if game.verbose:
-								print(f'\tnot changed {i}: {line[:eq_index].strip().decode(encoding)}={rvalue} localized "{localized}"')
+							# if game.verbose > 1:
+							# 	print(f'\tnot changed {i}: {line[:eq_index].strip().decode(encoding)}={rvalue} localized "{localized}"')
 							continue  # not changed # ignore new value
-						localize_buff[rvalue] = new_value  # use .xml localization buffer
+						if game.verbose > 1:
+							print(f'\t{line[:eq_index].strip().decode(encoding)}={rvalue} localized "{localized}"')
+						if dummy:
+							ret = True
+						else:
+							localize_buff[rvalue] = new_value  # use .xml localization buffer
 						continue  # update of .xml localization file is buffered
 					# replace rvalue in .ltx file # use .ltx file buffer
-					line[eq_index + 1:end_index] = (' ' + new_value).encode(encoding)
-					buff[i], is_buffer_dirty = line, True  # mark .ltx buffer to flush to file
+					if game.verbose > 1:
+						print(f'\t{line[:eq_index].strip().decode(encoding)}={new_value}   was {rvalue}')
+					if dummy:
+						ret = True
+					else:
+						line[eq_index + 1:end_index] = (' ' + new_value).encode(encoding)
+						buff[i], is_buffer_dirty = line, True  # mark .ltx buffer to flush to file
 
 		if is_buffer_dirty:
 			# flush .ltx buffer to file
+			ret = True
 			with game.paths.open(section.ltx.ltx_file_path, 'wb') as f:
 				f.write(line_separator.join((x.rstrip() for x in buff)))
 		elif game.verbose:
@@ -395,6 +410,7 @@ def update_section_values(section: Ltx.Section, values: dict[str, str], game: 'G
 
 		if localize_buff:
 			# update .xml localization files
+			ret = True
 			game.localization.update_files(localize_buff, verbose=game.verbose)
 		return ret
 	return ret

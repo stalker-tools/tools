@@ -677,7 +677,7 @@ used to copy of all gamedata files (.db/.xdb and gamedata sub-path) to another l
 				db_files_names = []
 
 				# extract file by file grouped by .db/.xdb files to use cached .db/.xdb reader
-				stat_write = stat_skip = 0  # files statistics
+				stat_write = stat_skip = i = 0  # files statistics
 				prev_f = None
 				db_reader: XRReader = None  # cache
 				for i, (ff, f) in enumerate(iter_db_gamedata_files(p)):
