@@ -11,7 +11,7 @@ The software consists of two parts:
 ### [1. Brief introduction](#1-brief-introduction-1)
 - #### [1.1 Stalker Tools specific features](#11-stalker-tools-specific-features)
 - #### [1.2 Little intro](#12-little-intro)
-- #### [1.3 .db/.xdb extract tool](13-dbxdb-extract-tool-1)
+- #### [1.3 .db/.xdb extract tool](#13-dbxdb-extract-tool-1)
 - #### [1.4 Gamedata analysis tools](#14-gamedata-analysis-tools-1)
 - #### [1.5 Hybrid game engine](#15-hybrid-game-engine-1)
 ### [2. Installation](#2-installation-1)
