@@ -968,15 +968,70 @@ if __name__ == '__main__':
 		def parse_args():
 			parser = argparse.ArgumentParser(
 				description='''Infographics brochure maker for main game info and gameplay settings.
+
 Used to game developer engagement with gamers.
-Out format: html with embedded images.
+And game developer tools:
+- analyze infographics .html maker for .ltx files; out format: html with embedded images and graphs
+- table-based export/import: .ltx/.xml <-> .csv table
+- batch inventory images export/import: .dds <-> .png images
+- import from another mod: for inventory images use icons utility
 
 Note:
 It is not necessary to extract .db/.xdb files to gamedata path. This utility can read all game files from .db/.xdb files !
 
-And game developer tools:
-- analyze infographics .html maker for .ltx files; out format: html with embedded images and graphs
-- table-based export/import: .ltx/.xml <-> .csv table
+This utility introduces a new concept for mod authors that consists of two main workflow stages:
+- Prepare sources for new mod.
+  Misc gamedata files
+  - Collect files to gamedata souces path according gamedata-based paths.
+  - Create new files.
+  Section (.ltx) parameters (numericals and localization text) for .ltx files: ammo, weapons, outfits e.t.c.
+  - Collect and edit .ltx sections and/or .ltx files.
+  Inventory images
+  - Collect and edit .ltx items images as .png separate files. So each inventory item has own .png file with .ltx section name.
+    Example: for .ltx [antirad] section: anirad.png.
+    Besides, each .ltx inventory item section has grid coordinates for texture .dds as parameters:
+	  inv_grid_x, inv_grid_y, inv_grid_width, inv_grid_height.
+- Compilation of new mod sources.
+  Misc gamedata files
+  - Import files to new mod gamedata path.
+  Section (.ltx) parameters.
+  - Import all .csv tables files to .ltx files.
+  Inventory images:
+  - Import all .png files into one full-size .dds texture according to .ltx inventory grid: x, y, w, h.
+
+Forkflow for Prepare stage.
+  Misc gamedata files
+  - Copy files from another mod to gamedata souces path according gamedata-based paths.
+    Be kind to gather another mod authors info and show it.
+  - Create/edit files by text editor or multimedia editors, examples:
+    VS Code for text, Audacity for audio, blender-xray for X-ray graphics, GIMP for .dds and .png images.
+  - For 3D objects.
+    Copy .ogf files, copy textures .dds files (see .ogf file by hex editor for texture file path and name).
+    Add textures to [specification] section of "textures/textures.ltx" file.
+  Section (.ltx) parameters.
+  - Collect new from another mod and edit existing .ltx files.
+    If .ltx file or .ltx section does not exists: create them by text editor. Use latin symbols only.
+    Use table-based editor:
+	  Export .ltx sections names by rows (first column) and their parameters names by columns (first row) to .csv files.
+	  See help for "csv" subcommand.
+      Be free to use "--kind" filter to automatically gather of .ltx sections. Or set .ltx file path and sections names.
+  Inventory images.
+  - Collect new from another mod and edit existing items images as .png separate files.
+    Use icons utility to import images from another mod .dds file. See help for "e" subcommand.
+  - Select free inventory grid cells for new items.
+    Export one full-size .dds to marked image file: grid with cells coordinates. See "-E" option for "inv" subcommand.
+  - Edit .ltx files to set .ltx items inventory grid coordinates (and textures names if changed).
+    If .ltx file or .ltx section does not exists: create them by text editor. Use latin symbols only.
+    Use table-based editor: export .ltx sections to .csv files. See help for "csv" subcommand.
+
+Forkflow for Compilation stage.
+  Misc gamedata files
+  - Copy files to new mod gamedata path from gamedata souces path according gamedata-based paths.
+  Section (.ltx) parameters.
+  - Import all table .csv files. See "-i" option for "csv" subcommand.
+  Inventory images.
+  - Import all table .csv files for inventory grid coordinates. See "-i" option for "csv" subcommand.
+  - Import all inventory images by this utility. See help for "inv" subcommand.
 ''',
 				epilog=f'''Examples.
 
@@ -1101,13 +1156,14 @@ used to get original game (.db/.xdb files only) infographics; default: false
 			parser_.add_argument('-i', '--import', action='store_true', help='import .csv file to gamedata path')
 			parser_.add_argument('-D', '--dummy', action='store_true', help='dummy run for import: do not change any file')
 			parser_.add_argument('csv', metavar='PATH', nargs='+', help='.csv file path')
-			parser_ = subparsers.add_parser('inv', help='inv: import/export to/from inventory image files')
+			parser_ = subparsers.add_parser('inv',
+				help='inv: import/export to/from inventory image files; image files names must equals sections names')
 			parser_.add_argument('--kind', choices=(get_kinds().keys()),
 				help=f'''export .ltx sections to table .csv file with filter; one from: {", ".join(get_kinds().keys())}; first line: fields names
 example .csv file: [],inv_name,inv_name_short,description
 ''')
 			parser_.add_argument('-i', '--import', action='store_true', help='import image file to gamedata path')
-			parser_.add_argument('--equipment', action='store_true',
+			parser_.add_argument('-E', '--equipment', action='store_true',
 				help='export full-size .dds to marked image file: grid and grid cell coordinates')
 			parser_.add_argument('sections', metavar='PATTERN', nargs='*',
 				help='sections names filter pattern; bash name filter: *, ?, [], [!]')

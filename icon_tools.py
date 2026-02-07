@@ -56,6 +56,20 @@ class IconsEquipment:
 		'save equipment .dds to file'
 		self.image.save(Path(gamedata_path) / join(*self.DDS_FILE_PATH))
 
+	@classmethod
+	def save_image_from_dds(cls, dds_file_path: Path, image_file_path: Path, inv_grid: tuple[int, int, int, int]) -> bool:
+		'save image file from equipment .dds according to inventory square: x, y, w, h'
+		with open(dds_file_path, 'rb') as f:
+			image = image_open(f)
+			try:
+				x, y, w, h = tuple(map(lambda x: int(x) * cls.GRID_SIZE, inv_grid))
+			except ValueError:
+				return False
+			image = image.crop((x, y, x + w, y + h))
+			image.save(image_file_path)
+			return True
+
+
 class IconsXmlDds:
 	'Pair of .xml texture tags and .dds texture files'
 
@@ -124,16 +138,36 @@ if __name__ == '__main__':
 		def parse_args():
 			parser = argparse.ArgumentParser(
 				formatter_class=argparse.RawTextHelpFormatter,
-				description='X-ray icons tool. Out format: images',
+				description='''X-ray icons tool for inventory.
+Used to import inventory image (.png) for selected item according to .ltx section inventory grid: x, y, w, h.
+Formats: .png images with alpha channel, .dds textures.
+
+This utility according a new concept for mod authors that consists of two main workflow stages:
+- Prepare sources for new mod: collect .ltx items images as .png separate files.
+  Use this utility to import images from another mod .dds inventory file.
+  See help for "e" subcommand.
+  Get inventory grid coordinates from another mod .ltx files: x, y, w, h
+- Compilation of new mod sources: pack all .png files into one full-size .dds texture according to .ltx inventory grid: x, y, w, h.
+  Use graph utility.
+
+So all inventory images stored in separate image files (.png) as new mod sources.
+''',
 				epilog=f'''Examples
 
-  Save ui_icon_equipment.dds icon to svd.png:
+  Equipment icons: inventory
+
+  Export ui_icon_equipment.dds icon to svd.png according inventory grid: x, y, w, h:
 {argv[0]} -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" e -c 23 30 6 2 -p svd
 
-  Save all icons from ui_iconstotal.xml:
+  Import "antirad" image from another mod ui_icon_equipment.dds to antirad.png:
+{argv[0]} e -e "mods/Food_and_Med_pack_1.2/GameData/textures/ui/ui_icon_equipment.dds" -p RWM/inv/medic/antirad.png -c 21 2 2 1
+
+  "Total" icons: tasks and persons
+
+  Export all icons from ui_iconstotal.xml:
 {argv[0]} -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" ui_iconstotal
 
-  Save ui_iconstotal.xml icon to ui_iconsTotal_artefact.png:
+  Export ui_iconstotal.xml icon to ui_iconsTotal_artefact.png:
 {argv[0]} -f "$HOME/.wine/drive_c/Program Files (x86)/clear_sky/gamedata" ui_iconstotal -i ui_iconsTotal_artefact
 ''',
 			)
@@ -141,14 +175,18 @@ if __name__ == '__main__':
 				help='game path that contains .db/.xdb files and optional gamedata folder')
 			parser.add_argument('-t', '--version', metavar='VER', choices=DbFileVersion.get_versions_names(),
 				help=f'.db/.xdb files version; usually 2947ru/2947ww for SoC, xdb for CS and CP; one of: {", ".join(DbFileVersion.get_versions_names())}')
-			parser.add_argument('-f', '--gamedata', metavar='PATH', required=True, help='gamedata directory path')
-			parser.add_argument('-l', '--localization', metavar='LANG', default='rus', help='localization language (see gamedata/configs/text path): rus (default), cz, hg, pol')
+			parser.add_argument('-f', '--gamedata', metavar='PATH', help='gamedata directory path')
+			parser.add_argument('-l', '--localization', metavar='LANG', default='rus',
+				help='localization language (see gamedata/configs/text path): rus (default), cz, hg, pol')
 			parser.add_argument('-v', action='count', default=0, help='verbose mode: 0..; examples: -v, -vv')
 			parser.add_argument('-V', action='version', version=f'{PUBLIC_VERSION} {PUBLIC_DATETIME}', help='show version')
 			subparsers = parser.add_subparsers(dest='mode', help='sub-commands:')
 			parser_ = subparsers.add_parser('equipment', aliases=('e',), help='icons by ui_icon_equipment.dds')
 			parser_.add_argument('-p', metavar='FILENAME', required=True, help='.png filename to save icon to')
-			parser_.add_argument('-c', metavar='INT', required=True, type=int, nargs=4, help='grid coordinate from .ltx section: X Y WIDTH HEIGHT')
+			parser_.add_argument('-c', metavar='INT', required=True, type=int, nargs=4,
+				help='grid coordinate from .ltx section: X Y WIDTH HEIGHT')
+			parser_.add_argument('-e', metavar='FILEPATH',
+				help='equipment .dds filename to load icon from; used to import inventory image from another mod')
 			parser_ = subparsers.add_parser('ui_npc_unique', help='icons by ui_npc_unique.xml')
 			parser_.add_argument('-i', '--id', metavar='TEXT', help='id of icon (all icons if omited)')
 			parser_ = subparsers.add_parser('ui_iconstotal', help='icons by ui_iconstotal.xml')
@@ -172,14 +210,18 @@ if __name__ == '__main__':
 		verbose = args.v
 		match args.mode:
 			case 'equipment' | 'e':
-				if not args.version:
-					raise ValueError(f'Argument --version or -t is missing; see help: {argv[0]} -h')
-				paths = Paths(PathsConfig(args.gamepath, args.version, args.gamedata, verbose=verbose))
-				icons = IconsEquipment(paths)
-				if (image := icons.get_image(*args.c)):
-					image.save(args.p + '.png')
+				if args.e:
+					# import inv image from .dds equipment file
+					IconsEquipment.save_image_from_dds(Path(args.e), Path(args.p), tuple(map(int, args.c)))
 				else:
-					print('Error save to .png')
+					if not args.gamedata or not args.version:
+						raise ValueError(f'Argument --gamedata or -g or --version or -t is missing; see help: {argv[0]} -h')
+					paths = Paths(PathsConfig(args.gamepath, args.version, args.gamedata, verbose=verbose))
+					icons = IconsEquipment(paths)
+					if (image := icons.get_image(*args.c)):
+						image.save(args.p + '.png')
+					else:
+						print('Error save to .png')
 			case 'ui_npc_unique':
 				icons = UiNpcUnique(args.gamedata)
 				save_images(icons, args.id)
