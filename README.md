@@ -9,9 +9,11 @@ The software consists of two parts:
 ## Table of contents:
 
 ### [1. Brief introduction](#1-brief-introduction-1)
-- #### [1.1 .db/.xdb extract tool](#11-dbxdb-extract-tool-1)
-- #### [1.2 Gamedata analysis tools](#12-gamedata-analysis-tools-1)
-- #### [1.3 Hybrid game engine](#13-hybrid-game-engine-1)
+- #### [1.1 Stalker Tools specific features](#11-stalker-tools-specific-features)
+- #### [1.2 Little intro](#12-little-intro)
+- #### [1.3 .db/.xdb extract tool](13-dbxdb-extract-tool-1)
+- #### [1.4 Gamedata analysis tools](#14-gamedata-analysis-tools-1)
+- #### [1.5 Hybrid game engine](#15-hybrid-game-engine-1)
 ### [2. Installation](#2-installation-1)
 - #### [2.1 Windows instructions](#21-windows-instructions-1)
 - #### [2.2 Linux instructions](#22-linux-instructions-1)
@@ -29,7 +31,77 @@ Tools authors strong believe that it helps to game developers to save time and s
 
 Since X-ray game engine was reached good 3D capabilities. Along with exciting the main idea of ​​the game. Authors of this tools houps to help reach a next level, new kind of game scenario.
 
-### Little intro
+## 1.1 Stalker Tools specific features
+
+This repo introduces a __new concept__ for mod authors that consists of two main workflow stages: prepare, compile.
+
+### 1.1.1 Prepare stage: prepare sources for new mod
+
+  Misc gamedata files
+  - Collect files to gamedata souces path according gamedata-based paths.
+  - Create new files.
+
+  Section (.ltx) parameters (numericals and localization text) for .ltx files: ammo, weapons, outfits e.t.c.
+  - Collect and edit .ltx sections and/or .ltx files.
+
+  Inventory images
+  - Collect and edit .ltx items images as .png separate files. So each inventory item has own .png file with .ltx section name.
+    Example: for .ltx [antirad] section: anirad.png.
+    Besides, each .ltx inventory item section has grid coordinates for texture .dds as parameters:
+	  inv_grid_x, inv_grid_y, inv_grid_width, inv_grid_height.
+
+### 1.1.2 Compilation stage: prepare of new mod sources
+
+  Misc gamedata files
+  - Import files to new mod gamedata path.
+
+  Section (.ltx) parameters.
+  - Import all .csv tables files to .ltx files.
+
+  Inventory images:
+  - Import all .png files into one full-size .dds texture according to .ltx inventory grid: x, y, w, h.
+
+### 1.1.3 Forkflow for Prepare stage
+
+  Misc gamedata files
+  - Copy files from another mod to gamedata souces path according gamedata-based paths.
+    Be kind to gather another mod authors info and show it.
+  - Create/edit files by text editor or multimedia editors, examples:
+    VS Code for text, Audacity for audio, blender-xray for X-ray graphics, GIMP for .dds and .png images.
+  - For 3D objects.
+    Copy .ogf files, copy textures .dds files (see .ogf file by hex editor for texture file path and name).
+    Add textures to [specification] section of "textures/textures.ltx" file.
+
+  Section (.ltx) parameters.
+  - Collect new from another mod and edit existing .ltx files.
+    If .ltx file or .ltx section does not exists: create them by text editor. Use latin symbols only.
+    Use table-based editor:
+	  Export .ltx sections names by rows (first column) and their parameters names by columns (first row) to .csv files.
+	  See help for "csv" subcommand.
+      Be free to use "--kind" filter to automatically gather of .ltx sections. Or set .ltx file path and sections names.
+
+  Inventory images.
+  - Collect new from another mod and edit existing items images as .png separate files.
+    Use icons utility to import images from another mod .dds file. See help for "e" subcommand.
+  - Select free inventory grid cells for new items.
+    Export one full-size .dds to marked image file: grid with cells coordinates. See "-E" option for "inv" subcommand.
+  - Edit .ltx files to set .ltx items inventory grid coordinates (and textures names if changed).
+    If .ltx file or .ltx section does not exists: create them by text editor. Use latin symbols only.
+    Use table-based editor: export .ltx sections to .csv files. See help for "csv" subcommand.
+
+### 1.1.4 Forkflow for Compilation stage
+
+  Misc gamedata files
+  - Copy files to new mod gamedata path from gamedata souces path according gamedata-based paths.
+
+  Section (.ltx) parameters.
+  - Import all table .csv files. See "-i" option for "csv" subcommand.
+
+  Inventory images.
+  - Import all table .csv files for inventory grid coordinates. See "-i" option for "csv" subcommand.
+  - Import all inventory images by this utility. See help for "inv" subcommand.
+
+## 1.2 Little intro
 
 Tools usage falls into two category:
 - **Git repository usage**<br/>
@@ -82,7 +154,7 @@ See tasks example: [tasks - Sigerous Mod.csv](https://github.com/stalker-tools/r
 
 Take a fact that tools is in developing process. And API may be changed.
 
-## 1.1 .db/.xdb extract tool
+## 1.3 .db/.xdb extract tool
 
 At all, using scenarios involves two ways:
 
@@ -97,7 +169,7 @@ Python-way API - just import `XRReader` class from `DBReader.py`. See [DBReader.
 
 See help: [3.1 .db/.xdb files extraction](EXTRACT.md).
 
-## 1.2 Gamedata analysis tools
+## 1.4 Gamedata analysis tools
 
 This command-line tools used for analysis of gamedata Xray config files:
 - .ltx sections
@@ -148,7 +220,7 @@ See help: [3.2 .ltx files analysis tool](ANALYSIS_LTX.md).
 
 Developed and tested on Linux/Wine.
 
-## 1.3 Hybrid game engine
+## 1.5 Hybrid game engine
 
 This is cross-platform combination of following game engines:
 - Xray game engine: .exe and .dll files with Lua scripts and config files, it cross-platform via Wine.
