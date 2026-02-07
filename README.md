@@ -50,7 +50,7 @@ This repo introduces a __new concept__ for mod authors that consists of two main
     Besides, each .ltx inventory item section has grid coordinates for texture .dds as parameters:
 	  inv_grid_x, inv_grid_y, inv_grid_width, inv_grid_height.
 
-### 1.1.2 Compilation stage: prepare of new mod sources
+### 1.1.2 Compilation stage: compile new mod from new mod sources
 
   Misc gamedata files
   - Import files to new mod gamedata path.
