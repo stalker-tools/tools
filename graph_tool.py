@@ -16,7 +16,7 @@ try:
 	from version import PUBLIC_VERSION, PUBLIC_DATETIME
 except ModuleNotFoundError: PUBLIC_VERSION, PUBLIC_DATETIME = '', ''
 from ltx_tool import Ltx, update_section_values
-from paths import Config as PathsConfig, DbFileVersion, DEFAULT_GAMEDATA_PATH
+from paths import Paths, Config as PathsConfig, DbFileVersion, DEFAULT_GAMEDATA_PATH
 from GameConfig import GameConfig
 from icon_tools import IconsEquipment, get_image_as_html_img
 
@@ -934,27 +934,15 @@ def inv(gamedata: PathsConfig, localization: str, images_paths: tuple[str], verb
 	else:
 		export_kind()
 
-def export_equipment(gamedata: PathsConfig, localization: str, path: str, verbose: int):
+def export_equipment(gamedata: PathsConfig, path: str, verbose: int):
 	'export marked equipment .dds to image: grid and grid cell coordinates'
 
 	# make info from .db/.xdb gamedata path
 	if not path:
 		return
-	game = GameConfig(gamedata, localization, verbose)
-	icons = IconsEquipment(game.paths)
-	draw = ImageDraw.Draw(icons.image)
-	x, y = icons.image.size
-	grid_size = IconsEquipment.GRID_SIZE
-	# draw grid
-	for xx in range(0, x, grid_size):
-		draw.line((xx, 0, xx, y), fill=(255, 0, 0))
-	for yy in range(0, y, grid_size):
-		draw.line((0, yy, x, yy), fill=(255, 0, 0))
-	# draw grid cell coordinates
-	for xx in range(0, x, grid_size):
-		for yy in range(0, y, grid_size):
-			draw.text((xx, yy), f'{xx//grid_size},{yy//grid_size}', fill=(255, 255, 255))
-	icons.image.save(path[0])
+	paths = Paths(gamedata)
+	icons = IconsEquipment(paths)
+	icons.save_marked_image_from_dds(icons.image, path[0])
 
 if __name__ == '__main__':
 	from sys import argv, exit
@@ -1220,7 +1208,7 @@ example .csv file: [],inv_name,inv_name_short,description
 				# export/import inventory images
 				if args.equipment:
 					# export marked equipment .dds
-					export_equipment(paths_config, 'rus', args.sections, verbose)
+					export_equipment(paths_config, args.sections, verbose)
 				else:
 					# batch export/import
 					inv(paths_config, 'rus', args.sections, verbose, args.kind, getattr(args, 'import'))

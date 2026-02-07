@@ -10,6 +10,7 @@ from xml.dom.minidom import parse, Element
 from io import BytesIO
 from base64 import b64encode
 from PIL.Image import open as image_open, Image
+from PIL import ImageDraw
 # tools imports
 try:
 	from version import PUBLIC_VERSION, PUBLIC_DATETIME
@@ -30,6 +31,8 @@ class IconsEquipment:
 
 	GRID_SIZE = 50
 	DDS_FILE_PATH = ('textures', 'ui', 'ui_icon_equipment.dds')
+	MARKED_COORDS_COLOR = (128, 128, 128, 128)
+	MARKED_GRID_COLOR = (128, 0, 0, 128)
 
 	def __init__(self, paths: Paths) -> None:
 		self.paths = paths
@@ -68,6 +71,31 @@ class IconsEquipment:
 			image = image.crop((x, y, x + w, y + h))
 			image.save(image_file_path)
 			return True
+
+	@classmethod
+	def save_marked_image_from_dds(cls, dds_file_path: Path | Image, image_file_path: Path):
+		'export marked equipment .dds to image: grid and grid cell coordinates'
+
+		def get_image() -> Image:
+			'returns .dds image'
+			if isinstance(dds_file_path, Image):
+				return dds_file_path
+			return image_open(dds_file_path)
+
+		if (image := get_image()):
+			draw = ImageDraw.Draw(image)
+			x, y = image.size
+			grid_size = cls.GRID_SIZE
+			# draw grid
+			for xx in range(0, x, grid_size):
+				draw.line((xx, 0, xx, y), fill=cls.MARKED_GRID_COLOR)
+			for yy in range(0, y, grid_size):
+				draw.line((0, yy, x, yy), fill=cls.MARKED_GRID_COLOR)
+			# draw grid cell coordinates
+			for xx in range(0, x, grid_size):
+				for yy in range(0, y, grid_size):
+					draw.text((xx, yy), f'{xx//grid_size},{yy//grid_size}', fill=cls.MARKED_COORDS_COLOR)
+			image.save(image_file_path)
 
 
 class IconsXmlDds:
@@ -162,6 +190,9 @@ So all inventory images stored in separate image files (.png) as new mod sources
   Import "antirad" image from another mod ui_icon_equipment.dds to antirad.png:
 {argv[0]} e -e "mods/Food_and_Med_pack_1.2/GameData/textures/ui/ui_icon_equipment.dds" -p RWM/inv/medic/antirad.png -c 21 2 2 1
 
+  Save full-size .dds to marked .png image file:
+{argv[0]} e -M -e "mods/Food_and_Med_pack_1.2/GameData/textures/ui/ui_icon_equipment.dds" -p RWM/mods/Food_and_Med_pack_1.2-equipment.png
+
   "Total" icons: tasks and persons
 
   Export all icons from ui_iconstotal.xml:
@@ -182,11 +213,12 @@ So all inventory images stored in separate image files (.png) as new mod sources
 			parser.add_argument('-V', action='version', version=f'{PUBLIC_VERSION} {PUBLIC_DATETIME}', help='show version')
 			subparsers = parser.add_subparsers(dest='mode', help='sub-commands:')
 			parser_ = subparsers.add_parser('equipment', aliases=('e',), help='icons by ui_icon_equipment.dds')
-			parser_.add_argument('-p', metavar='FILENAME', required=True, help='.png filename to save icon to')
-			parser_.add_argument('-c', metavar='INT', required=True, type=int, nargs=4,
+			parser_.add_argument('-p', metavar='FILENAME', required=True, help='.png filename to save to')
+			parser_.add_argument('-c', metavar='INT', type=int, nargs=4,
 				help='grid coordinate from .ltx section: X Y WIDTH HEIGHT')
 			parser_.add_argument('-e', metavar='FILEPATH',
 				help='equipment .dds filename to load icon from; used to import inventory image from another mod')
+			parser_.add_argument('-M', '--marked', action='store_true', help='save .png as equipment marked grid')
 			parser_ = subparsers.add_parser('ui_npc_unique', help='icons by ui_npc_unique.xml')
 			parser_.add_argument('-i', '--id', metavar='TEXT', help='id of icon (all icons if omited)')
 			parser_ = subparsers.add_parser('ui_iconstotal', help='icons by ui_iconstotal.xml')
@@ -211,8 +243,12 @@ So all inventory images stored in separate image files (.png) as new mod sources
 		match args.mode:
 			case 'equipment' | 'e':
 				if args.e:
-					# import inv image from .dds equipment file
-					IconsEquipment.save_image_from_dds(Path(args.e), Path(args.p), tuple(map(int, args.c)))
+					if args.marked:
+						# save .png as equipment marked grid
+						IconsEquipment.save_marked_image_from_dds(Path(args.e), Path(args.p))
+					else:
+						# import inv image from .dds equipment file
+						IconsEquipment.save_image_from_dds(Path(args.e), Path(args.p), tuple(map(int, args.c)))
 				else:
 					if not args.gamedata or not args.version:
 						raise ValueError(f'Argument --gamedata or -g or --version or -t is missing; see help: {argv[0]} -h')
