@@ -108,6 +108,7 @@ class Paths:
 		else:
 			# define well-known root sub-paths
 			self.gamedata = Path(gamedata_path)
+			self.config = Config(gamedata_path)
 			self.path = self.gamedata.parent
 			if self.config.verbose:
 				print(f'game path:     {self.path.absolute()}')

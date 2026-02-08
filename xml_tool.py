@@ -141,7 +141,7 @@ class XmlParser:
 			tag_open = self.buff.partition(b'>')[0]
 			return tag_open.split(maxsplit=1)[0]
 
-		def iter_attributes(self) -> Iterator[tuple[str, str]]:
+		def iter_attributes(self) -> Iterator[tuple[bytes, str]]:
 			'iters tag attributes and their values'
 			if (attributes := self.buff.split()):
 				for attribute in attributes[1:]:
