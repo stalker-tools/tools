@@ -118,7 +118,7 @@ class XmlParser:
 	'''
 
 	INCLUDE_DIRECTIVE = b'#include'
-	DEFAULT_ENCODING = 'utf-8'
+	DEFAULT_ENCODING = 'cp1251'
 
 
 	class MissingCloseTag(Exception) : pass
@@ -285,6 +285,23 @@ class XmlParser:
 					raise self.MissingCloseTag(f'Close tag expected; file: {self.file_path}; line {line_no}: {line}')
 				yield from yield_tag()
 
+def normalize_xml(xml_file_path: str) -> str:
+	ret = b''
+	with open(xml_file_path, 'rb') as f:
+		buff = None
+		while (line := f.readline()):
+			if buff is None:
+				if line.lstrip().startswith(b'<text>'):
+					if not line.rstrip().endswith(b'</text>'):
+						buff = line.lstrip()[6:].strip()
+				if buff is None:
+					ret += line
+			elif line.rstrip().endswith(b'</text>'):
+				ret += b'<text>' + buff + line.lstrip()
+				buff = None
+			else:
+				buff += line.strip()
+	return ret
 
 if __name__ == '__main__':
 	import argparse
@@ -302,13 +319,35 @@ if __name__ == '__main__':
 {basename(argv[0])} "$HOME/.wine/drive_c/Program Files (x86)/Sigerous Mod/gamedata/configs/text/rus/SGM_add_include.xml" > "sgm_localization.xml"''',
 				formatter_class=argparse.RawTextHelpFormatter
 			)
-			parser.add_argument('-i', metavar='PATH', help='include base path')
-			parser.add_argument('file', metavar='XML_FILE_PATH', help='.xml file to preprocess')
+			subparsers = parser.add_subparsers(dest='mode', help='sub-commands:')
+			parser_ = subparsers.add_parser('minidom', aliases=('m',), help='minidom xml parser')
+			parser_.add_argument('-i', metavar='PATH', help='include base path')
+			parser_.add_argument('file', metavar='XML_FILE_PATH', help='.xml file to preprocess')
+			parser_ = subparsers.add_parser('st', aliases=('s',), help='stalker tools xml parser')
+			parser_.add_argument('-f', '--gamedata', required=True, metavar='PATH', help=f'gamedata directory path')
+			parser_.add_argument('file', metavar='XML_FILE_PATH', help='.xml file to preprocess')
+			parser_ = subparsers.add_parser('normalize', aliases=('n',), help='xml parser for normalize')
+			parser_.add_argument('file', metavar='XML_FILE_PATH', help='.xml file to preprocess')
 			return parser.parse_args()
 
 		args = parse_args()
 
-		stdout.buffer.write(xml_preprocessor(args.file, args.i))
+		match args.mode:
+			case 'minidom' | 'm':
+				stdout.buffer.write(xml_preprocessor(args.file, args.i))
+			case 'st' | 's':
+				from paths import Paths
+				paths = Paths()
+				xml_parser = XmlParser(paths, args.file)
+				for file_or_tag in xml_parser.parse():
+					if isinstance(file_or_tag, str):
+						# .xml file path
+						print(file_or_tag)
+					else:
+						# .xml file tag
+						print(file_or_tag)
+			case 'normalize' | 'n':
+				stdout.buffer.write(normalize_xml(args.file))
 
 	try:
 		main()

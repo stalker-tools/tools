@@ -115,6 +115,16 @@ def get_image_by_inv_grid(icons: IconsEquipment, ltx_section: Ltx.Section) -> Im
 			return icons.get_image(*inv_grid)
 	return None
 
+def get_texture_from_ogf(paths: Paths, ogf_file_path: str) -> str | None:
+	'returns texture file path; tries to extract texture .dds file path ftom content of .ogf file'
+	try:
+		with paths.open(str(Path('meshes') / ogf_file_path), 'rb') as f:
+			if (buff := f.read(1024)):
+				if (texture_end_index := buff.find(b'\x00models\\')) > 0 and (texture_start_index := buff.rfind(b'\x00', 0, texture_end_index-1)):
+					return buff[texture_start_index+1:texture_end_index].decode()
+	except FileNotFoundError: pass
+	return None
+
 def get_table(game, iter_sections: Iterator[Ltx.Section], exclude_prefixes: list[str] = None, localized_only = False) -> list[tuple[Ltx.Section, str, str]]:
 	'''
 	return sorted and filtered sections with localized inv_name_short and localized inv_name
@@ -191,12 +201,29 @@ def analyse(gamedata: PathsConfig | str, config: BrochureConfig, verbose = 0):
 		return name[len(prefix):] if name.startswith(prefix) else name
 
 	def print_table(sections: list[tuple[Ltx.Section, str, str]]):
+
+		def visual() -> str:
+			'returns visual .ogf file path and try extract texture .dds file path ftom content of .ogf file'
+			if (visual := section.get('visual')):
+				if not visual.endswith('.ogf'):
+					visual += '.ogf'
+				if (texture := get_texture_from_ogf(game.paths, visual)):
+					return rf' visual={visual} texture={texture}'  # do not use {visual=} - r-string not working
+				return rf' visual={visual}'
+			return ''
+
+		def hud() -> str:
+			if (hud := section.get('hud')):
+				return f' {hud=}'
+			return ''
+
 		FILELD_NAMES = ('No', 'Section File/Name', 'inv_name_short', 'inv_name', 'Icon', 'description')
 		STYLE = 'style="text-align: left;"'
 		print(f'<table border=1 style="border-collapse:collapse">')
 		print(f'<thead><tr>{"".join(("<th>"+x+"</th>" for x in FILELD_NAMES))}</tr></thead><tbody>')
 		prev_description = None
 		for index, (section, _, _) in enumerate(sections):
+			# row with base info
 			inv_name_short, inv_name, description = game.localize(section.get('inv_name_short')), game.localize(section.get('inv_name')), section.get("description")
 			if index == 0:
 				print('<tr style="border-left-style:hidden;border-right-style:hidden">')
@@ -208,6 +235,10 @@ def analyse(gamedata: PathsConfig | str, config: BrochureConfig, verbose = 0):
 			print(f'<th>{inv_name}</th>')
 			print(f'<th>{get_image_as_html_img(get_image_by_inv_grid(icons, section))}</th>')
 			print(f'<th {STYLE}>{game.localize(description, True) if prev_description != description else "↑"}</th>')
+			print('</tr>')
+			# row with info for developers
+			print('<tr>')
+			print(f'<th align="left" style="border-style:hidden" colspan="{len(FILELD_NAMES)}">inv=({section.get("inv_grid_x")},{section.get("inv_grid_y")} {section.get("inv_grid_width")}x{section.get("inv_grid_height")}){visual()}{hud()}</th>')
 			print('</tr>')
 			prev_description = description
 		print(f'</tbody></table><p/>')
@@ -248,6 +279,7 @@ def analyse(gamedata: PathsConfig | str, config: BrochureConfig, verbose = 0):
 			GraphParams('k_dist', '(more is longer range)'),
 			GraphParams('k_disp', '(more is less accurately)'),
 			GraphParams('k_air_resistance', '(more is more resistance)'),
+			GraphParams('cost', 'rub'),
 			)
 		print_graphs(sections, graphs, 1, style=config.style)
 
@@ -273,6 +305,7 @@ def analyse(gamedata: PathsConfig | str, config: BrochureConfig, verbose = 0):
 			GraphParams('condition_shot_dec', '(less is more reliable)', True),
 			GraphParams('misfire_condition_k', '(less is more reliable)'),
 			GraphParams('misfire_probability', '(less is more reliable)', True),
+			GraphParams('cost', 'rub'),
 			)
 		print_graphs(sections, graphs, 1, 1.1, style=config.style)
 
@@ -286,6 +319,7 @@ def analyse(gamedata: PathsConfig | str, config: BrochureConfig, verbose = 0):
 			GraphParams('eat_radiation', ''),
 			GraphParams('eat_alcohol', ''),
 			GraphParams('satiety_slake_factor', ''),
+			GraphParams('cost', 'rub'),
 			)
 		print_graphs(sections, graphs, style=config.style)
 
@@ -300,6 +334,7 @@ def analyse(gamedata: PathsConfig | str, config: BrochureConfig, verbose = 0):
 			GraphParams('eat_radiation', ''),
 			GraphParams('eat_alcohol', ''),
 			GraphParams('satiety_slake_factor', ''),
+			GraphParams('cost', 'rub'),
 			)
 		print_graphs(sections, graphs, style=config.style)
 
@@ -934,15 +969,32 @@ def inv(gamedata: PathsConfig, localization: str, images_paths: tuple[str], verb
 	else:
 		export_kind()
 
-def export_equipment(gamedata: PathsConfig, path: str, verbose: int):
+def export_equipment(gamedata: PathsConfig, paths: tuple[str], verbose: int):
 	'export marked equipment .dds to image: grid and grid cell coordinates'
 
 	# make info from .db/.xdb gamedata path
-	if not path:
+	if not paths or not paths[0]:
+		print(f'Export to image file not specified')
 		return
+	if verbose:
+		print(f'Export equipment as marked grid to "{paths[0]}"')
 	paths = Paths(gamedata)
 	icons = IconsEquipment(paths)
-	icons.save_marked_image_from_dds(icons.image, path[0])
+	icons.save_marked_image_from_dds(icons.image, paths[0])
+
+def ext_mod_import(gamedata: PathsConfig, localization: str, command: tuple[str], verbose: int):
+	'export/import inventory images from/to equipment .dds according to .ltx section inventory square'
+	if not command or not command[0]:
+		print(f'Command for import from another mod not specified')
+		return
+	if verbose:
+		print(f'Import from another mod: {gamedata}')
+	match command[0]:
+		case 'inv-ltx':
+			# show list inventory .ltx sections
+			game = GameConfig(gamedata, localization, verbose)
+			for ltx_section in game.iter():
+				print(f'{ltx_section.ltx.ltx_file_path} [{ltx_section.name}] inv=({ltx_section.get("inv_name")}, {ltx_section.get("inv_grid_x")},{ltx_section.get("inv_grid_y")} {ltx_section.get("inv_grid_width")}x{ltx_section.get("inv_grid_height")}) visual={ltx_section.get("visual")} hud={ltx_section.get("hud")}')
 
 if __name__ == '__main__':
 	from sys import argv, exit
@@ -1124,7 +1176,7 @@ Import from .csv to gamedata path:
 				formatter_class=argparse.RawTextHelpFormatter
 			)
 			parser.add_argument('-g', '--gamepath', metavar='PATH', help='game root path (with .db/.xdb files); default: current path')
-			parser.add_argument('-t', '--version', metavar='VER', choices=DbFileVersion.get_versions_names(),
+			parser.add_argument('-t', '--version', metavar='VER', default='2947ru', choices=DbFileVersion.get_versions_names(),
 				help=f'.db/.xdb files version; usually 2947ru/2947ww for SoC, xdb for CS and CP; one of: {", ".join(DbFileVersion.get_versions_names())}')
 			parser.add_argument('-V', action='version', version=f'{PUBLIC_VERSION} {PUBLIC_DATETIME}', help='show version')
 			parser.add_argument('-f', '--gamedata', metavar='PATH', default=DEFAULT_GAMEDATA_PATH,
@@ -1155,6 +1207,8 @@ example .csv file: [],inv_name,inv_name_short,description
 				help='export full-size .dds to marked image file: grid and grid cell coordinates')
 			parser_.add_argument('sections', metavar='PATTERN', nargs='*',
 				help='sections names filter pattern; bash name filter: *, ?, [], [!]')
+			parser_ = subparsers.add_parser('ext', help='ext: another mod import')
+			parser_.add_argument('command', nargs='*', help='import command')
 			return parser.parse_args()
 
 		# parse command-line arguments
@@ -1212,6 +1266,8 @@ example .csv file: [],inv_name,inv_name_short,description
 				else:
 					# batch export/import
 					inv(paths_config, 'rus', args.sections, verbose, args.kind, getattr(args, 'import'))
+			case 'ext':
+				ext_mod_import(paths_config, 'rus', args.command, verbose)
 
 	try:
 		main()
