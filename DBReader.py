@@ -127,7 +127,7 @@ class XRReader:
 				raw_data = self.sr.read_bytes(self.size_compressed)
 				if self.size_real:
 					return raw_data
-				if (buff := LzHuf.Decode(raw_data, len(raw_data))):
+				if (buff := LzHuf().Decode(raw_data)):
 					return buff
 			return None
 
@@ -187,14 +187,17 @@ class XRReader:
 				return chunk
 		return None
 
-	def _unscramble_chunk(self, chunk: Chunk) -> bytes:
+	def _unscramble_chunk(self, chunk: Chunk, *, verbose=False) -> bytes:
 		# returns unscrambled chunk according to .db file version
 
 		def unscramble(buff: bytes, config: XRScramblerConfig) -> bytes:
+			if verbose:
+				print(f'head unscramble with {config.name}')
 			scrambler = XRScrambler(config)
 			buff = scrambler.decrypt(buff)
-			lz_huf = LzHuf()
-			buff = lz_huf.Decode(buff)
+			if verbose:
+				print('head decompress')
+			buff = LzHuf().Decode(buff)
 			return buff
 
 		# get chunk raw data
@@ -206,7 +209,9 @@ class XRReader:
 					DbVersion.DB_VERSION_2945 |\
 					DbVersion.DB_VERSION_XDB:
 				if chunk.is_compressed:
-					buff = LzHuf.Decode(buff, len(buff))
+					if verbose:
+						print('head decompress')
+					buff = LzHuf().Decode(buff)
 			case DbVersion.DB_VERSION_2947RU:
 				if chunk.is_compressed:
 					buff = unscramble(buff, XRScramblerConfig.CC_RU)
@@ -228,19 +233,29 @@ class XRReader:
 		# returns type of files iterator according to .db file version
 		return self.DB_VERSION_FILE_OR_PATH[self.version]
 
-	def iter_files(self) -> Iterator[FileOrPath]:
+	def iter_files(self, *, verbose=False) -> Iterator[FileOrPath]:
 		# iters files or paths
 
 		f_type = self._get_file_or_path_type()
 
+		if verbose:
+			print(f'type={f_type}')
+			print(f'version={self.version.name}')
+
 		if self._header_chunk_sr:  # is cache created
+			if verbose:
+				print('use file cache')
 			self._header_chunk_sr.pos = 0  # reset pointer to iter from beginning
 			while self._header_chunk_sr.remain:  # iter paths and files
 				yield f_type(self._header_chunk_sr)
 		elif (chunk := self.find_chunk(ChunkTypes.DB_CHUNK_HEADER)):
 			if chunk.size:
+				if verbose:
+					print(f'head chunk found: {chunk}')
 				# head chunk found # decrypt and/or decompress chunk data
-				buff = self._unscramble_chunk(chunk)
+				buff = self._unscramble_chunk(chunk, verbose=verbose)
+				if verbose:
+					print('header chunk unscrambled')
 				# iter paths and files from decompressed head chunk data: buff
 				self._header_chunk_sr = sr = SequensorReader(buff)  # create SR and set SR cache
 				while sr.remain:  # iter paths and files
@@ -372,9 +387,10 @@ if __name__ == "__main__":
 			parser_.add_argument('-c', '--count', action='store_true', help='count files')
 			parser_.add_argument('-l', '--last', action='store_true', help='show .db file of latest version of file')
 			parser_ = subparsers.add_parser('files', aliases=('f',), help='one .db file: show files info')
-			parser_.add_argument('--table', action='store_true', help='show files as table format')
+			parser_.add_argument('--table', action='store_true',
+				help='show files as table format: type (F - file, D - directory), offset (hex), compressed, crc (hex), size, name')
 			parser_.add_argument('--header', action='store_true', help='treat file as header chunk binary dump file')
-			parser_ = subparsers.add_parser('info', aliases=('i',), help='one .db file: dump chunks info')
+			parser_ = subparsers.add_parser('info', aliases=('i',), help='one .db file: show chunks info')
 			parser_ = subparsers.add_parser('dump', aliases=('d',), help='one .db file: dump chunks raw data')
 			parser_.add_argument('-i', metavar='NUMBER', type=int, help='print chunk by index: 0..')
 			parser_.add_argument('--header', action='store_true', help='print header chunk')
@@ -398,7 +414,7 @@ if __name__ == "__main__":
 
 				def iter_files_in_db_file(db_reader: XRReader) -> Iterator[XRReader.FileOrPath]:
 					# iters files (in .db file) according to file name filter
-					for f in (x for x in db_reader.iter_files() if x.is_file):
+					for f in (x for x in db_reader.iter_files(verbose=verbose) if x.is_file):
 						if not args.filter:
 							yield f
 						elif fnmatch(f.name, args.filter):  # Unix shell-style wildcards
@@ -467,7 +483,7 @@ if __name__ == "__main__":
 						while db_reader.sr.remain:  # iter paths and files
 							yield f_type(db_reader.sr)
 					else:
-						for f in db_reader.iter_files():  # iter paths and files
+						for f in db_reader.iter_files(verbose=verbose):  # iter paths and files
 							yield f
 
 				if args.table:
