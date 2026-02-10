@@ -109,7 +109,7 @@ if __name__ == '__main__':
 				dds_to_video(args.images, args.video, args.fps, args.fourcc)
 			case 'v2i':
 				size = tuple(map(int, args.size.split(',')))
-				video_to_dds(args.video, args.images, args.fps, args.fourcc, args.images_count)
+				video_to_dds(args.video, args.images, args.fps, args.fourcc, args.images_count, size)
 			case 'info' | 'i':
 				# show image file info
 				if (image := image_open(args.image)):
