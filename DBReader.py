@@ -1,6 +1,6 @@
 
 # Xray .db/.xdb files reader
-# Author: Stalker tools, 2023-2025
+# Author: Stalker tools, 2023-2026
 
 from typing import Iterator
 from enum import IntEnum
@@ -83,10 +83,10 @@ class XRReader:
 
 		@classmethod
 		def get_table_header(cls):
-			return f'Type Offset  Compressed    CRC       Size    Name'
+			return f'Type Offset   Compressed    CRC         Size    Name'
 
 		def get_table_row(self):
-			return f'{"F" if self.is_file else "D"} 0x{self.offset:08x} {self.size_compressed: 9_} 0x{self.crc:08x} {self.size_real: 9_} {self.name}'
+			return f'{"F" if self.is_file else "D"} 0x{self.offset:08x} {self.size_compressed: 11_} 0x{self.crc:08x} {self.size_real: 11_} {self.name}'
 
 		@property
 		def is_file(self) -> bool:
@@ -356,6 +356,9 @@ if __name__ == "__main__":
 
 	Show files info as table format:
 {basename(argv[0])} -f gamedata.dbd" -t 2947ru f --table
+
+	Show files info as table format for "Lost Alpha DC" mod:
+{basename(argv[0])} -f gamedata.db0" -t 2947ww f --table
 
 3. Examples for development purposes
 

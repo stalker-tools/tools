@@ -29,6 +29,7 @@ def xml_preprocessor(xml_file_path: str, include_base_path: str | None = None, i
 			if line_stripped.startswith(b'#include'):
 				# include .xml file
 				line_stripped = line_stripped[len(b'#include') + 1:].strip(b' \t\r\n').strip(b'"')
+				line_stripped = line_stripped.partition(b'"')[0]  # i have't words to describe a mess into .xml files from mod makers !
 				line_stripped = line_stripped.replace(b'\\', path_separator.encode())  # convert path splitter to ext filesystem
 				include_file_path = join(include_base_path if include_base_path else split(xml_file_path)[0], line_stripped.decode())
 				try:
@@ -115,6 +116,7 @@ class XmlParser:
 	used for localization files only for read and modify
 	open/close tags in one line: tag name and all tag attributes in on line
 	tag inner value in one line: tag open/close and inner value in one line; use \n for new line
+	used to modification .xml files
 	'''
 
 	INCLUDE_DIRECTIVE = b'#include'
@@ -215,17 +217,19 @@ class XmlParser:
 
 	def _iter_lines(self, file_path: str) -> Iterator[tuple[int, int, bytes]]:
 		'iters (line no: 1.., line position: 0.., line)'
-
-		with self.paths.open(file_path, 'rb') as f:
-			# load buffer from .xml file
-			fb = self.FileBuffer(self.paths, file_path)
-			if fb.buff:
-				# process buffer line by line
-				for v in iter_lines(fb.buff):
-					yield fb, *v
-				if fb.is_dirty:
-					# buffer was changed # save buffer to .xml file
-					fb.save()
+		try:
+			with self.paths.open(file_path, 'rb') as f:
+				# load buffer from .xml file
+				fb = self.FileBuffer(self.paths, file_path)
+				if fb.buff:
+					# process buffer line by line
+					for v in iter_lines(fb.buff):
+						yield fb, *v
+					if fb.is_dirty:
+						# buffer was changed # save buffer to .xml file
+						fb.save()
+		except FileNotFoundError as e:
+			print(f'File not found: {e}')
 
 	def parse(self) -> Iterator[str | Tag]:
 		'''iters xml file with included xml files
@@ -233,7 +237,7 @@ class XmlParser:
 		it loads xml file into memory
 		'''
 
-		def yield_tag():
+		def yield_tag() -> 'Iterator[Tag]':
 			tag = self.Tag(line[1:-1], encoding, line_no, line_pos+offset+1)
 			buff_len = len(tag.buff)
 			yield (tag)
@@ -241,7 +245,7 @@ class XmlParser:
 				fb.buff[tag.line_pos:tag.line_pos+buff_len] = tag.buff
 				fb.is_dirty = True
 
-		def parse_include(file_path: str):
+		def parse_include(file_path: str) -> 'Iterator[str | Tag]':
 			yield file_path
 			for fb, line_no, line_pos, _line in self._iter_lines(file_path):
 				line = _line.strip()
@@ -269,7 +273,10 @@ class XmlParser:
 				pass
 			elif line.startswith(self.INCLUDE_DIRECTIVE):
 				# include .xml file; base path: config
-				parse_include(self.paths.join(self.paths.configs, line[len(self.INCLUDE_DIRECTIVE)+1:].strip().strip(b'"').decode()))
+				if (file_path := line[len(self.INCLUDE_DIRECTIVE)+1:].strip()):
+					file_path = file_path.strip(b'"')
+					file_path = file_path.partition(b'"')[0]  # i have't words to describe a mess into .xml files from mod makers !
+					parse_include(self.paths.join(self.paths.configs, file_path.decode()))
 			elif line.startswith(b'<?'):
 				# get file encoding
 				if not line.endswith(b'?>'):
@@ -284,6 +291,7 @@ class XmlParser:
 					# one-line tags supports only
 					raise self.MissingCloseTag(f'Close tag expected; file: {self.file_path}; line {line_no}: {line}')
 				yield from yield_tag()
+
 
 def normalize_xml(xml_file_path: str) -> str:
 	ret = b''

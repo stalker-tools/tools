@@ -415,6 +415,35 @@ def update_section_values(section: Ltx.Section, values: dict[str, str], game: 'G
 		return ret
 	return ret
 
+def has_include(ltx_file_path: str, file_path_to_include: str, *, encoding='cp1251') -> tuple[int, int] | None:
+	'''checks .ltx file for #include directive with file path
+	returns:
+		(True, line count: 1.., after last #include line pos: 0.. bytes) - found include
+		(False, line count: 1.., after last #include line pos: 0.. bytes) - not found include, insert new #include directive line at line and pos
+		(False, None, None) - not found, append new #include directive line
+	used to add #include directive to #include directives block at beginning of .ltx file
+		and save .ltx code style
+	'''
+	file_path_to_include = file_path_to_include.strip('"')
+	lines_count = 0
+	with open(ltx_file_path, 'rb') as f:
+		# find last include directive
+		last_pos = 0
+		while (line := f.readline()):  # read line by line
+			lines_count += 1
+			line = line.strip()
+			if not line:  # skip empty lines
+				last_pos = f.tell()
+				continue
+			if line.startswith(b'#include'):  # check include directive
+				last_pos = f.tell()
+				if (file_path := line[8:].partition(b';')[0].strip(b' \t"').decode(encoding)):
+					if file_path.lower() == file_path_to_include.lower():
+						return (True, lines_count, last_pos)  # file included already
+				continue
+			return (False, lines_count, last_pos)  # not found in #include directives block
+	return (False, lines_count+1, None)  # not found in file (maybe .ltx file is entire #include directives block)
+
 if __name__ == '__main__':
 	import argparse
 	from sys import argv, exit

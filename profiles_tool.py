@@ -99,7 +99,8 @@ Utility still not optimized, please, be patient.
 			parser.add_argument('--exclude-gamedata', action='store_true', help='''exclude files from gamedata sub-path;
 used to get original game (.db/.xdb files only) infographics; default: false
 ''')
-			parser.add_argument('-v', action='store_true', help='increase information verbosity: show phrase id')
+			parser.add_argument('-v', action='count', default=0,
+				help='increase information verbosity: -v - show phrase id; -vv - show .xml files')
 			parser.add_argument('-l', '--localization', metavar='LANG', default='rus',
 				help='localization language (see gamedata/configs/text path): rus (default), cz, hg, pol')
 			parser.add_argument('-e', '--engine', metavar='ENGINE', default='dot', help='dot layout engine: circo, dot (default), neato')
@@ -122,7 +123,7 @@ used to get original game (.db/.xdb files only) infographics; default: false
 			paths_config = PathsConfig(
 				gamepath.absolute(), args.version,
 				args.gamedata,
-				verbose=verbose,
+				verbose=max(0, verbose-1),
 				exclude_gamedata=args.exclude_gamedata)
 
 		def _get_element_values(loc: Localization | None, element: Element, element_name: str) -> str | int:
@@ -155,7 +156,7 @@ used to get original game (.db/.xdb files only) infographics; default: false
 		def analyse(gamedata_path: str):
 
 			paths = Paths(gamedata_path)
-			loc = Localization(paths, verbose=verbose)
+			loc = Localization(paths, verbose=max(0, verbose-1))
 
 			match args.style.lower():
 				case 'l':
@@ -188,7 +189,7 @@ used to get original game (.db/.xdb files only) infographics; default: false
 
 			def _create_dialog_graph(dialog_id: str):
 				if (dialog := dialogs_dict.get(dialog_id)):
-					if (graph := create_dialog_graph(dialog, args.engine, style, loc)):
+					if (graph := create_dialog_graph(dialog, args.engine, style, loc, verbose)):
 						print(f'{dialog_id}:<br/>{get_svg(graph)}</br>')
 
 			# get dialogs
@@ -242,11 +243,15 @@ used to get original game (.db/.xdb files only) infographics; default: false
 					if args.output_format == 'd':
 						print('</tbody></table>')
 						if (dialog_ids := get_child_element_values(specific_character, 'start_dialog')):
+							print('<p>start_dialog:<br/>')
 							for dialog_id in dialog_ids:
 								_create_dialog_graph(dialog_id)
+							print('</p>')
 						if (dialog_ids := get_child_element_values(specific_character, 'actor_dialog')):
+							print('<p>actor_dialog:<br/>')
 							for dialog_id in dialog_ids:
 								_create_dialog_graph(dialog_id)
+							print('</p>')
 			# print HTML footer
 			if args.output_format == 'h':
 				print('</tbody></table>')

@@ -4,8 +4,12 @@
 
 from collections.abc import Iterator, Callable
 from typing import NamedTuple, Literal, Self
+from datetime import datetime
 from configparser import ConfigParser
 from pathlib import Path
+from sys import stdout
+from os.path import sep as os_sep
+import difflib
 from plotly.subplots import make_subplots
 import plotly.graph_objects as go
 import plotly.io as pio
@@ -15,7 +19,7 @@ from PIL import ImageDraw
 try:
 	from version import PUBLIC_VERSION, PUBLIC_DATETIME
 except ModuleNotFoundError: PUBLIC_VERSION, PUBLIC_DATETIME = '', ''
-from ltx_tool import Ltx, update_section_values
+from ltx_tool import Ltx, update_section_values, has_include
 from paths import Paths, Config as PathsConfig, DbFileVersion, DEFAULT_GAMEDATA_PATH
 from GameConfig import GameConfig
 from icon_tools import IconsEquipment, get_image_as_html_img
@@ -98,6 +102,12 @@ class GraphParamsCondition(GraphParams):
 		shots_count = (1 - misfire_condition_k) / condition_shot_dec
 		return shots_count
 
+
+def path_to_os(path: str | Path) -> str:
+	'converts path separator according to os'
+	if isinstance(path, Path):
+		path = str(path)
+	return path.replace('/' if os_sep == '\\' else '\\', os_sep)
 
 def get_inv_grid(ltx_section: Ltx.Section | None) -> tuple[int, int, int, int] | None:
 	'returns .ltx section inventory grid square: coordinate and size (inv_grid_*)'
@@ -937,8 +947,8 @@ def inv(gamedata: PathsConfig, localization: str, images_paths: tuple[str], verb
 	'export/import inventory images from/to equipment .dds according to .ltx section inventory square'
 
 	# make info from .db/.xdb gamedata path
-	game = GameConfig(gamedata, localization, verbose)
-	icons = IconsEquipment(game.paths)
+	game = GameConfig(gamedata, localization, max(0, verbose - 1))
+	icons = IconsEquipment(game.paths)  # cache a texture
 
 	def export_kind():
 		'export images from equipment .dds filtered by .ltx section kind filter'
@@ -949,7 +959,10 @@ def inv(gamedata: PathsConfig, localization: str, images_paths: tuple[str], verb
 		if (iter := get_kinds(game).get(kind)):  # get iterator for filtered .ltx sections
 			for ltx_section in iter():  # iter .ltx section according to kind filter
 				if (image := get_image_by_inv_grid(icons, ltx_section)):  # get inventory image from .ltx section
-					image.save(str((kind_path / ltx_section.name).absolute()) + '.png')  # save image to export path
+					out_file_name = str((kind_path / ltx_section.name).absolute()) + '.png'
+					image.save(out_file_name)  # save image to export path
+					if verbose:
+						print(f'Exported {out_file_name}')
 
 	def import_(image_path: str):
 		'import image file to equipment .dds file according to .ltx section inventory square'
@@ -959,6 +972,9 @@ def inv(gamedata: PathsConfig, localization: str, images_paths: tuple[str], verb
 			if (ltx_section := game.find(image_path.stem)) and (inv_grid := get_inv_grid(ltx_section)):
 				icons.set_image(image, inv_grid)
 
+	if verbose:
+		print(f'Inventory {"import" if do_import else "export"}: {images_paths}')
+
 	if do_import:
 		if images_paths:
 			# batch images import to equipment .dds
@@ -966,35 +982,274 @@ def inv(gamedata: PathsConfig, localization: str, images_paths: tuple[str], verb
 				import_(image_path)
 			# save equipment .dds to gamepath
 			icons.save_file(game.paths.gamedata)
+			if verbose:
+				print('Updated: equipment .dds')
 	else:
 		export_kind()
 
-def export_equipment(gamedata: PathsConfig, paths: tuple[str], verbose: int):
+def export_equipment(gamedata: PathsConfig, out_paths: tuple[str], verbose: int):
 	'export marked equipment .dds to image: grid and grid cell coordinates'
 
 	# make info from .db/.xdb gamedata path
-	if not paths or not paths[0]:
+	if not out_paths or not out_paths[0]:
 		print(f'Export to image file not specified')
 		return
 	if verbose:
-		print(f'Export equipment as marked grid to "{paths[0]}"')
+		print(f'Export equipment as marked grid to "{out_paths[0]}"')
 	paths = Paths(gamedata)
 	icons = IconsEquipment(paths)
-	icons.save_marked_image_from_dds(icons.image, paths[0])
+	icons.save_marked_image_from_dds(icons.image, out_paths[0])
 
 def ext_mod_import(gamedata: PathsConfig, localization: str, command: tuple[str], verbose: int):
-	'export/import inventory images from/to equipment .dds according to .ltx section inventory square'
+	'export from another mod: helpers functions'
+
+	# checkings
 	if not command or not command[0]:
 		print(f'Command for import from another mod not specified')
 		return
 	if verbose:
 		print(f'Import from another mod: {gamedata}')
+
+	def insert_line_into_file(file_path: str, line: bytes, pos: int):
+		'inserts line at position into file; append to end: pos = -1'
+		if pos == -1:
+			# append a new line to file end
+			with open(file_path, 'ab') as f:
+				f.write(line)
+		else:
+			# insert a new line into file
+			with open(file_path, 'rb') as f:  # read file to buffer
+				buff = bytearray(f.read())
+			with open(file_path, 'wb') as f:  # write modified buffer to file
+				f.write(buff[:pos] + line + buff[pos:])
+
 	match command[0]:
+
 		case 'inv-ltx':
 			# show list inventory .ltx sections
 			game = GameConfig(gamedata, localization, verbose)
 			for ltx_section in game.iter():
 				print(f'{ltx_section.ltx.ltx_file_path} [{ltx_section.name}] inv=({ltx_section.get("inv_name")}, {ltx_section.get("inv_grid_x")},{ltx_section.get("inv_grid_y")} {ltx_section.get("inv_grid_width")}x{ltx_section.get("inv_grid_height")}) visual={ltx_section.get("visual")} hud={ltx_section.get("hud")}')
+
+		case 'add-ltx-include':
+			# check arguments
+			if len(command) < 3:
+				print(f'''Command add-ltx-include require 2 arguments: LTX_FILE_PATH INCLUDE_DERECTIVE
+Example: add-ltx-include config/weapons/weapons.ltx w_pp19.ltx''')
+				return
+			# add include directive to .ltx file to #include directives block at file beginning
+			ltx_file_path = Path(path_to_os(gamedata.game_path)) / path_to_os(command[1])
+			file_path_to_include = command[2].strip('"')
+			include_line = b'#include "' + file_path_to_include.encode('cp1251') + b'"\r\n'
+			found, line_no, insert_pos = has_include(ltx_file_path, file_path_to_include)
+			if found:
+				# include found
+				if verbose:
+					print(f'\tFile included already at line {line_no}: #include "{file_path_to_include}"')
+			elif insert_pos is not None:
+				# include not found in include block # add include # insert new line at end of include block
+				insert_line_into_file(ltx_file_path, include_line, insert_pos)
+				if verbose:
+					print(f'\tInserted at line {line_no}: #include "{file_path_to_include}"')
+			else:
+				# include not found in file # add include # append new line to file end
+				insert_line_into_file(ltx_file_path, include_line, -1)
+				if verbose:
+					print(f'\tAppend line {line_no}: #include "{file_path_to_include}"')
+
+def cp_command(src: str, dst: str, patterns: tuple[str], disable_new_check: bool, verbose: int, sync = False, dummy = False):
+	'copies gamedata files by glob-like patterns from src to dst path'
+
+	def show_time(time: float) -> str:
+		return datetime.fromtimestamp(time).isoformat(sep=' ', timespec='seconds')
+
+	def _copy_file(src: Path, dst: Path):
+		if not dummy:
+			with src.open('rb') as f_src:
+				dst.parent.mkdir(parents=True, exist_ok=True)  # create destination path if not exists
+				with dst.open('wb') as f_dst:
+					# copy file piece by piece
+					while (buff := f_src.read(1024 * 1024)):
+						f_dst.write(buff)
+
+	src_path = Path(path_to_os(src))
+	dst_path = Path(path_to_os(dst))
+
+	if dummy:
+		print('DUMMY RUN !')
+
+	if verbose:
+		print(f'src: {src_path}')
+		print(f'dst: {dst_path}')
+
+	if sync:
+		# sync
+
+		def sync_file(src: Path, dst: Path, gamedata_path: str) -> bool:
+			'sync file'
+
+			max_path_len = max(len(x) for x in synced_paths)
+
+			if verbose > 1:
+				print(f'\t{gamedata_path}')
+
+			if not src.exists():
+				if verbose > 1:
+					print(f'\t\tsrc file not exists: {src}')
+					print(f'\t\tcopy: {dst} <-')
+				else:
+					print(f'\t{" "*max_path_len}\t{gamedata_path}')
+				_copy_file(dst, src)
+				return True
+
+			if not dst.exists():
+				if verbose > 1:
+					print(f'\t\tdst file not exists: {dst}')
+					print(f'\t\tcopy: {src} ->')
+				else:
+					print(f'\t{gamedata_path}')
+				_copy_file(src, dst)
+				return True
+
+			stat_src = src.stat()
+			stat_dst = dst.stat()
+			if stat_src.st_size != stat_dst.st_size:
+				# dst and src files has different size
+				if verbose > 1:
+					print(f'\t\tsizes: {stat_src.st_size}  {stat_dst.st_size}')
+			if not disable_new_check:
+				if stat_src.st_mtime > stat_dst.st_mtime:
+					# src file is newest than dst
+					if verbose > 1:
+						print(f'\t\tcopy: {src} ->')
+						print(f'\t\ttime: {show_time(stat_src.st_mtime)} -> {show_time(stat_dst.st_mtime)}')
+					else:
+						print(f'\t{gamedata_path}')
+					_copy_file(src, dst)
+					return True
+				elif stat_src.st_mtime < stat_dst.st_mtime:
+					# dst file is newest than src
+					if verbose > 1:
+						print(f'\t\tcopy: {dst} <-')
+						print(f'\t\ttime: {show_time(stat_src.st_mtime)} <- {show_time(stat_dst.st_mtime)}')
+					else:
+						print(f'\t{" "*max_path_len}\t{gamedata_path}')
+					_copy_file(dst, src)
+					return True
+			if verbose > 1:
+				print('\t\tSKIP')
+			else:
+				print(f'\t{gamedata_path:<{max_path_len}} SKIP')
+			return False
+
+		if verbose:
+			print(f'sync gamedata: {" ".join(map(lambda x: "\""+x+"\"", patterns))}')
+
+		# sync gamedata files
+		count = 0
+		synced_paths: list[str] = []  # gamepaths
+		for pattern in patterns:
+			# src files
+			for path in sorted((x for x in src_path.glob(path_to_os(pattern)) if x.is_file())):
+				gamedata_path = path.relative_to(src_path)
+				if str(gamedata_path) in synced_paths:
+					continue
+				synced_paths.append(str(gamedata_path))
+				if sync_file(path, dst_path / gamedata_path, str(gamedata_path)):
+					count += 1
+			# dst files
+			for path in sorted((x for x in dst_path.glob(path_to_os(pattern)) if x.is_file())):
+				gamedata_path = path.relative_to(dst_path)
+				if str(gamedata_path) in synced_paths:
+					continue
+				synced_paths.append(str(gamedata_path))
+				if sync_file(src_path / gamedata_path, path, str(gamedata_path)):
+					count += 1
+
+	else:
+		# copy
+
+		def copy_file(src: Path, dst: Path) -> bool:
+			'copies file with checkings'
+
+			if not src.exists():
+				print(f'\tsrc file not exists: {src}')
+				return False
+
+			if verbose:
+				print(f'\tcopy: {src.relative_to(src_path)}')
+
+			# check files: size and datetime
+			if dst.exists():
+				stat_src = src.stat()
+				stat_dst = dst.stat()
+				if stat_src.st_size != stat_dst.st_size:
+					# dst and src files has different size
+					print(f'\t\tsize: {stat_src.st_size} -> {stat_dst.st_size}')
+				if not disable_new_check and stat_src.st_mtime < stat_dst.st_mtime:
+					# dst file is newest than src
+					print(f'\t\ttime: {show_time(stat_src.st_mtime)} -> {show_time(stat_dst.st_mtime)}')
+					print('\t\tSKIP')
+					return False
+			# copy file
+			_copy_file(src, dst)
+			return True
+
+		if verbose:
+			print(f'copy gamedata: {" ".join(map(lambda x: "\""+x+"\"", patterns))}')
+
+		# copy gamedata files
+		count = 0
+		for pattern in patterns:
+			for path in src_path.glob(path_to_os(pattern)):
+				if copy_file(path, dst_path / path.relative_to(src_path)):
+					count += 1
+
+	# show statistics
+	if count:
+		print(f'copied files: {count}')
+	else:
+		print('NO FILES WAS COPIED')
+
+def diff_command(gamedata: PathsConfig, localization: str, src: str, dst: str, patterns: tuple[str], verbose: int):
+	'diffs gamedata files by glob-like patterns from src to dst path'
+
+	encoding = 'cp1251'
+	src_path = Path(path_to_os(src))
+	dst_path = Path(path_to_os(dst))
+
+	if verbose:
+		print(f'src: {src_path}')
+		print(f'dst: {dst_path}')
+		print(f'diff gamedata: {" ".join(map(lambda x: "\""+x+"\"", patterns))}')
+
+	def diff_file(src: Path, dst: Path, gamedata_path: str) -> bool:
+		'compares two files; returns True if it identical'
+		if not src.exists():
+			print(f'\tsource file not exists: {gamedata_path}')
+		if not dst.exists():
+			print(f'\tdestination file not exists: {gamedata_path}')
+		try:
+			ret = True
+			with src.open(encoding=encoding) as fa, dst.open(encoding=encoding) as fb:
+				buff_a = fa.readlines()
+				buff_b = fb.readlines()
+				for line in difflib.unified_diff(buff_a, buff_b, f'src:{src.name}', f'dst:{dst.name}'):
+					ret = False  # files different
+					stdout.writelines(line)
+			return ret
+		except FileNotFoundError:
+			return False  # files different
+
+	# diff files
+	count = diff_count = 0
+	for pattern in patterns:
+		for path in src_path.glob(path_to_os(pattern)):
+			gamedata_path = path.relative_to(src_path)
+			count += 1
+			if not diff_file(path, dst_path / gamedata_path, gamedata_path):
+				diff_count += 1
+	print(f'\nfiles: total {count}, different {diff_count}')
 
 if __name__ == '__main__':
 	from sys import argv, exit
@@ -1209,6 +1464,21 @@ example .csv file: [],inv_name,inv_name_short,description
 				help='sections names filter pattern; bash name filter: *, ?, [], [!]')
 			parser_ = subparsers.add_parser('ext', help='ext: another mod import')
 			parser_.add_argument('command', nargs='*', help='import command')
+			parser_ = subparsers.add_parser('cp', help='copy files: copy gamedata files from/to mod')
+			parser_.add_argument('-T', '--disable-new-check', action='store_true',
+				help='disables file time check: copy source file if it newest than destination')
+			parser_.add_argument('-N', '--note', help='note: any text; use \n for new line')
+			parser_.add_argument('-S', '--src', help='source path: gamedata path')
+			parser_.add_argument('-D', '--dst', help='destination path: gamedata path')
+			parser_.add_argument('-C', '--sync', action='store_true',
+				help='synchronize src and dst files according patterns')
+			parser_.add_argument('-M', '--dummy', action='store_true',
+				help='dummy run: do not copy any file; used to show changed files')
+			parser_.add_argument('patterns', nargs='*', help='files gamedata patterns: glob-like filter')
+			parser_ = subparsers.add_parser('diff', help='compare files: text unified diff format')
+			parser_.add_argument('-S', '--src', help='source path: gamedata path')
+			parser_.add_argument('-D', '--dst', help='destination path: gamedata path')
+			parser_.add_argument('patterns', nargs='*', help='files gamedata patterns: glob-like filter')
 			return parser.parse_args()
 
 		# parse command-line arguments
@@ -1268,6 +1538,12 @@ example .csv file: [],inv_name,inv_name_short,description
 					inv(paths_config, 'rus', args.sections, verbose, args.kind, getattr(args, 'import'))
 			case 'ext':
 				ext_mod_import(paths_config, 'rus', args.command, verbose)
+			case 'cp':
+				if args.note:
+					print(args.note.replace('\\n', '\n'))
+				cp_command(args.src, args.dst, args.patterns, args.disable_new_check, verbose, args.sync, args.dummy)
+			case 'diff':
+				diff_command(paths_config, 'rus', args.src, args.dst, args.patterns, verbose)
 
 	try:
 		main()
